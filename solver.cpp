@@ -1,6 +1,6 @@
 #include <vector>
+#include <queue>
 #include <utility>
-#include <algorithm>
 #include <functional>
 #include <iostream>
 
@@ -61,12 +61,6 @@ struct RelTable {
         return idx;
     }
 };
-
-struct {
-    bool operator()(std::pair<int,int> p1, std::pair<int,int> p2) {
-        return p1.first == p2.first ? p1.second > p2.second : p1.first > p2.first;
-    }
-} intpair_greater;
 
 struct Group {
     int ngens;
@@ -178,16 +172,21 @@ struct Group {
                 rel.add_row();
             }
 
-            std::vector<std::pair<int,int>> facts;
-            facts.push_back(std::make_pair(coset, gen));
+            std::priority_queue<int, std::vector<int>, std::greater<int>> facts;
+            facts.push(coset*ngens + gen);
 
             while (!facts.empty()) {
-                auto top = facts.back();
-                coset = top.first;
-                gen = top.second;
-                facts.pop_back();
+                int fact_idx = facts.top();
+                facts.pop();
 
-                cosets.put(coset, gen, target);
+                if (cosets.get(fact_idx) != -1)
+                    continue;
+
+                cosets.put(fact_idx, target);
+
+                coset = fact_idx / ngens;
+                gen = fact_idx % ngens;
+
 
                 for (RelTable &rel : rel_tables) {
                     if ( (gen == rel.gens[0] or gen == rel.gens[1]) and (rel.fam[target] == -1) ) {
@@ -200,19 +199,17 @@ struct Group {
                         if (rel.gen[target] == rel.mult) {
                             int lst = rel.lst[rel.fam[target]];
                             int gen_ = rel.gens[(int)(rel.gens[0] == gen)];
-                            facts.push_back(std::make_pair(lst, gen_));
+                            facts.push(lst*ngens + gen_);
                         }
                         else if (rel.gen[target] == -rel.mult) {
                             int gen_ = rel.gens[rel.gens[0] == gen];
-                            facts.push_back(std::make_pair(target, gen_));
+                            facts.push(target*ngens + gen_);
                         }
                         else if (rel.gen[target] == rel.mult - 1) {
                             rel.lst[rel.fam[target]] = target;
                         }
                     }
                 }
-
-                std::sort(facts.begin(), facts.end(), intpair_greater);
             }
 
             for (RelTable &rel : rel_tables) {
