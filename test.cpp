@@ -3,7 +3,7 @@
 #include <iostream>
 
 int main() {
-    Group g = B(9);
+    Group g = T(4500);
 
     auto s = std::chrono::system_clock::now();
     auto cosets = g.solve();

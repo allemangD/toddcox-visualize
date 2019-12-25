@@ -47,7 +47,8 @@ struct Mult {
 struct RelTable {
     int gens[2];
     int mult;
-    std::vector<int> fam, gen, lst;
+    std::vector<int*> lst_ptr;
+    std::vector<int> gen;
     
     RelTable(Mult m): mult(m.mult) {
         gens[0] = m.gen0;
@@ -55,10 +56,9 @@ struct RelTable {
     }
 
     int add_row() {
-        int idx = fam.size();
-        fam.push_back(-1);
+        int idx = lst_ptr.size();
+        lst_ptr.push_back(nullptr);
         gen.push_back(-1);
-        lst.push_back(-1);
         return idx;
     }
 };
@@ -148,14 +148,16 @@ struct Group {
             rel_tables.emplace_back(m);
         }
 
+        int null_lst_ptr;
         for (RelTable &rel : rel_tables) {
             int idx = rel.add_row();
             
-            rel.fam[idx] = 0;
-            rel.gen[idx] = 0;
-            rel.lst[idx] = 0;
-
-            if ( (cosets.get(rel.gens[0]) == 0) xor (cosets.get(rel.gens[1]) == 0) ) {
+            if (cosets.get(rel.gens[0]) + cosets.get(rel.gens[1]) == -2) {
+                rel.lst_ptr[idx] = new int;
+                rel.gen[idx] = 0;
+            }
+            else {
+                rel.lst_ptr[idx] = &null_lst_ptr;
                 rel.gen[idx] = -1;
             }
         }
@@ -196,15 +198,16 @@ struct Group {
 
                 for (int rel_idx : gen_map[gen]) {
                     RelTable &rel = rel_tables[rel_idx];
-                    if ( rel.fam[target] == -1 ) {
-                        rel.fam[target] = rel.fam[coset];
+                    if ( rel.lst_ptr[target] == nullptr ) {
+                        rel.lst_ptr[target] = rel.lst_ptr[coset];
                         rel.gen[target] = rel.gen[coset] + 1;
                         
                         if (rel.gen[coset] < 0)
                             rel.gen[target] -= 2;
 
                         if (rel.gen[target] == rel.mult) {
-                            lst = rel.lst[rel.fam[target]];
+                            lst = *(rel.lst_ptr[target]);
+                            delete rel.lst_ptr[target];
                             gen_ = rel.gens[(int)(rel.gens[0] == gen)];
                             facts.push_back(lst*ngens + gen_);
                         }
@@ -213,7 +216,7 @@ struct Group {
                             facts.push_back(target*ngens + gen_);
                         }
                         else if (rel.gen[target] == rel.mult - 1) {
-                            rel.lst[rel.fam[target]] = target;
+                            *(rel.lst_ptr[target]) = target;
                         }
                     }
                 }
@@ -222,12 +225,16 @@ struct Group {
             }
 
             for (RelTable &rel : rel_tables) {
-                if (rel.fam[target] == -1) {
-                    rel.fam[target] = target;
-                    rel.gen[target] = 0;
-
-                    if ( (cosets.get(target, rel.gens[0]) == target) xor (cosets.get(target, rel.gens[1]) == target) )
+                if (rel.lst_ptr[target] == nullptr) {
+                    if ( (cosets.get(target, rel.gens[0]) != target) and 
+                         (cosets.get(target, rel.gens[1]) != target) ) {
+                        rel.lst_ptr[target] = new int;
+                        rel.gen[target] = 0;
+                    }
+                    else {
+                        rel.lst_ptr[target] = &null_lst_ptr;
                         rel.gen[target] = -1;
+                    }
                 }
             }
         }
