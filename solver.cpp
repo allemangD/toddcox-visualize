@@ -1,4 +1,5 @@
 #include <vector>
+#include <algorithm>
 #include <queue>
 #include <utility>
 #include <functional>
@@ -138,7 +139,12 @@ struct Group {
 
         Cosets cosets(ngens, init_row);
         std::vector<RelTable> rel_tables;
+        std::vector<std::vector<int>> gen_map(ngens);
+        int rel_idx;
         for (Mult m : get_mults()) {
+            rel_idx = rel_tables.size();
+            gen_map[m.gen0].push_back(rel_idx);
+            gen_map[m.gen1].push_back(rel_idx);
             rel_tables.emplace_back(m);
         }
 
@@ -155,6 +161,7 @@ struct Group {
         }
 
         int idx = 0;
+        int coset, gen, target, fact_idx, lst, gen_;
         while (true) {
             while (idx < cosets.data.size() and cosets.get(idx) >= 0)
                 idx++;
@@ -162,22 +169,22 @@ struct Group {
             if (idx == cosets.data.size())
                 break;
 
-            int coset = idx / ngens;
-            int gen = idx % ngens;
-            int target = cosets.len;
-
+            target = cosets.len;
             cosets.add_row();
             
             for (RelTable &rel : rel_tables) {
                 rel.add_row();
             }
 
-            std::priority_queue<int, std::vector<int>, std::greater<int>> facts;
-            facts.push(coset*ngens + gen);
+            std::vector<int> facts;
+            facts.push_back(idx);
+
+            coset = idx / ngens;
+            gen = idx % ngens;
 
             while (!facts.empty()) {
-                int fact_idx = facts.top();
-                facts.pop();
+                fact_idx = facts.back();
+                facts.pop_back();
 
                 if (cosets.get(fact_idx) != -1)
                     continue;
@@ -187,9 +194,9 @@ struct Group {
                 coset = fact_idx / ngens;
                 gen = fact_idx % ngens;
 
-
-                for (RelTable &rel : rel_tables) {
-                    if ( (gen == rel.gens[0] or gen == rel.gens[1]) and (rel.fam[target] == -1) ) {
+                for (int rel_idx : gen_map[gen]) {
+                    RelTable &rel = rel_tables[rel_idx];
+                    if ( rel.fam[target] == -1 ) {
                         rel.fam[target] = rel.fam[coset];
                         rel.gen[target] = rel.gen[coset] + 1;
                         
@@ -197,19 +204,21 @@ struct Group {
                             rel.gen[target] -= 2;
 
                         if (rel.gen[target] == rel.mult) {
-                            int lst = rel.lst[rel.fam[target]];
-                            int gen_ = rel.gens[(int)(rel.gens[0] == gen)];
-                            facts.push(lst*ngens + gen_);
+                            lst = rel.lst[rel.fam[target]];
+                            gen_ = rel.gens[(int)(rel.gens[0] == gen)];
+                            facts.push_back(lst*ngens + gen_);
                         }
                         else if (rel.gen[target] == -rel.mult) {
-                            int gen_ = rel.gens[rel.gens[0] == gen];
-                            facts.push(target*ngens + gen_);
+                            gen_ = rel.gens[rel.gens[0] == gen];
+                            facts.push_back(target*ngens + gen_);
                         }
                         else if (rel.gen[target] == rel.mult - 1) {
                             rel.lst[rel.fam[target]] = target;
                         }
                     }
                 }
+
+                std::sort(facts.begin(), facts.end(), std::greater<int>());
             }
 
             for (RelTable &rel : rel_tables) {
