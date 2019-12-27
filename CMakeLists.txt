@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
-project(test)
+project(tc)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(test test.cpp groups.cpp solver.cpp)
+add_library(tc STATIC src/groups.cpp src/solver.cpp)
+target_include_directories(tc PUBLIC include)
+
+add_subdirectory(example)
