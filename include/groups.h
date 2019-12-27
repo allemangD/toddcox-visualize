@@ -29,19 +29,19 @@ namespace tc {
     Group schlafli(const std::vector<int> &mults);
 
     namespace group {
-        Group A(int n);
+        Group A(int dim);
 
-        Group B(int n);
+        Group B(int dim);
 
-        Group D(int n);
+        Group D(int dim);
 
-        Group E(int n);
+        Group E(int dim);
 
         Group F4();
 
         Group G2();
 
-        Group H(int n);
+        Group H(int dim);
 
         Group I2(int n);
 

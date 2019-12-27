@@ -74,32 +74,32 @@ namespace tc {
     }
 
     namespace group {
-        Group A(const int n) {
-            if (n == 0)
+        Group A(const int dim) {
+            if (dim == 0)
                 return Group(0);
 
-            return schlafli(std::vector<int>(n - 1, 3));
+            return schlafli(std::vector<int>(dim - 1, 3));
         }
 
-        Group B(const int n) {
-            std::vector<int> mults(n - 1, 3);
+        Group B(const int dim) {
+            std::vector<int> mults(dim - 1, 3);
             mults[0] = 4;
             return schlafli(mults);
         }
 
-        Group D(const int n) {
-            std::vector<int> mults(n - 1, 3);
-            mults[n - 2] = 2;
+        Group D(const int dim) {
+            std::vector<int> mults(dim - 1, 3);
+            mults[dim - 2] = 2;
             Group g = schlafli(mults);
-            g.setmult({1, n - 1, 3});
+            g.setmult({1, dim - 1, 3});
             return g;
         }
 
-        Group E(const int n) {
-            std::vector<int> mults(n - 1, 3);
-            mults[n - 2] = 2;
+        Group E(const int dim) {
+            std::vector<int> mults(dim - 1, 3);
+            mults[dim - 2] = 2;
             Group g = schlafli(mults);
-            g.setmult({2, n - 1, 3});
+            g.setmult({2, dim - 1, 3});
             return g;
         }
 
@@ -111,8 +111,8 @@ namespace tc {
             return schlafli({6});
         }
 
-        Group H(const int n) {
-            std::vector<int> mults(n - 1, 3);
+        Group H(const int dim) {
+            std::vector<int> mults(dim - 1, 3);
             mults[0] = 5;
             return schlafli(mults);
         }
