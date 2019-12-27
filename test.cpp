@@ -1,12 +1,13 @@
-#include "groups.cpp"
+#include "solver.h"
+#include "groups.h"
 #include <chrono>
 #include <iostream>
 
 int main() {
-    Group g = T(100);
+    tc::Group g = tc::group::T(2, 5000);
 
     auto s = std::chrono::system_clock::now();
-    auto cosets = g.solve();
+    auto cosets = solve(g);
     auto e = std::chrono::system_clock::now();
 
     std::chrono::duration<double> diff = e - s;

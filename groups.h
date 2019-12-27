@@ -2,50 +2,51 @@
 
 #include <vector>
 
-struct Cosets {
-    int ngens;
-    std::vector<int> data;
-    int len;
+namespace tc {
+    struct Mult {
+        int gen0, gen1, mult;
+    };
 
-    Cosets(int ngens, const std::vector<int> &data);
+    struct Group {
+        int ngens;
+        std::vector<std::vector<int>> _mults;
 
-    void add_row();
+        explicit Group(int ngens, const std::vector<Mult> &rels = {});
 
-    void put(int coset, int gen, int target);
+        void setmult(Mult m);
 
-    void put(int idx, int target);
+        [[nodiscard]] std::vector<Mult> get_mults() const;
 
-    [[nodiscard]] int get(int coset, int gen) const;
+        [[nodiscard]] Group product(const Group &other) const;
 
-    [[nodiscard]] int get(int idx) const;
-};
+        [[nodiscard]] Group power(int p) const;
+    };
 
-struct Mult {
-    int gen0, gen1, mult;
-};
+    Group operator*(const Group &g, const Group &h);
 
-struct RelTable {
-    int gens[2]{};
-    int mult;
-    std::vector<int *> lst_ptr;
-    std::vector<int> gen;
+    Group operator^(const Group &g, const int &p);
 
-    explicit RelTable(Mult m);
+    Group schlafli(const std::vector<int> &mults);
 
-    int add_row();
-};
+    namespace group {
+        Group A(int n);
 
-struct Group {
-    int ngens;
-    std::vector<std::vector<int>> _mults;
+        Group B(int n);
 
-    explicit Group(int ngens, const std::vector<Mult> &rels = {});
+        Group D(int n);
 
-    void setmult(Mult m);
+        Group E(int n);
 
-    [[nodiscard]] std::vector<Mult> get_mults() const;
+        Group F4();
 
-    [[nodiscard]] Group product(const Group &other) const;
+        Group G2();
 
-    [[nodiscard]] Group power(int p) const;
-};
+        Group H(int n);
+
+        Group I2(int n);
+
+        Group T(int n, int m);
+
+        Group T(int n);
+    }
+}
