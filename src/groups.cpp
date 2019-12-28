@@ -1,7 +1,11 @@
 #include "groups.h"
 
+//#include <utility>
+#include <iterator>
+#include <sstream>
+
 namespace tc {
-    Group::Group(int ngens, const std::vector<Mult> &rels) : ngens(ngens) {
+    Group::Group(int ngens, const std::vector<Mult> &rels, std::string name) : ngens(ngens), name(std::move(name)) {
         _mults.resize(ngens);
         for (int i = 0; i < ngens; i++) {
             _mults[i].resize(ngens, 2);
@@ -41,6 +45,10 @@ namespace tc {
             g.setmult({off + m.gens[0], off + m.gens[1], m.mult});
         }
 
+        std::stringstream ss;
+        ss << name << "*" << other.name;
+        g.name = ss.str();
+
         return g;
     }
 
@@ -53,6 +61,10 @@ namespace tc {
             }
         }
 
+        std::stringstream ss;
+        ss << name << "^" << p;
+        g.name = ss.str();
+
         return g;
     }
 
@@ -64,27 +76,51 @@ namespace tc {
         return g.power(p);
     }
 
-    Group schlafli(const std::vector<int> &mults) {
+    Group schlafli(const std::vector<int> &mults, const std::string name) {
         int ngens = mults.size() + 1;
-        Group g(ngens);
+
+        Group g(ngens, {}, name);
+
         for (int i = 0; i < mults.size(); i++) {
             g.setmult({i, i + 1, mults[i]});
         }
+
         return g;
+    }
+
+    Group schlafli(const std::vector<int> &mults) {
+        std::stringstream ss;
+        ss << "[";
+        if (!mults.empty()) {
+            copy(mults.begin(), mults.end() - 1, std::ostream_iterator<int>(ss, ","));
+            ss << mults.back();
+        }
+        ss << "]";
+
+        return schlafli(mults, ss.str());
     }
 
     namespace group {
         Group A(const int dim) {
             if (dim == 0)
-                return Group(0);
+                return Group(0, {}, "A(0)");
 
-            return schlafli(std::vector<int>(dim - 1, 3));
+            const std::vector<int> &mults = std::vector<int>(dim - 1, 3);
+
+            std::stringstream ss;
+            ss << "A(" << dim << ")";
+
+            return schlafli(mults, ss.str());
         }
 
         Group B(const int dim) {
             std::vector<int> mults(dim - 1, 3);
             mults[0] = 4;
-            return schlafli(mults);
+
+            std::stringstream ss;
+            ss << "B(" << dim << ")";
+
+            return schlafli(mults, ss.str());
         }
 
         Group D(const int dim) {
@@ -92,6 +128,11 @@ namespace tc {
             mults[dim - 2] = 2;
             Group g = schlafli(mults);
             g.setmult({1, dim - 1, 3});
+
+            std::stringstream ss;
+            ss << "D(" << dim << ")";
+            g.name = ss.str();
+
             return g;
         }
 
@@ -100,33 +141,57 @@ namespace tc {
             mults[dim - 2] = 2;
             Group g = schlafli(mults);
             g.setmult({2, dim - 1, 3});
+
+            std::stringstream ss;
+            ss << "E(" << dim << ")";
+            g.name = ss.str();
+
             return g;
         }
 
         Group F4() {
-            return schlafli({3, 4, 3});
+            return schlafli({3, 4, 3}, "F4");
         }
 
         Group G2() {
-            return schlafli({6});
+            return schlafli({6}, "G2");
         }
 
         Group H(const int dim) {
             std::vector<int> mults(dim - 1, 3);
             mults[0] = 5;
-            return schlafli(mults);
+
+            std::stringstream ss;
+            ss << "H(" << dim << ")";
+
+            return schlafli(mults, ss.str());
         }
 
         Group I2(const int n) {
-            return schlafli({n});
+            std::stringstream ss;
+            ss << "I2(" << n << ")";
+
+            return schlafli({n}, ss.str());
         }
 
         Group T(const int n, const int m) {
-            return I2(n) * I2(m);
+            Group g = I2(n) * I2(m);
+
+            std::stringstream ss;
+            ss << "T(" << n << "," << m << ")";
+            g.name = ss.str();
+
+            return g;
         }
 
         Group T(const int n) {
-            return I2(n) ^ 2;
+            Group g = I2(n) ^2;
+
+            std::stringstream ss;
+            ss << "T(" << n << ")";
+            g.name = ss.str();
+
+            return g;
         }
     }
 }

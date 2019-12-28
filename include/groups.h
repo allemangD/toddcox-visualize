@@ -12,8 +12,9 @@ namespace tc {
     struct Group {
         int ngens;
         std::vector<std::vector<int>> _mults;
+        std::string name;
 
-        explicit Group(int ngens, const std::vector<Mult> &rels = {});
+        explicit Group(int ngens, const std::vector<Mult> &rels = {}, std::string name = "G");
 
         void setmult(Mult m);
 
