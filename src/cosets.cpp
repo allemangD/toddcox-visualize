@@ -1,8 +1,7 @@
 #include "cosets.h"
 
 namespace tc {
-    Cosets::Cosets(int ngens, const std::vector<int> &data) : ngens(ngens), data(data) {
-        len = data.size() / ngens;
+    Cosets::Cosets(int ngens) : ngens(ngens), len(0) {
     }
 
     void Cosets::add_row() {
@@ -30,13 +29,4 @@ namespace tc {
         return data[idx];
     }
 
-    RelTable::RelTable(tc::Mult m) : mult(m) {
-    }
-
-    int RelTable::add_row() {
-        int idx = lst_ptr.size();
-        lst_ptr.push_back(nullptr);
-        gen.push_back(-1);
-        return idx;
-    }
 }

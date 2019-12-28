@@ -3,11 +3,30 @@
 #include <algorithm>
 
 namespace tc {
+    struct RelTable {
+        Mult mult;
+
+        std::vector<int *> lst_ptr;
+        std::vector<int> gen;
+
+        explicit RelTable(tc::Mult mult) : mult(mult) {
+        }
+
+        int add_row() {
+            int idx = lst_ptr.size();
+            lst_ptr.push_back(nullptr);
+            gen.push_back(-1);
+            return idx;
+        }
+    };
+
     struct RelationSet {
+        const Cosets &cosets;
+
         std::vector<RelTable> tables;
         std::vector<std::vector<RelTable *>> gen_map; // which relations involve which generators
 
-        explicit RelationSet(const Group &g) : gen_map(g.ngens) {
+        explicit RelationSet(const Group &g, const Cosets &cosets) : gen_map(g.ngens), cosets(cosets) {
             const std::vector<Mult> &mults = g.get_mults();
             tables.reserve(mults.size());
             for (const auto &mult : mults) {
@@ -16,29 +35,39 @@ namespace tc {
                 gen_map[mult.gens[1]].push_back(&table);
             }
         }
+
+        void add_row() {
+            for (auto &table : tables) {
+                table.add_row();
+            }
+        }
+
+        void fill_row(int idx) {
+            for (auto &table : tables) {
+                if (table.lst_ptr[idx] != nullptr) continue;
+
+                table.lst_ptr[idx] = new int;
+
+                if ((cosets.get(idx, table.mult.gens[0]) != idx) and
+                    (cosets.get(idx, table.mult.gens[1]) != idx)) {
+                    table.gen[idx] = 0;
+                } else {
+                    table.gen[idx] = -1;
+                }
+            }
+        }
     };
 
     Cosets solve(const Group &group, const std::vector<int> &sub_gens) {
-        std::vector<int> init_row(group.ngens, -1);
-        for (int i : sub_gens) {
-            init_row[i] = 0;
+        Cosets cosets(group.ngens);
+        cosets.add_row();
+        for (const auto &i : sub_gens) {
+            cosets.put(0, i, 0);
         }
 
-        Cosets cosets(group.ngens, init_row);
-        RelationSet rels(group);
-
-        int null_lst_ptr;
-        for (RelTable &rel : rels.tables) {
-            int idx = rel.add_row();
-
-            if (cosets.get(rel.mult.gens[0]) + cosets.get(rel.mult.gens[1]) == -2) {
-                rel.lst_ptr[idx] = new int;
-                rel.gen[idx] = 0;
-            } else {
-                rel.lst_ptr[idx] = &null_lst_ptr;
-                rel.gen[idx] = -1;
-            }
-        }
+        RelationSet rels(group, cosets);
+        rels.add_row();
+        rels.fill_row(0);
 
         int idx = 0;
         int coset, gen, target, fact_idx, lst, gen_;
@@ -50,14 +79,11 @@ namespace tc {
                 break;
 
             target = cosets.len;
+
             cosets.add_row();
+            rels.add_row();
 
-            for (RelTable &rel : rels.tables) {
-                rel.add_row();
-            }
-
-            std::vector<int> facts;
-            facts.push_back(idx);
+            std::vector<int> facts = {idx};
 
             while (!facts.empty()) {
                 fact_idx = facts.back();
@@ -71,25 +97,24 @@ namespace tc {
                 coset = fact_idx / group.ngens;
                 gen = fact_idx % group.ngens;
 
-                for (RelTable *rel_idx : rels.gen_map[gen]) {
-                    RelTable &rel = *rel_idx;
-                    if (rel.lst_ptr[target] == nullptr) {
-                        rel.lst_ptr[target] = rel.lst_ptr[coset];
-                        rel.gen[target] = rel.gen[coset] + 1;
+                for (RelTable *rel : rels.gen_map[gen]) {
+                    if (rel->lst_ptr[target] == nullptr) {
+                        rel->lst_ptr[target] = rel->lst_ptr[coset];
+                        rel->gen[target] = rel->gen[coset] + 1;
 
-                        if (rel.gen[coset] < 0)
-                            rel.gen[target] -= 2;
+                        if (rel->gen[coset] < 0)
+                            rel->gen[target] -= 2;
 
-                        if (rel.gen[target] == rel.mult.mult) {
-                            lst = *(rel.lst_ptr[target]);
-                            delete rel.lst_ptr[target];
-                            gen_ = rel.mult.gens[(int) (rel.mult.gens[0] == gen)];
+                        if (rel->gen[target] == rel->mult.mult) {
+                            lst = *(rel->lst_ptr[target]);
+                            delete rel->lst_ptr[target];
+                            gen_ = rel->mult.gens[(int) (rel->mult.gens[0] == gen)];
                             facts.push_back(lst * group.ngens + gen_);
-                        } else if (rel.gen[target] == -rel.mult.mult) {
-                            gen_ = rel.mult.gens[rel.mult.gens[0] == gen];
+                        } else if (rel->gen[target] == -rel->mult.mult) {
+                            gen_ = rel->mult.gens[rel->mult.gens[0] == gen];
                             facts.push_back(target * group.ngens + gen_);
-                        } else if (rel.gen[target] == rel.mult.mult - 1) {
-                            *(rel.lst_ptr[target]) = target;
+                        } else if (rel->gen[target] == rel->mult.mult - 1) {
+                            *(rel->lst_ptr[target]) = target;
                         }
                     }
                 }
@@ -97,18 +122,7 @@ namespace tc {
                 std::sort(facts.begin(), facts.end(), std::greater<>());
             }
 
-            for (RelTable &rel : rels.tables) {
-                if (rel.lst_ptr[target] == nullptr) {
-                    if ((cosets.get(target, rel.mult.gens[0]) != target) and
-                        (cosets.get(target, rel.mult.gens[1]) != target)) {
-                        rel.lst_ptr[target] = new int;
-                        rel.gen[target] = 0;
-                    } else {
-                        rel.lst_ptr[target] = &null_lst_ptr;
-                        rel.gen[target] = -1;
-                    }
-                }
-            }
+            rels.fill_row(target);
         }
 
         return cosets;

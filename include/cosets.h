@@ -9,7 +9,7 @@ namespace tc {
         std::vector<int> data;
         int len;
 
-        Cosets(int ngens, const std::vector<int> &data);
+        explicit Cosets(int ngens);
 
         void add_row();
 
@@ -22,14 +22,4 @@ namespace tc {
         [[nodiscard]] int get(int idx) const;
     };
 
-    struct RelTable {
-        Mult mult;
-
-        std::vector<int *> lst_ptr;
-        std::vector<int> gen;
-
-        explicit RelTable(tc::Mult m);
-
-        int add_row();
-    };
 }
