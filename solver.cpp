@@ -44,25 +44,6 @@ struct Mult {
     int gen0, gen1, mult;
 };
 
-struct RelTable {
-    int gens[2];
-    int mult;
-    std::vector<int*> lst_ptr;
-    std::vector<int> gen;
-    
-    RelTable(Mult m): mult(m.mult) {
-        gens[0] = m.gen0;
-        gens[1] = m.gen1;
-    }
-
-    int add_row() {
-        int idx = lst_ptr.size();
-        lst_ptr.push_back(nullptr);
-        gen.push_back(-1);
-        return idx;
-    }
-};
-
 struct RelTablesRow {
     int* gnrs;
     int** lst_ptrs;
