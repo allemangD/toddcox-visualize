@@ -8,18 +8,18 @@ namespace tc {
         }
 
         for (Mult m : rels) {
-            if (m.gen0 < m.gen1)
-                _mults[m.gen0][m.gen1] = m.mult;
+            if (m.gens[0] < m.gens[1])
+                _mults[m.gens[0]][m.gens[1]] = m.mult;
             else
-                _mults[m.gen1][m.gen0] = m.mult;
+                _mults[m.gens[1]][m.gens[0]] = m.mult;
         }
     }
 
     void Group::setmult(Mult m) {
-        if (m.gen0 < m.gen1)
-            _mults[m.gen0][m.gen1] = m.mult;
+        if (m.gens[0] < m.gens[1])
+            _mults[m.gens[0]][m.gens[1]] = m.mult;
         else
-            _mults[m.gen1][m.gen0] = m.mult;
+            _mults[m.gens[1]][m.gens[0]] = m.mult;
     }
 
     std::vector<Mult> Group::get_mults() const {
@@ -38,7 +38,7 @@ namespace tc {
         Group g(ngens + other.ngens, get_mults());
 
         for (Mult m : other.get_mults()) {
-            g.setmult({off + m.gen0, off + m.gen1, m.mult});
+            g.setmult({off + m.gens[0], off + m.gens[1], m.mult});
         }
 
         return g;
@@ -49,7 +49,7 @@ namespace tc {
 
         for (Mult m : get_mults()) {
             for (int off = 0; off < g.ngens; off += ngens) {
-                g.setmult({off + m.gen0, off + m.gen1, m.mult});
+                g.setmult({off + m.gens[0], off + m.gens[1], m.mult});
             }
         }
 

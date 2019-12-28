@@ -4,7 +4,8 @@
 #include <iostream>
 
 int main() {
-    tc::Group g = tc::group::T(2, 5000);
+    tc::Group g = tc::group::H(4);
+//    tc::Group g = tc::group::T(2, 5000);
 
     auto s = std::chrono::system_clock::now();
     auto cosets = solve(g);

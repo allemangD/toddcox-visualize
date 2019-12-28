@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <vector>
 
 namespace tc {
     struct Mult {
-        int gen0, gen1, mult;
+        std::array<int, 2> gens;
+        int mult;
     };
 
     struct Group {

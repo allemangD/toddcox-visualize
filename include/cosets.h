@@ -3,31 +3,33 @@
 #include "groups.h"
 #include <vector>
 
-struct Cosets {
-    int ngens;
-    std::vector<int> data;
-    int len;
+namespace tc {
+    struct Cosets {
+        int ngens;
+        std::vector<int> data;
+        int len;
 
-    Cosets(int ngens, const std::vector<int> &data);
+        Cosets(int ngens, const std::vector<int> &data);
 
-    void add_row();
+        void add_row();
 
-    void put(int coset, int gen, int target);
+        void put(int coset, int gen, int target);
 
-    void put(int idx, int target);
+        void put(int idx, int target);
 
-    [[nodiscard]] int get(int coset, int gen) const;
+        [[nodiscard]] int get(int coset, int gen) const;
 
-    [[nodiscard]] int get(int idx) const;
-};
+        [[nodiscard]] int get(int idx) const;
+    };
 
-struct RelTable {
-    int gens[2]{};
-    int mult;
-    std::vector<int *> lst_ptr;
-    std::vector<int> gen;
+    struct RelTable {
+        Mult mult;
 
-    explicit RelTable(tc::Mult m);
+        std::vector<int *> lst_ptr;
+        std::vector<int> gen;
 
-    int add_row();
-};
+        explicit RelTable(tc::Mult m);
+
+        int add_row();
+    };
+}
