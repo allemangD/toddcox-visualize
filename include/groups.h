@@ -4,21 +4,24 @@
 #include <vector>
 
 namespace tc {
-    struct Mult {
+    struct Rel {
         std::array<int, 2> gens;
         int mult;
     };
 
+    /**
+     * A presentation of a coxeter group. Contains a number of generators and some relations of the form (ab)^n = e
+     */
     struct Group {
-        int ngens;
-        std::vector<std::vector<int>> _mults;
+        const int ngens;
+        std::vector<std::vector<int>> _mults;  // lookup table for multiplicities
         std::string name;
 
-        explicit Group(int ngens, const std::vector<Mult> &rels = {}, std::string name = "G");
+        explicit Group(int ngens, const std::vector<Rel> &rels = {}, std::string name = "G");
 
-        void setmult(Mult m);
+        void setmult(Rel rel);
 
-        [[nodiscard]] std::vector<Mult> get_mults() const;
+        [[nodiscard]] std::vector<Rel> get_rels() const;
 
         [[nodiscard]] Group product(const Group &other) const;
 
@@ -29,6 +32,10 @@ namespace tc {
 
     Group operator^(const Group &g, const int &p);
 
+    /**
+     * Construct a group from a (simplified) Schlafli Symbol of the form [a, b, ..., c]
+     * @param mults: The sequence of multiplicites between adjacent generators.
+     */
     Group schlafli(const std::vector<int> &mults);
 
     namespace group {

@@ -1,48 +1,47 @@
 #include "groups.h"
 
-//#include <utility>
 #include <iterator>
 #include <sstream>
 
 namespace tc {
-    Group::Group(int ngens, const std::vector<Mult> &rels, std::string name) : ngens(ngens), name(std::move(name)) {
+    Group::Group(int ngens, const std::vector<Rel> &rels, std::string name) : ngens(ngens), name(std::move(name)) {
         _mults.resize(ngens);
         for (int i = 0; i < ngens; i++) {
             _mults[i].resize(ngens, 2);
         }
 
-        for (Mult m : rels) {
-            if (m.gens[0] < m.gens[1])
-                _mults[m.gens[0]][m.gens[1]] = m.mult;
+        for (Rel rel : rels) {
+            if (rel.gens[0] < rel.gens[1])
+                _mults[rel.gens[0]][rel.gens[1]] = rel.mult;
             else
-                _mults[m.gens[1]][m.gens[0]] = m.mult;
+                _mults[rel.gens[1]][rel.gens[0]] = rel.mult;
         }
     }
 
-    void Group::setmult(Mult m) {
-        if (m.gens[0] < m.gens[1])
-            _mults[m.gens[0]][m.gens[1]] = m.mult;
+    void Group::setmult(Rel rel) {
+        if (rel.gens[0] < rel.gens[1])
+            _mults[rel.gens[0]][rel.gens[1]] = rel.mult;
         else
-            _mults[m.gens[1]][m.gens[0]] = m.mult;
+            _mults[rel.gens[1]][rel.gens[0]] = rel.mult;
     }
 
-    std::vector<Mult> Group::get_mults() const {
-        std::vector<Mult> mults;
+    std::vector<Rel> Group::get_rels() const {
+        std::vector<Rel> rels;
         for (int i = 0; i < ngens - 1; i++) {
             for (int j = i + 1; j < ngens; j++) {
-                mults.push_back({i, j, _mults[i][j]});
+                rels.push_back({i, j, _mults[i][j]});
             }
         }
-        return mults;
+        return rels;
     }
 
     Group Group::product(const Group &other) const {
         int off = ngens;
 
-        Group g(ngens + other.ngens, get_mults());
+        Group g(ngens + other.ngens, get_rels());
 
-        for (Mult m : other.get_mults()) {
-            g.setmult({off + m.gens[0], off + m.gens[1], m.mult});
+        for (Rel rel : other.get_rels()) {
+            g.setmult({off + rel.gens[0], off + rel.gens[1], rel.mult});
         }
 
         std::stringstream ss;
@@ -55,9 +54,9 @@ namespace tc {
     Group Group::power(int p) const {
         Group g(ngens * p);
 
-        for (Mult m : get_mults()) {
+        for (Rel rel : get_rels()) {
             for (int off = 0; off < g.ngens; off += ngens) {
-                g.setmult({off + m.gens[0], off + m.gens[1], m.mult});
+                g.setmult({off + rel.gens[0], off + rel.gens[1], rel.mult});
             }
         }
 
@@ -76,12 +75,12 @@ namespace tc {
         return g.power(p);
     }
 
-    Group schlafli(const std::vector<int> &mults, const std::string name) {
-        int ngens = mults.size() + 1;
+    Group schlafli(const std::vector<int> &mults, const std::string& name) {
+        int ngens = (int) mults.size() + 1;
 
         Group g(ngens, {}, name);
 
-        for (int i = 0; i < mults.size(); i++) {
+        for (int i = 0; i < (int) mults.size(); i++) {
             g.setmult({i, i + 1, mults[i]});
         }
 
