@@ -1,6 +1,7 @@
 #include "solver.h"
 #include "groups.h"
-#include <chrono>
+
+#include <ctime>
 #include <iostream>
 
 int main() {
@@ -16,14 +17,14 @@ int main() {
     };
 
     for (const auto &group : groups) {
-        auto s = std::chrono::high_resolution_clock::now();
+        auto s = std::clock(); // to measure CPU time
         auto cosets = solve(group);
-        auto e = std::chrono::high_resolution_clock::now();
+        auto e = std::clock();
 
-        std::chrono::duration<double> diff = e - s;
+        double diff = (double) (e - s) / CLOCKS_PER_SEC;
         int order = cosets.len;
 
-        std::cout << group.name << "," << order << "," << diff.count() << std::endl;
+        std::cout << group.name << "," << order << "," << diff << std::endl;
     }
 
     return 0;
