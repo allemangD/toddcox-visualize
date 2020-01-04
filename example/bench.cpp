@@ -18,7 +18,7 @@ int main() {
 
     for (const auto &group : groups) {
         auto s = std::clock(); // to measure CPU time
-        auto cosets = solve(group);
+        auto cosets = tc::solve(group);
         auto e = std::clock();
 
         double diff = (double) (e - s) / CLOCKS_PER_SEC;
