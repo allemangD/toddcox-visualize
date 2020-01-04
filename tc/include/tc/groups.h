@@ -21,6 +21,8 @@ namespace tc {
 
         void setmult(Rel rel);
 
+        [[nodiscard]] Rel rel(int a, int b) const;
+
         [[nodiscard]] std::vector<Rel> get_rels() const;
 
         [[nodiscard]] Group product(const Group &other) const;

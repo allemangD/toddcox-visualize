@@ -11,18 +11,17 @@ namespace tc {
         }
 
         for (Rel rel : rels) {
-            if (rel.gens[0] < rel.gens[1])
-                _mults[rel.gens[0]][rel.gens[1]] = rel.mult;
-            else
-                _mults[rel.gens[1]][rel.gens[0]] = rel.mult;
+            setmult(rel);
         }
     }
 
     void Group::setmult(Rel rel) {
-        if (rel.gens[0] < rel.gens[1])
-            _mults[rel.gens[0]][rel.gens[1]] = rel.mult;
-        else
-            _mults[rel.gens[1]][rel.gens[0]] = rel.mult;
+        _mults[rel.gens[0]][rel.gens[1]] = rel.mult;
+        _mults[rel.gens[1]][rel.gens[0]] = rel.mult;
+    }
+
+    Rel Group::rel(int a, int b) const {
+        return {a, b, _mults[a][b]};
     }
 
     std::vector<Rel> Group::get_rels() const {
@@ -75,7 +74,7 @@ namespace tc {
         return g.power(p);
     }
 
-    Group schlafli(const std::vector<int> &mults, const std::string& name) {
+    Group schlafli(const std::vector<int> &mults, const std::string &name) {
         int ngens = (int) mults.size() + 1;
 
         Group g(ngens, {}, name);

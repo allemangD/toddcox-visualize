@@ -26,5 +26,7 @@ namespace tc {
         [[nodiscard]] int get(int coset, int gen) const;
 
         [[nodiscard]] int get(int idx) const;
+
+        [[nodiscard]] int size() const;
     };
 }

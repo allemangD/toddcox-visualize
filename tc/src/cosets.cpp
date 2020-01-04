@@ -38,4 +38,7 @@ namespace tc {
         return data[idx];
     }
 
+    int Cosets::size() const {
+        return len;
+    }
 }
