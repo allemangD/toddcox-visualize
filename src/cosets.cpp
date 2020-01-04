@@ -7,11 +7,16 @@ namespace tc {
     void Cosets::add_row() {
         len++;
         data.resize(data.size() + ngens, -1);
+        path.resize(path.size() + 1);
     }
 
     void Cosets::put(int coset, int gen, int target) {
         data[coset * ngens + gen] = target;
         data[target * ngens + gen] = coset;
+
+        if (path[target].coset == -1) {
+            path[target] = {coset, gen};
+        }
     }
 
     void Cosets::put(int idx, int target) {
@@ -19,6 +24,10 @@ namespace tc {
         int gen = idx % ngens;
         data[idx] = target;
         data[target * ngens + gen] = coset;
+
+        if (path[target].coset == -1) {
+            path[target] = {coset, gen};
+        }
     }
 
     int Cosets::get(int coset, int gen) const {

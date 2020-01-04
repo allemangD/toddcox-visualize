@@ -4,9 +4,15 @@
 #include <vector>
 
 namespace tc {
+    struct Action {
+        int coset = -1;
+        int gen = -1;
+    };
+
     struct Cosets {
         int ngens;
         std::vector<int> data;
+        std::vector<Action> path;
         int len;
 
         explicit Cosets(int ngens);
@@ -21,5 +27,4 @@ namespace tc {
 
         [[nodiscard]] int get(int idx) const;
     };
-
 }
