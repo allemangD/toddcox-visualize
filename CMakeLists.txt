@@ -10,5 +10,3 @@ add_subdirectory(vendor/glm)
 add_subdirectory(tc)
 add_subdirectory(vis)
 add_subdirectory(example)
-
-message("${GLM_TEST_ENABLE}")
