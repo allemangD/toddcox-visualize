@@ -1,4 +1,4 @@
-#include "cosets.h"
+#include "tc/cosets.h"
 
 namespace tc {
     Cosets::Cosets(int ngens) : ngens(ngens), len(0) {

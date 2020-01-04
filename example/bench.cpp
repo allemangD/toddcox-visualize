@@ -1,5 +1,5 @@
-#include "solver.h"
-#include "groups.h"
+#include "tc/solver.h"
+#include "tc/groups.h"
 
 #include <ctime>
 #include <iostream>
