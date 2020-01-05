@@ -7,6 +7,7 @@
 
 #include "geom.h"
 
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
 
 #ifdef _WIN32
@@ -14,6 +15,30 @@ extern "C" {
 __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x00000001;
 }
 #endif
+
+void utilShaderSource(GLuint shader, const std::vector<std::string> &sources) {
+    char const *ptrs[sources.size()];
+    for (size_t i = 0; i < sources.size(); ++i) {
+        ptrs[i] = sources[i].c_str();
+    }
+    glShaderSource(shader, sources.size(), ptrs, nullptr);
+}
+
+std::string utilShaderInfoLog(GLuint shader) {
+    int len;
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
+    char buffer[len];
+    glGetShaderInfoLog(shader, len, nullptr, buffer);
+    return std::string(buffer);
+}
+
+std::string utilProgramInfoLog(GLuint program) {
+    int len;
+    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
+    char buffer[len];
+    glGetProgramInfoLog(program, len, nullptr, buffer);
+    return std::string(buffer);
+}
 
 int main(int argc, char *argv[]) {
     if (!glfwInit()) {
@@ -71,8 +96,67 @@ int main(int argc, char *argv[]) {
         std::cout << "    " << to_string(point) << std::endl;
     }
 
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    utilShaderSource(vs, {
+        "#version 430\n",
+
+        "layout(location=0) uniform mat4 proj;"
+        ""
+        "void main() {"
+        "   int i = gl_VertexID;"
+        "   gl_Position = proj * vec4(i % 2, i / 2, 0, 1);"
+        "}"
+    });
+    glCompileShader(vs);
+
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    utilShaderSource(fs, {
+        "#version 430\n",
+
+        "out vec4 color;"
+        ""
+        "void main() {"
+        "   color = vec4(1);"
+        "}"
+    });
+
+    GLuint pgm = glCreateProgram();
+    glAttachShader(pgm, vs);
+    glAttachShader(pgm, fs);
+    glLinkProgram(pgm);
+
+    GLint status;
+
+    glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
+    if (!status) {
+        std::cerr << utilShaderInfoLog(vs) << "\n=========\n" << std::endl;
+    }
+
+    glGetShaderiv(fs, GL_COMPILE_STATUS, &status);
+    if (!status) {
+        std::cerr << utilShaderInfoLog(fs) << "\n=========\n" << std::endl;
+    }
+
+    glGetProgramiv(pgm, GL_LINK_STATUS, &status);
+    if (!status) {
+        std::cerr << utilProgramInfoLog(pgm) << "\n=========\n" << std::endl;
+        glfwTerminate();
+        return EXIT_FAILURE;
+    }
+
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    auto aspect = (float) width / (float) height;
+
+    glm::mat4 proj = glm::ortho(-aspect, aspect, -1.f, 1.f);
+
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(pgm);
+        glUniformMatrix4fv(0, 1, false, glm::value_ptr(proj));
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
         glfwSwapBuffers(window);
 
         glfwPollEvents();
