@@ -66,23 +66,6 @@ namespace tc {
         return g;
     }
 
-    Group Group::shrink(const std::vector<int> &gens) const {
-        Group g(ngens);
-        for (const auto &i : gens) {
-            for (const auto &j : gens) {
-                g._mults[i][j] = _mults[i][j];
-            }
-        }
-
-        std::stringstream ss;
-        ss << name << "{";
-        for (auto e : gens) ss << " " << e;
-        ss << " }";
-        g.name = ss.str();
-
-        return g;
-    }
-
     bool Group::trivial() const {
         for (int i = 0; i < ngens; ++i) {
             for (int j = 0; j < ngens; ++j) {

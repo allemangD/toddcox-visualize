@@ -15,7 +15,7 @@ namespace tc {
         data[target * ngens + gen] = coset;
 
         if (path[target].coset == -1) {
-            path[target] = {coset, gen};
+            path[target] = {coset, gen, target};
         }
     }
 
@@ -26,7 +26,7 @@ namespace tc {
         data[target * ngens + gen] = coset;
 
         if (path[target].coset == -1) {
-            path[target] = {coset, gen};
+            path[target] = {coset, gen, target};
         }
     }
 

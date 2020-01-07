@@ -7,6 +7,7 @@ namespace tc {
     struct Action {
         int coset = -1;
         int gen = -1;
+        int target = -1;
     };
 
     struct Cosets {

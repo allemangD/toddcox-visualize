@@ -40,39 +40,70 @@ std::string utilProgramInfoLog(GLuint program) {
     return std::string(buffer);
 }
 
-std::vector<int> build(const tc::Group &g, std::vector<int> gens) {
-    std::cout << g.name << std::endl;
 
-    if (g.trivial()) return {0};
-
-    std::vector<int> res;
-
-    auto root = tc::solve(g);
-
-    for (size_t i = 0; i < gens.size(); ++i) {
-        std::vector<int> sub(gens);
-        sub.erase(sub.begin() + i);
-
-        auto base = build(g.shrink(sub), sub);
-        for (auto e : base) {
-            res.push_back(e);
-        }
-        res.push_back(0);
-    }
-
-    auto map = tc::solve(g, gens);
-    size_t N = res.size();
-    res.resize(N * map.size());
-
-    for (size_t i = 1; i < res.size(); ++i) {
-        auto action = map.path[i];
-        for (size_t j = 0; j < N; ++j) {
-            res[i * N + j] = root.get(res[action.coset * N + j], action.gen);
+template<int D>
+tc::Group shrink(const tc::Group &g, const std::array<int, D> &sub) {
+    tc::Group h(D);
+    for (int i = 0; i < D; ++i) {
+        for (int j = 0; j < D; ++j) {
+            h.setmult({i, j, g.rel(sub[i], sub[j]).mult});
         }
     }
+    return h;
+}
 
+template<int D>
+std::vector<tc::Action> raise(
+    const tc::Cosets &cosets,
+    const std::vector<tc::Action> &path,
+    const std::array<int, D> &gen_map
+) {
+    std::vector<tc::Action> res(path.size(), {0, 0, 0});
+    for (size_t i = 1; i < path.size(); ++i) {
+        auto action = path[i];
+
+        auto coset = res[action.coset].target;
+        auto gen = gen_map[action.gen];
+        auto target = cosets.get(coset, gen);
+
+        res[i] = {coset, gen, target};
+    }
     return res;
 }
+
+std::vector<int> targets(const std::vector<tc::Action> &path) {
+    std::vector<int> res(path.size(), 0);
+    for (size_t i = 0; i < path.size(); ++i) {
+        res[i] = path[i].target;
+    }
+    return res;
+}
+
+std::vector<int> tile(const tc::Cosets &map, std::vector<int> geom) {
+    int K = geom.size();
+    geom.resize(K * map.size());
+    for (int i = 1; i < map.size(); ++i) { // tile
+        auto gaction = map.path[i];
+        for (int j = 0; j < K; ++j) {
+            geom[i * K + j] = map.get(geom[gaction.coset * K + j], gaction.gen);
+        }
+    }
+    return geom;
+}
+
+template<int D>
+std::vector<int> build(const tc::Group &g, const std::array<int, D> &sub) {
+    tc::Group h = shrink<D>(g, sub);
+    auto hres = tc::solve(h); // recursion would happen here
+
+    auto gres = tc::solve(g);
+    auto path = raise<D>(gres, hres.path, sub);
+
+    const std::vector<int> &geom = targets(path);
+
+    return tile(gres, geom);
+}
+
 
 int main(int argc, char *argv[]) {
     if (!glfwInit()) {
@@ -102,7 +133,7 @@ int main(int argc, char *argv[]) {
         << "    OpenGL version:  " << glGetString(GL_VERSION) << std::endl
         << "    Shading version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
-    auto group = tc::group::B(3);
+    auto group = tc::group::H(4);
     auto res = tc::solve(group);
     auto mirrors = mirror(group);
     auto corners = plane_intersections(mirrors);
@@ -114,52 +145,10 @@ int main(int argc, char *argv[]) {
         points[i] = reflect(points[action.coset], mirrors[action.gen]);
     }
 
-    auto res0 = tc::solve(group, {0});
-    auto res0_inds = std::vector<int>(res0.size() * 2);
-    res0_inds[0] = res.get(0, 0);
-    res0_inds[1] = 0;
-    for (int i = 1; i < res0.size(); ++i) {
-        auto action = res0.path[i];
-        res0_inds[i * 2 + 0] = res.get(res0_inds[action.coset * 2 + 0], action.gen);
-        res0_inds[i * 2 + 1] = res.get(res0_inds[action.coset * 2 + 1], action.gen);
-    }
-
-    auto res1 = tc::solve(group, {1});
-    auto res1_inds = std::vector<int>(res1.size() * 2);
-    res1_inds[0] = res.get(0, 1);
-    res1_inds[1] = 0;
-    for (int i = 1; i < res1.size(); ++i) {
-        auto action = res1.path[i];
-        res1_inds[i * 2 + 0] = res.get(res1_inds[action.coset * 2 + 0], action.gen);
-        res1_inds[i * 2 + 1] = res.get(res1_inds[action.coset * 2 + 1], action.gen);
-    }
-
-    auto res2 = tc::solve(group, {2});
-    auto res2_inds = std::vector<int>(res2.size() * 2);
-    res2_inds[0] = res.get(0, 2);
-    res2_inds[1] = 0;
-    for (int i = 1; i < res2.size(); ++i) {
-        auto action = res2.path[i];
-        res2_inds[i * 2 + 0] = res.get(res2_inds[action.coset * 2 + 0], action.gen);
-        res2_inds[i * 2 + 1] = res.get(res2_inds[action.coset * 2 + 1], action.gen);
-    }
-
-//    auto res01 = tc::solve(group, {0, 1});
-//    auto res01_inds = std::vector<int>(res01.size() * 3);
-//    res01_inds[0] = res.get(0, 0);
-//    res01_inds[1] = res.get(0, 1);
-//    res01_inds[2] = 0;
-//    for (int i = 0; i < res01.size(); ++i) {
-//        auto action = res01.path[i];
-//        for (int j = 0; j < 3; ++j) {
-//            res01_inds[i * 3 + j] = res.get(res01_inds[action.coset * 3 + j], action.gen);
-//        }
-//    }
-
-    auto test_inds = build(group, {0, 1, 2});
-    std::cout << "done" << std::endl;
-
-    auto test_mode = GL_TRIANGLES;
+    auto g0 = build<2>(group, {0});
+    auto g1 = build<2>(group, {1});
+    auto g2 = build<2>(group, {2});
+    auto g3 = build<2>(group, {3});
 
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     utilShaderSource(vs, {
@@ -170,9 +159,12 @@ int main(int argc, char *argv[]) {
         ""
         "layout(location=0) in vec4 pos;"
         ""
+        "out vec4 vpos;"
+        ""
         "void main() {"
         "   int i = gl_VertexID;"
-        "   gl_Position = proj * view * vec4(pos.xyz, 1);"
+        "   vpos = view * pos;"
+        "   gl_Position = proj * vec4(vpos.xyz / (1 - vpos.w), 1);"
         "   gl_PointSize = 5;"
         "}"
     });
@@ -182,12 +174,15 @@ int main(int argc, char *argv[]) {
     utilShaderSource(fs, {
         "#version 430\n",
 
-        "layout(location=2) uniform float gray;"
+        "layout(location=2) uniform vec3 c;"
+        ""
+        "in vec4 vpos;"
         ""
         "out vec4 color;"
         ""
         "void main() {"
-        "   color = vec4(gray);"
+        "   float d = smoothstep(-2, 2, vpos.z);"
+        "   color = vec4(c * d, 1);"
         "}"
     });
 
@@ -223,25 +218,25 @@ int main(int argc, char *argv[]) {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 4, GL_FLOAT, false, 0, nullptr);
 
-    GLuint res0_ibo;
-    glGenBuffers(1, &res0_ibo);
-    glBindBuffer(GL_ARRAY_BUFFER, res0_ibo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * res0_inds.size(), &res0_inds[0], GL_STATIC_DRAW);
+    GLuint ibo0;
+    glGenBuffers(1, &ibo0);
+    glBindBuffer(GL_ARRAY_BUFFER, ibo0);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * g0.size(), &g0[0], GL_STATIC_DRAW);
 
-    GLuint res1_ibo;
-    glGenBuffers(1, &res1_ibo);
-    glBindBuffer(GL_ARRAY_BUFFER, res1_ibo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * res1_inds.size(), &res1_inds[0], GL_STATIC_DRAW);
+    GLuint ibo1;
+    glGenBuffers(1, &ibo1);
+    glBindBuffer(GL_ARRAY_BUFFER, ibo1);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * g1.size(), &g1[0], GL_STATIC_DRAW);
 
-    GLuint res2_ibo;
-    glGenBuffers(1, &res2_ibo);
-    glBindBuffer(GL_ARRAY_BUFFER, res2_ibo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * res2_inds.size(), &res2_inds[0], GL_STATIC_DRAW);
+    GLuint ibo2;
+    glGenBuffers(1, &ibo2);
+    glBindBuffer(GL_ARRAY_BUFFER, ibo2);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * g2.size(), &g2[0], GL_STATIC_DRAW);
 
-    GLuint test_ibo;
-    glGenBuffers(1, &test_ibo);
-    glBindBuffer(GL_ARRAY_BUFFER, test_ibo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * test_inds.size(), &test_inds[0], GL_STATIC_DRAW);
+    GLuint ibo3;
+    glGenBuffers(1, &ibo3);
+    glBindBuffer(GL_ARRAY_BUFFER, ibo3);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * g3.size(), &g3[0], GL_STATIC_DRAW);
 
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -261,23 +256,31 @@ int main(int argc, char *argv[]) {
         glUniformMatrix4fv(0, 1, false, glm::value_ptr(proj));
 
         auto t = (float) glfwGetTime() / 3;
-        glm::mat4 view = glm::rotate(glm::identity<glm::mat4>(), t, glm::vec3(0, 1, 0));
+        auto view = glm::identity<glm::mat4>();
+        view = glm::rotate(view, t / 1, glm::vec3(0, 1, 0));
+        view = glm::rotate(view, t / 3, glm::vec3(0, 0, 1));
+        view = glm::rotate(view, t / 4, glm::vec3(1, 0, 0));
         glUniformMatrix4fv(1, 1, false, glm::value_ptr(view));
 
-        glUniform1f(2, 1.0f);
+        glUniform3f(2, 1.0f, 1.0f, 1.0f);
         glDrawArrays(GL_POINTS, 0, points.size());
 
-//        glUniform1f(2, 0.9f);
-//        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, res0_ibo);
-//        glDrawElements(GL_LINES, res0_inds.size(), GL_UNSIGNED_INT, nullptr);
-//        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, res1_ibo);
-//        glDrawElements(GL_LINES, res1_inds.size(), GL_UNSIGNED_INT, nullptr);
-//        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, res2_ibo);
-//        glDrawElements(GL_LINES, res2_inds.size(), GL_UNSIGNED_INT, nullptr);
+        glLineWidth(2.0f);
+        glUniform3f(2, 1.0f, 0.0f, 0.0f);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo0);
+        glDrawElements(GL_LINES, g0.size(), GL_UNSIGNED_INT, nullptr);
 
-        glUniform1f(2, 0.5f);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, test_ibo);
-        glDrawElements(test_mode, test_inds.size(), GL_UNSIGNED_INT, nullptr);
+        glUniform3f(2, 0.0f, 1.0f, 0.0f);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo1);
+        glDrawElements(GL_LINES, g1.size(), GL_UNSIGNED_INT, nullptr);
+
+        glUniform3f(2, 0.0f, 0.0f, 1.0f);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo2);
+        glDrawElements(GL_LINES, g2.size(), GL_UNSIGNED_INT, nullptr);
+
+        glUniform3f(2, 0.5f, 0.5f, 0.0f);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo3);
+        glDrawElements(GL_LINES, g3.size(), GL_UNSIGNED_INT, nullptr);
 
         glfwSwapBuffers(window);
 
