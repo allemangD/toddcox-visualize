@@ -63,7 +63,7 @@ std::vector<int> build(const tc::Group &g, std::vector<int> gens) {
     auto map = tc::solve(g, gens);
     size_t N = res.size();
     res.resize(N * map.size());
-,.
+
     for (size_t i = 1; i < res.size(); ++i) {
         auto action = map.path[i];
         for (size_t j = 0; j < N; ++j) {
