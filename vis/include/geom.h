@@ -27,10 +27,8 @@ std::vector<glm::vec4> mirror(const tc::Group &group) {
         glm::vec4 vp{};
         for (int m = 0; m < p; ++m) {
             glm::vec4 vq = mirrors[m];
-            std::cout << "p " << p << " m " << m << " - " << group.rel(p, m).mult << "; ";
             vp[m] = (cos(M_PI / group.rel(p, m).mult) - dot(m, vp, vq)) / vq[m];
         }
-        std::cout << std::endl;
         vp[p] = std::sqrt(1 - glm::dot(vp, vp));
 
         for (const auto &v : mirrors) {

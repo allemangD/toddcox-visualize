@@ -28,6 +28,10 @@ namespace tc {
         [[nodiscard]] Group product(const Group &other) const;
 
         [[nodiscard]] Group power(int p) const;
+
+        [[nodiscard]] Group shrink(const std::vector<int> &gens) const;
+
+        [[nodiscard]] bool trivial() const;
     };
 
     Group operator*(const Group &g, const Group &h);
