@@ -56,7 +56,7 @@ std::vector<glm::vec4> mirror(const tc::Group &group) {
         glm::vec4 rvec{};
 
         // ortho proj
-        for (int i = 0; i < std::min(vec.size(), 4LU); ++i) {
+        for (int i = 0; i < std::min(vec.size(), (size_t) 4); ++i) {
             rvec[i] = vec[i];
         }
 
