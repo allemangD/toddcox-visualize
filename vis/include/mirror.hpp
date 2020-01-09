@@ -20,28 +20,49 @@ float dot(int n, const glm::vec4 &a, const glm::vec4 &b) {
     return sum;
 }
 
+float dot(int n, const std::vector<float> &a, const std::vector<float> &b) {
+    float sum = 0;
+    for (int i = 0; i < n; ++i) {
+        sum += a[i] * b[i];
+    }
+    return sum;
+}
+
 std::vector<glm::vec4> mirror(const tc::Group &group) {
-    std::vector<glm::vec4> mirrors;
+    std::vector<std::vector<float>> mirrors;
 
     for (int p = 0; p < group.ngens; ++p) {
-        glm::vec4 vp{};
+        std::vector<float> vp;
         for (int m = 0; m < p; ++m) {
-            glm::vec4 vq = mirrors[m];
-            vp[m] = (cos(M_PI / group.get(p, m)) - dot(m, vp, vq)) / vq[m];
+            auto &vq = mirrors[m];
+            vp.push_back((cos(M_PI / group.get(p, m)) - dot(m, vp, vq)) / vq[m]);
         }
-        vp[p] = std::sqrt(1 - glm::dot(vp, vp));
+        vp.push_back(std::sqrt(1 - dot(p, vp, vp)));
 
         for (const auto &v : mirrors) {
-            if (glm::dot(vp, v) > 0) {
-                vp *= -1;
+            if (dot(p, vp, vp) > 0) {
+                for (auto &e : vp) {
+                    e *= -1;
+                }
                 break;
             }
         }
 
-        mirrors.push_back(round(vp, 15));
+        mirrors.push_back(vp);
     }
 
-    return mirrors;
+    std::vector<glm::vec4> res;
+    for (const auto &vec : mirrors) {
+        glm::vec4 rvec{};
+
+        // ortho proj
+        for (int i = 0; i < std::min(vec.size(), 4LU); ++i) {
+            rvec[i] = vec[i];
+        }
+
+        res.push_back(rvec);
+    }
+    return res;
 }
 
 glm::vec4 project(const glm::vec4 &vec, const glm::vec4 &target) {

@@ -56,8 +56,8 @@ int main(int argc, char *argv[]) {
         "void main() {"
         "   int i = gl_VertexID;"
         "   vpos = view * pos;"
-        //        "   gl_Position = proj * vec4(vpos.xyz / (1), 1);"
-        "   gl_Position = proj * vec4(vpos.xyz / (1 - vpos.w), 1);"
+        "   gl_Position = proj * vec4(vpos.xyz / (1), 1);"
+        //                "   gl_Position = proj * vec4(vpos.xyz / (1 - vpos.w), 1);"
         "   gl_PointSize = 5;"
         "}";
 
@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
         ""
         "void main() {"
         "   float d = smoothstep(-2, 2, vpos.z);"
+        "   vec3 off = 1.04 * vec3(0, 2, 4) + 2 * vec3(vpos.w);"
         "   color = vec4(c * d, 1);"
         "}";
 
@@ -107,12 +108,17 @@ int main(int argc, char *argv[]) {
     }
     //endregion
 
-    auto group = tc::group::B(4);
+    auto group = tc::group::H(3);
     auto res = group.solve();
     auto mirrors = mirror(group);
-    auto corners = plane_intersections(mirrors);
+    std::cout << "Solved " << res.size() << std::endl;
+    std::cout << "Mirror lengths:" << std::endl;
+    for (const auto &m : mirrors) {
+        std::cout << glm::length(m) << " (" << m.x << " " << m.y << " " << m.z << " " << m.w << ")" << std::endl;
+    }
 
-    auto start = barycentric(corners, {1.00f, 0.50f, 0.50f, 0.50f});
+    auto corners = plane_intersections(mirrors);
+    auto start = barycentric(corners, {1.00, 1.00, 1.00, 1.00});
     auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
 
     GLuint vbo;
@@ -139,7 +145,7 @@ int main(int argc, char *argv[]) {
         auto aspect = (float) width / (float) height;
         auto pheight = 1.4f;
         auto pwidth = aspect * pheight;
-        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight);
+        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -100.0f, 100.0f);
         glUniformMatrix4fv(0, 1, false, glm::value_ptr(proj));
 
         auto t = (float) glfwGetTime() / 3;
