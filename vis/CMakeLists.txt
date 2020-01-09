@@ -10,3 +10,6 @@ add_custom_command(
 )
 
 add_dependencies(vis shaders)
+
+add_library(vis-util INTERFACE)
+target_include_directories(vis-util INTERFACE include)

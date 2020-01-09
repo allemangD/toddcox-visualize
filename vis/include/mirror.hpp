@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tc/cosets.h>
+#include <tc/core.hpp>
 #include <glm/glm.hpp>
 #include <cmath>
 #include <vector>
@@ -27,7 +27,7 @@ std::vector<glm::vec4> mirror(const tc::Group &group) {
         glm::vec4 vp{};
         for (int m = 0; m < p; ++m) {
             glm::vec4 vq = mirrors[m];
-            vp[m] = (cos(M_PI / group.rel(p, m).mult) - dot(m, vp, vq)) / vq[m];
+            vp[m] = (cos(M_PI / group.get(p, m)) - dot(m, vp, vq)) / vq[m];
         }
         vp[p] = std::sqrt(1 - glm::dot(vp, vp));
 

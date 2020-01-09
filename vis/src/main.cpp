@@ -2,13 +2,14 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
-#include <tc/groups.h>
-#include <tc/solver.h>
-
-#include "geom.h"
-
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
+
+#include <tc/groups.hpp>
+
+#include "util.hpp"
+#include "mirror.hpp"
+#include "geometry.hpp"
 
 #ifdef _WIN32
 extern "C" {
@@ -16,92 +17,9 @@ __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x000000
 }
 #endif
 
-void utilShaderSource(GLuint shader, const std::vector<std::string> &sources) {
-    char const *ptrs[sources.size()];
-    for (size_t i = 0; i < sources.size(); ++i) {
-        ptrs[i] = sources[i].c_str();
-    }
-    glShaderSource(shader, sources.size(), ptrs, nullptr);
-}
-
-std::string utilShaderInfoLog(GLuint shader) {
-    int len;
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
-    char buffer[len];
-    glGetShaderInfoLog(shader, len, nullptr, buffer);
-    return std::string(buffer);
-}
-
-std::string utilProgramInfoLog(GLuint program) {
-    int len;
-    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
-    char buffer[len];
-    glGetProgramInfoLog(program, len, nullptr, buffer);
-    return std::string(buffer);
-}
-
-
-template<int D>
-tc::Group shrink(const tc::Group &g, const std::array<int, D> &sub) {
-    tc::Group h(D);
-    for (int i = 0; i < D; ++i) {
-        for (int j = 0; j < D; ++j) {
-            h.setmult({i, j, g.rel(sub[i], sub[j]).mult});
-        }
-    }
-    return h;
-}
-
-template<int D>
-std::vector<int> raise(
-    const tc::Cosets &g_res,
-    const tc::Cosets &h_res,
-    const std::array<int, D> &gen_map,
-    const std::vector<int> &path
-) {
-    std::vector<int> res(path.size(), 0);
-    for (size_t i = 1; i < path.size(); ++i) {
-        auto action = h_res.path[path[i]];
-
-        res[i] = g_res.get(res[action.coset], gen_map[action.gen]);
-    }
-    return res;
-}
-
-std::vector<int> targets(const std::vector<tc::Action> &path) {
-    std::vector<int> res(path.size(), 0);
-    for (size_t i = 0; i < path.size(); ++i) {
-        res[i] = path[i].target;
-    }
-    return res;
-}
-
-std::vector<int> tile(const tc::Cosets &map, std::vector<int> geom) {
-    int K = geom.size();
-    geom.resize(K * map.size());
-    for (int i = 1; i < map.size(); ++i) { // tile
-        auto gaction = map.path[i];
-        for (int j = 0; j < K; ++j) {
-            geom[i * K + j] = map.get(geom[gaction.coset * K + j], gaction.gen);
-        }
-    }
-    return geom;
-}
-
-template<int D>
-std::vector<int> build(const tc::Group &g, const std::array<int, D> &sub) {
-    tc::Group h = shrink<D>(g, sub);
-    auto hres = tc::solve(h); // recursion would happen here
-
-    auto gres = tc::solve(g);
-    std::vector<int> geom = targets(hres.path);
-    geom = raise<D>(gres, hres, sub, geom);
-
-    return tile(gres, geom);
-}
-
-
 int main(int argc, char *argv[]) {
+    //region init window
+
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return EXIT_FAILURE;
@@ -122,46 +40,12 @@ int main(int argc, char *argv[]) {
     gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
     glfwSwapInterval(0);
 
-    std::cout
-        << "Graphics Information:" << std::endl
-        << "    Vendor:          " << glGetString(GL_VENDOR) << std::endl
-        << "    Renderer:        " << glGetString(GL_RENDERER) << std::endl
-        << "    OpenGL version:  " << glGetString(GL_VERSION) << std::endl
-        << "    Shading version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+    //endregion
 
-    auto group = tc::group::B(2);
-    auto res = tc::solve(group);
-    auto mirrors = mirror(group);
-    auto corners = plane_intersections(mirrors);
+    std::cout << utilInfo();
 
-    auto points = std::vector<glm::vec4>(res.size());
-    points[0] = barycentric(corners, {1.00f, 0.50f, 0.50f, 0.50f});
-    for (int i = 1; i < res.size(); ++i) {
-        auto action = res.path[i];
-        points[i] = reflect(points[action.coset], mirrors[action.gen]);
-    }
-
-    auto h = shrink<2>(group, {0, 1});
-    auto i = shrink<1>(h, {0});
-
-    auto g_map = res;
-    auto h_map = tc::solve(h);
-    auto i_map = tc::solve(i);
-
-    auto g0 = targets(i_map.path);
-    g0 = raise<1>(h_map, i_map, {0}, g0);
-    g0 = tile(h_map, g0);
-    g0 = raise<2>(g_map, h_map, {0, 1}, g0);
-
-//    auto g0 = build<2>(group, {0});
-//    auto g1 = build<2>(group, {1});
-//    auto g2 = build<2>(group, {2});
-//    auto g3 = build<2>(group, {3});
-
-    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    utilShaderSource(vs, {
-        "#version 430\n",
-
+    const std::string VS_SOURCE =
+        "#version 430\n"
         "layout(location=0) uniform mat4 proj;"
         "layout(location=1) uniform mat4 view;"
         ""
@@ -175,14 +59,10 @@ int main(int argc, char *argv[]) {
         //        "   gl_Position = proj * vec4(vpos.xyz / (1), 1);"
         "   gl_Position = proj * vec4(vpos.xyz / (1 - vpos.w), 1);"
         "   gl_PointSize = 5;"
-        "}"
-    });
-    glCompileShader(vs);
+        "}";
 
-    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    utilShaderSource(fs, {
-        "#version 430\n",
-
+    const std::string FS_SOURCE =
+        "#version 430\n"
         "layout(location=2) uniform vec3 c;"
         ""
         "in vec4 vpos;"
@@ -192,8 +72,15 @@ int main(int argc, char *argv[]) {
         "void main() {"
         "   float d = smoothstep(-2, 2, vpos.z);"
         "   color = vec4(c * d, 1);"
-        "}"
-    });
+        "}";
+
+    //region init shaders
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    utilShaderSource(vs, {VS_SOURCE});
+    glCompileShader(vs);
+
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    utilShaderSource(fs, {FS_SOURCE});
 
     GLuint pgm = glCreateProgram();
     glAttachShader(pgm, vs);
@@ -218,6 +105,15 @@ int main(int argc, char *argv[]) {
         glfwTerminate();
         return EXIT_FAILURE;
     }
+    //endregion
+
+    auto group = tc::group::B(4);
+    auto res = group.solve();
+    auto mirrors = mirror(group);
+    auto corners = plane_intersections(mirrors);
+
+    auto start = barycentric(corners, {1.00f, 0.50f, 0.50f, 0.50f});
+    auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -227,27 +123,11 @@ int main(int argc, char *argv[]) {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 4, GL_FLOAT, false, 0, nullptr);
 
-    GLuint ibo0;
-    glGenBuffers(1, &ibo0);
-    glBindBuffer(GL_ARRAY_BUFFER, ibo0);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * g0.size(), &g0[0], GL_STATIC_DRAW);
-
-//    GLuint ibo1;
-//    glGenBuffers(1, &ibo1);
-//    glBindBuffer(GL_ARRAY_BUFFER, ibo1);
-//    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * g1.size(), &g1[0], GL_STATIC_DRAW);
-//
-//    GLuint ibo2;
-//    glGenBuffers(1, &ibo2);
-//    glBindBuffer(GL_ARRAY_BUFFER, ibo2);
-//    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * g2.size(), &g2[0], GL_STATIC_DRAW);
-//
-//    GLuint ibo3;
-//    glGenBuffers(1, &ibo3);
-//    glBindBuffer(GL_ARRAY_BUFFER, ibo3);
-//    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * g3.size(), &g3[0], GL_STATIC_DRAW);
-
     while (!glfwWindowShouldClose(window)) {
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+        glViewport(0, 0, width, height);
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(pgm);
@@ -255,9 +135,7 @@ int main(int argc, char *argv[]) {
         glEnable(GL_POINT_SMOOTH);
         glEnable(GL_DEPTH_TEST);
 
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
+        //region uniforms
         auto aspect = (float) width / (float) height;
         auto pheight = 1.4f;
         auto pwidth = aspect * pheight;
@@ -270,26 +148,10 @@ int main(int argc, char *argv[]) {
         view = glm::rotate(view, t / 3, glm::vec3(0, 0, 1));
         view = glm::rotate(view, t / 4, glm::vec3(1, 0, 0));
         glUniformMatrix4fv(1, 1, false, glm::value_ptr(view));
+        //endregion
 
         glUniform3f(2, 1.0f, 1.0f, 1.0f);
         glDrawArrays(GL_POINTS, 0, points.size());
-
-        glLineWidth(2.0f);
-        glUniform3f(2, 1.0f, 0.0f, 0.0f);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo0);
-        glDrawElements(GL_LINES, g0.size(), GL_UNSIGNED_INT, nullptr);
-
-//        glUniform3f(2, 0.0f, 1.0f, 0.0f);
-//        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo1);
-//        glDrawElements(GL_LINES, g1.size(), GL_UNSIGNED_INT, nullptr);
-//
-//        glUniform3f(2, 0.0f, 0.0f, 1.0f);
-//        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo2);
-//        glDrawElements(GL_LINES, g2.size(), GL_UNSIGNED_INT, nullptr);
-//
-//        glUniform3f(2, 0.7f, 0.7f, 0.0f);
-//        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo3);
-//        glDrawElements(GL_LINES, g3.size(), GL_UNSIGNED_INT, nullptr);
 
         glfwSwapBuffers(window);
 
