@@ -44,78 +44,22 @@ int main(int argc, char *argv[]) {
 
     std::cout << utilInfo();
 
-    const std::string VS_SOURCE =
-        "#version 430\n"
-        "layout(location=0) uniform mat4 proj;"
-        "layout(location=1) uniform mat4 view;"
-        ""
-        "layout(location=0) in vec4 pos;"
-        ""
-        "out vec4 vpos;"
-        ""
-        "void main() {"
-        "   int i = gl_VertexID;"
-        "   vpos = view * pos;"
-        "   gl_Position = proj * vec4(vpos.xyz / (1), 1);"
-        //                "   gl_Position = proj * vec4(vpos.xyz / (1 - vpos.w), 1);"
-        "   gl_PointSize = 5;"
-        "}";
+    GLuint pgm;
 
-    const std::string FS_SOURCE =
-        "#version 430\n"
-        "layout(location=2) uniform vec3 c;"
-        ""
-        "in vec4 vpos;"
-        ""
-        "out vec4 color;"
-        ""
-        "void main() {"
-        "   float d = smoothstep(-2, 2, vpos.z);"
-        "   vec3 off = 1.04 * vec3(0, 2, 4) + 2 * vec3(vpos.w);"
-        "   color = vec4(c * d, 1);"
-        "}";
+    try {
+        GLuint vs = utilCompileFiles(GL_VERTEX_SHADER, {"shaders/ortho.vs.glsl"});
+        GLuint fs = utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/w-axis-hue.fs.glsl"});
 
-    //region init shaders
-    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    utilShaderSource(vs, {VS_SOURCE});
-    glCompileShader(vs);
-
-    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    utilShaderSource(fs, {FS_SOURCE});
-
-    GLuint pgm = glCreateProgram();
-    glAttachShader(pgm, vs);
-    glAttachShader(pgm, fs);
-    glLinkProgram(pgm);
-
-    GLint status;
-
-    glGetShaderiv(vs, GL_COMPILE_STATUS, &status);
-    if (!status) {
-        std::cerr << utilShaderInfoLog(vs) << "\n=========\n" << std::endl;
-    }
-
-    glGetShaderiv(fs, GL_COMPILE_STATUS, &status);
-    if (!status) {
-        std::cerr << utilShaderInfoLog(fs) << "\n=========\n" << std::endl;
-    }
-
-    glGetProgramiv(pgm, GL_LINK_STATUS, &status);
-    if (!status) {
-        std::cerr << utilProgramInfoLog(pgm) << "\n=========\n" << std::endl;
+        pgm = utilLinkProgram({vs, fs});
+    } catch (const gl_error &e) {
+        std::cerr << e.what() << std::endl;
         glfwTerminate();
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
-    //endregion
 
-    auto group = tc::group::H(3);
+    auto group = tc::schlafli({5, 3, 3});
     auto res = group.solve();
     auto mirrors = mirror(group);
-    std::cout << "Solved " << res.size() << std::endl;
-    std::cout << "Mirror lengths:" << std::endl;
-    for (const auto &m : mirrors) {
-        std::cout << glm::length(m) << " (" << m.x << " " << m.y << " " << m.z << " " << m.w << ")" << std::endl;
-    }
 
     auto corners = plane_intersections(mirrors);
     auto start = barycentric(corners, {1.00, 1.00, 1.00, 1.00});
