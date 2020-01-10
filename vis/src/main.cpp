@@ -92,11 +92,14 @@ int main(int argc, char *argv[]) {
         glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -100.0f, 100.0f);
         glUniformMatrix4fv(0, 1, false, glm::value_ptr(proj));
 
-        auto t = (float) glfwGetTime() / 3;
+        auto t = (float) glfwGetTime() / 5;
         auto view = glm::identity<glm::mat4>();
-        view = glm::rotate(view, t / 1, glm::vec3(0, 1, 0));
-        view = glm::rotate(view, t / 3, glm::vec3(0, 0, 1));
-        view = glm::rotate(view, t / 4, glm::vec3(1, 0, 0));
+        view *= utilRotate(0, 1, t * 0.7f);
+        view *= utilRotate(0, 2, t * 0.8f);
+        view *= utilRotate(0, 3, t * 1.0f);
+        view *= utilRotate(1, 2, -t * 1.1f);
+        view *= utilRotate(1, 3, -t * 0.3f);
+        view *= utilRotate(2, 3, -t * 1.2f);
         glUniformMatrix4fv(1, 1, false, glm::value_ptr(view));
         //endregion
 

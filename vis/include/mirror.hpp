@@ -105,3 +105,12 @@ std::vector<glm::vec4> plane_intersections(std::vector<glm::vec4> normals) {
 
     return results;
 }
+
+glm::mat4 utilRotate(const int u, const int v, const float theta) {
+    auto res = glm::identity<glm::mat4>();
+    res[u][u] = std::cos(theta);
+    res[u][v] = std::sin(theta);
+    res[v][u] = -std::sin(theta);
+    res[v][v] = std::cos(theta);
+    return res;
+}
