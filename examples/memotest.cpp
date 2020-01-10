@@ -1,6 +1,7 @@
 #include <geometry.hpp>
 #include <tc/groups.hpp>
 #include <iostream>
+#include <ctime>
 
 int main() {
     tc::Group g = tc::group::B(3);
