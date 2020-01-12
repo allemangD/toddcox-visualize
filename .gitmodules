@@ -7,3 +7,4 @@
 [submodule "vendor/toddcox"]
 	path = vendor/toddcox
 	url = https://github.com/JCRaymond/toddcox-faster.git
+	branch = no-delete

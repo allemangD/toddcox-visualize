@@ -69,18 +69,26 @@ int main(int argc, char *argv[]) {
 
     try {
 //        GLuint vs = utilCompileFiles(GL_VERTEX_SHADER, {"shaders/ortho.vs.glsl"});
-        GLuint vs = utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo.vs.glsl"});
-        GLuint fs = utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"});
+//        GLuint vs = utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo.vs.glsl"});
+//        GLuint fs = utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"});
 //        GLuint fs = utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/w-axis-hue.fs.glsl"});
 
-        pgm = utilLinkProgram({vs, fs});
+//        pgm = utilLinkProgram({vs, fs});
+
+        pgm = utilLinkProgram({
+            utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo-proper.vs.glsl"}),
+            utilCompileFiles(GL_GEOMETRY_SHADER, {"shaders/stereo-proper.gm.glsl"}),
+            utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"}),
+        });
     } catch (const gl_error &e) {
         std::cerr << e.what() << std::endl;
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
 
-    auto group = tc::group::H(4);
+    auto group = tc::group::F4();
+//    auto group = tc::group::D(4);
+//    auto group = tc::group::H(4);
     auto res = group.solve();
     auto mirrors = mirror(group);
 
@@ -128,7 +136,8 @@ int main(int argc, char *argv[]) {
         auto aspect = (float) width / (float) height;
         auto pheight = 1.4f;
         auto pwidth = aspect * pheight;
-        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -100.0f, 100.0f);
+        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -2.0f, 2.0f);
+//        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -100.0f, 100.0f);
         glUniformMatrix4fv(0, 1, false, glm::value_ptr(proj));
 
         auto t = (float) glfwGetTime() / 10;
