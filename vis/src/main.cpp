@@ -17,6 +17,27 @@ __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x000000
 }
 #endif
 
+std::vector<int> edge_inds(const tc::Group &group, const tc::Cosets &map, const int gen) {
+    const tc::SubGroup &eg = group.subgroup({gen});
+    const tc::Cosets &root = eg.solve({});
+    size_t N = root.size();
+
+    auto edges = root.path.walk<int, int>(0, eg.gen_map, [map](int a, int gen) {
+        return map.get(a, gen);
+    });
+    const tc::Cosets &tile = group.solve({gen});
+
+    edges.resize(N * tile.size());
+    for (size_t i = 0; i < tile.size(); ++i) {
+        auto act = tile.path.get(i);
+        for (size_t j = 0; j < N; ++j) {
+            edges[i * N + j] = map.get(edges[act.from_idx * N + j], act.gen);
+        }
+    }
+
+    return edges;
+}
+
 int main(int argc, char *argv[]) {
     //region init window
 
@@ -47,8 +68,10 @@ int main(int argc, char *argv[]) {
     GLuint pgm;
 
     try {
-        GLuint vs = utilCompileFiles(GL_VERTEX_SHADER, {"shaders/ortho.vs.glsl"});
-        GLuint fs = utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/w-axis-hue.fs.glsl"});
+//        GLuint vs = utilCompileFiles(GL_VERTEX_SHADER, {"shaders/ortho.vs.glsl"});
+        GLuint vs = utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo.vs.glsl"});
+        GLuint fs = utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"});
+//        GLuint fs = utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/w-axis-hue.fs.glsl"});
 
         pgm = utilLinkProgram({vs, fs});
     } catch (const gl_error &e) {
@@ -57,12 +80,13 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    auto group = tc::schlafli({5, 3, 3});
+    auto group = tc::group::H(4);
     auto res = group.solve();
     auto mirrors = mirror(group);
 
     auto corners = plane_intersections(mirrors);
-    auto start = barycentric(corners, {1.00, 1.00, 1.00, 1.00});
+//    auto start = barycentric(corners, {1.00f, 1.00f, 1.00f, 1.00f});
+    auto start = barycentric(corners, {0.05, 0.05, 1.00, 3.00});
     auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
 
     GLuint vbo;
@@ -72,6 +96,21 @@ int main(int argc, char *argv[]) {
 
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 4, GL_FLOAT, false, 0, nullptr);
+
+    std::vector<int> edge_count;
+    std::vector<GLuint> edge_ibo;
+    for (int i = 0; i < group.ngens; ++i) {
+        const auto data = edge_inds(group, res, i);
+        edge_count.push_back(data.size());
+
+        GLuint ibo;
+        glGenBuffers(1, &ibo);
+        glBindBuffer(GL_ARRAY_BUFFER, ibo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(int) * data.size(), &data[0], GL_STATIC_DRAW);
+        edge_ibo.push_back(ibo);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     while (!glfwWindowShouldClose(window)) {
         int width, height;
@@ -92,7 +131,7 @@ int main(int argc, char *argv[]) {
         glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -100.0f, 100.0f);
         glUniformMatrix4fv(0, 1, false, glm::value_ptr(proj));
 
-        auto t = (float) glfwGetTime() / 5;
+        auto t = (float) glfwGetTime() / 10;
         auto view = glm::identity<glm::mat4>();
         view *= utilRotate(0, 1, t * 0.7f);
         view *= utilRotate(0, 2, t * 0.8f);
@@ -105,6 +144,15 @@ int main(int argc, char *argv[]) {
 
         glUniform3f(2, 1.0f, 1.0f, 1.0f);
         glDrawArrays(GL_POINTS, 0, points.size());
+
+        glUniform3f(2, 1.0f, 1.0f, 1.0f);
+        for (int i = 0; i < group.ngens; ++i) {
+            auto ibo = edge_ibo[i];
+            auto count = edge_count[i];
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+            glDrawElements(GL_LINES, count, GL_UNSIGNED_INT, nullptr);
+        }
 
         glfwSwapBuffers(window);
 
