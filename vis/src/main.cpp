@@ -94,7 +94,8 @@ int main(int argc, char *argv[]) {
 
     auto corners = plane_intersections(mirrors);
 //    auto start = barycentric(corners, {1.00f, 1.00f, 1.00f, 1.00f});
-    auto start = barycentric(corners, {0.05, 0.05, 1.00, 3.00});
+//    auto start = barycentric(corners, {0.05, 0.05, 1.00, 3.00});
+    auto start = barycentric(corners, {0, 0, 0, 1});
     auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
 
     GLuint vbo;
@@ -142,12 +143,12 @@ int main(int argc, char *argv[]) {
 
         auto t = (float) glfwGetTime() / 10;
         auto view = glm::identity<glm::mat4>();
-//        view *= utilRotate(0, 1, t * 0.7f);
-//        view *= utilRotate(0, 2, t * 0.8f);
-//        view *= utilRotate(0, 3, t * 1.0f);
-//        view *= utilRotate(1, 2, -t * 1.1f);
-//        view *= utilRotate(1, 3, -t * 0.3f);
-//        view *= utilRotate(2, 3, -t * 1.2f);
+        view *= utilRotate(0, 1, t * 0.7f);
+        view *= utilRotate(0, 2, t * 0.8f);
+        view *= utilRotate(0, 3, t * 1.0f);
+        view *= utilRotate(1, 2, -t * 1.1f);
+        view *= utilRotate(1, 3, -t * 0.3f);
+        view *= utilRotate(2, 3, -t * 1.2f);
         glUniformMatrix4fv(1, 1, false, glm::value_ptr(view));
         //endregion
 
