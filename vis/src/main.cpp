@@ -94,8 +94,8 @@ int main(int argc, char *argv[]) {
 
     auto corners = plane_intersections(mirrors);
 //    auto start = barycentric(corners, {1.00f, 1.00f, 1.00f, 1.00f});
-//    auto start = barycentric(corners, {0.05, 0.05, 1.00, 3.00});
-    auto start = barycentric(corners, {0, 0, 0, 1});
+    auto start = barycentric(corners, {0.05, 0.05, 1.00, 3.00});
+//    auto start = barycentric(corners, {0, 0, 0, 1});
     auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
 
     GLuint vbo;
