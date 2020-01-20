@@ -31,7 +31,7 @@ struct Simplexes {
 
     explicit Simplexes(int dim): dim(dim) {}
     Simplexes(int dim, std::vector<int> &vals): dim(dim), vals(vals) {}
-    Simplexes(SimplexesList sl);
+    explicit Simplexes(SimplexesList sl);
 
     size_t size() {
         return vals.size();
@@ -178,6 +178,6 @@ struct GeomGen {
         SimplexesList ret(base);
         path.walk<SimplexesList, Simplexes, int>(ret, base, group_gens(), simplex_map);
 
-        return ret;
+        return Simplexes(ret);
     }
 };
