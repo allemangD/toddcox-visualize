@@ -11,5 +11,5 @@ void main() {
     int i = gl_VertexID;
     vpos = view * pos;
      gl_Position = proj * vec4(vpos.xyz / (1 - vpos.w), 1);
-    gl_PointSize = 5;
+    gl_PointSize = 5 * smoothstep(-2, 2, gl_Position.z);
 }
