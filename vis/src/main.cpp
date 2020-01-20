@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    auto group = tc::schlafli({5, 3, 3});
+    auto group = tc::group::H(4);
     auto res = group.solve();
     auto mirrors = mirror(group);
 
