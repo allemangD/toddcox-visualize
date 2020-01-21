@@ -73,6 +73,10 @@ glm::vec4 reflect(const glm::vec4 &vec, const glm::vec4 axis) {
     return vec - 2.f * project(vec, axis);
 }
 
+glm::vec4 reflect_scaled(const  glm::vec4 &vec, const glm::vec4 axis) {
+    return vec - 2.f * glm::length(axis) * project(vec, axis);
+}
+
 glm::vec4 gram_schmidt_last(std::vector<glm::vec4> vecs) {
     int N = vecs.size();
     for (int i = 0; i < N; ++i) {

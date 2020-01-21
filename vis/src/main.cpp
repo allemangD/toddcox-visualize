@@ -17,27 +17,6 @@ __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x000000
 }
 #endif
 
-std::vector<int> edge_inds(const tc::Group &group, const tc::Cosets &map, const int gen) {
-    const tc::SubGroup &eg = group.subgroup({gen});
-    const tc::Cosets &root = eg.solve({});
-    size_t N = root.size();
-
-    auto edges = root.path.walk<int, int>(0, eg.gen_map, [map](int a, int gen) {
-        return map.get(a, gen);
-    });
-    const tc::Cosets &tile = group.solve({gen});
-
-    edges.resize(N * tile.size());
-    for (size_t i = 0; i < tile.size(); ++i) {
-        auto act = tile.path.get(i);
-        for (size_t j = 0; j < N; ++j) {
-            edges[i * N + j] = map.get(edges[act.from_idx * N + j], act.gen);
-        }
-    }
-
-    return edges;
-}
-
 int main(int argc, char *argv[]) {
     //region init window
 
@@ -77,8 +56,11 @@ int main(int argc, char *argv[]) {
 
         pgm = utilLinkProgram({
             utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo-proper.vs.glsl"}),
+//            utilCompileFiles(GL_VERTEX_SHADER, {"shaders/ortho.vs.glsl"}),
+//            utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo.vs.glsl"}),
             utilCompileFiles(GL_GEOMETRY_SHADER, {"shaders/stereo-proper.gm.glsl"}),
-            utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"}),
+//            utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"}),
+            utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/w-axis-hue.fs.glsl"})
         });
     } catch (const gl_error &e) {
         std::cerr << e.what() << std::endl;
@@ -86,17 +68,16 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    auto group = tc::group::F4();
-//    auto group = tc::group::D(4);
-//    auto group = tc::group::H(4);
-    auto res = group.solve();
+    auto group = tc::group::H(3)*tc::group::H(2);
+    GeomGen gg(group);
+    auto res = gg.solve();
     auto mirrors = mirror(group);
 
     auto corners = plane_intersections(mirrors);
-//    auto start = barycentric(corners, {1.00f, 1.00f, 1.00f, 1.00f});
-    auto start = barycentric(corners, {0.05, 0.05, 1.00, 3.00});
-//    auto start = barycentric(corners, {0, 0, 0, 1});
-    auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
+    auto start = barycentric(corners, {1.00f, 1.00f, 0.05, 1.00f});
+//    auto start = barycentric(corners, {1.00f, 0.05f, 0.05f, 0.05f});
+//    auto start = barycentric(corners, {1, 1, 0.05, 1});
+    auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect_scaled);
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -108,8 +89,13 @@ int main(int argc, char *argv[]) {
 
     std::vector<int> edge_count;
     std::vector<GLuint> edge_ibo;
-    for (int i = 0; i < group.ngens; ++i) {
-        const auto data = edge_inds(group, res, i);
+    Simplexes base(1);
+    base.vals = {0,1};
+    auto g_gens = gg.group_gens();
+
+    for (int i = 0; i < group.ngens; i++) {
+        std::vector<int> sg_gens = {i};
+        const auto data = gg.tile(g_gens, sg_gens, base).vals;
         edge_count.push_back(data.size());
 
         GLuint ibo;
@@ -137,18 +123,18 @@ int main(int argc, char *argv[]) {
         auto aspect = (float) width / (float) height;
         auto pheight = 1.4f;
         auto pwidth = aspect * pheight;
-        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -2.0f, 2.0f);
-//        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -100.0f, 100.0f);
+//        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -2.0f, 2.0f);
+        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
         glUniformMatrix4fv(0, 1, false, glm::value_ptr(proj));
 
-        auto t = (float) glfwGetTime() / 10;
+        auto t = (float) glfwGetTime() / 3;
         auto view = glm::identity<glm::mat4>();
-        view *= utilRotate(0, 1, t * 0.7f);
-        view *= utilRotate(0, 2, t * 0.8f);
+        view *= utilRotate(0, 1, t * 0.8f);
+        view *= utilRotate(0, 2, t * 0.9f);
         view *= utilRotate(0, 3, t * 1.0f);
         view *= utilRotate(1, 2, -t * 1.1f);
-        view *= utilRotate(1, 3, -t * 0.3f);
-        view *= utilRotate(2, 3, -t * 1.2f);
+        view *= utilRotate(1, 3, -t * 1.2f);
+        view *= utilRotate(2, 3, -t * 1.3f);
         glUniformMatrix4fv(1, 1, false, glm::value_ptr(view));
         //endregion
 
