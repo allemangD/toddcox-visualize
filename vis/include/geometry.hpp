@@ -33,7 +33,7 @@ struct Simplexes {
     Simplexes(int dim, std::vector<int> &vals): dim(dim), vals(vals) {}
     explicit Simplexes(SimplexesList sl);
 
-    size_t size() {
+    size_t size() const {
         return vals.size();
     }
 };
@@ -136,7 +136,7 @@ struct GeomGen {
         return solve_sg(sg_gens);
     }
 
-    Simplexes recontext(std::vector<int> &g_gens, std::vector<int> &sg_gens, Simplexes &items) {
+    Simplexes recontext(std::vector<int> &g_gens, std::vector<int> &sg_gens, const Simplexes &items) {
         auto s_sg_gens = prepare_gens(g_gens, sg_gens);
         auto table = solve_g(g_gens);
         auto path = solve_g(sg_gens).path;
@@ -153,7 +153,7 @@ struct GeomGen {
         return ret;
     }
 
-    Simplexes tile(std::vector<int> &g_gens, std::vector<int> &sg_gens, Simplexes &items) {
+    Simplexes tile(std::vector<int> &g_gens, std::vector<int> &sg_gens, const Simplexes &items) {
         Simplexes base = recontext(g_gens, sg_gens, items);
         auto s_sg_gens = prepare_gens(g_gens, sg_gens);
         auto table = solve_g(g_gens);
