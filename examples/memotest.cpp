@@ -51,4 +51,20 @@ int main() {
 
     std::chrono::duration<double> t2 = e2 - s2;
     std::cout << t2.count() << ": " << res2.size() << std::endl;
+
+    std::vector<int> gens = {0,1,2,3,4,5};
+    auto s3 = std::chrono::system_clock::now();
+    auto res3 = mbig.triangulate(gens);
+    auto e3 = std::chrono::system_clock::now();
+
+    std::chrono::duration<double> t3 = e3 - s3;
+    std::cout << t3.count() << ": " << res3.size() << std::endl;
+
+    auto s4 = std::chrono::system_clock::now();
+    auto res4 = mbig.triangulate(gens);
+    auto e4 = std::chrono::system_clock::now();
+
+    std::chrono::duration<double> t4 = e4 - s4;
+    std::cout << t4.count() << ": " << res4.size() << std::endl;
+
 }

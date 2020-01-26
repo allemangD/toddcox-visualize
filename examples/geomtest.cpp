@@ -7,16 +7,22 @@
 #include <iostream>
 
 int main () {
-    auto g = tc::group::B(3);
+    auto g = tc::schlafli({3,2});
     GeomGen gg(g);
 
-    Simplexes s(1);
-    s.vals.push_back(0);
-    s.vals.push_back(1);
-    s.vals.push_back(0);
-    s.vals.push_back(2);
-    s.vals.push_back(1);
-    s.vals.push_back(2);
+    auto path = gg.solve().path;
+
+    //std::vector<std::string>  = {"a", "b", "c"};
+    std::string base = "";
+    auto words = path.walk<std::string, std::string>(base,{"a","b","c"}, [](auto s1, auto g){return s1+g;});
+    for (const auto word : words) {
+        std::cout << word << std::endl;
+    }
+
+    std::vector<int> gens = {0,1,2};
+    auto s = gg.triangulate(gens);
+    s.print();
+    return 0;
 
     auto g_gens = gg.group_gens();
     std::vector<int> sg_gens = {1,2};

@@ -99,16 +99,12 @@ int main(int argc, char *argv[]) {
 
     std::vector<int> edge_count;
     std::vector<GLuint> edge_ibo;
-    Simplexes base(1);
-    base.vals = {0,1};
-    std::vector<int> g_gens = gg.group_gens();
+    auto g_gens = gg.group_gens();
 
-    printf("Num Edges:\n");
     for (const auto i : g_gens) {
         std::vector<int> sg_gens = {i};
-        const auto data = gg.tile(g_gens, sg_gens, base).vals;
+        const auto data = gg.tile(g_gens, sg_gens, gg.triangulate(sg_gens)).vals;
         edge_count.push_back(data.size());
-        printf("\t%d: %d", i, data.size());
 
         GLuint ibo;
         glGenBuffers(1, &ibo);

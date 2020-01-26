@@ -3,6 +3,7 @@
 #include <tc/core.hpp>
 #include <cmath>
 #include <optional>
+#include <iostream>
 
 size_t get_key_from_gens(std::vector<int> &gens) {
     size_t key = 0;
@@ -31,10 +32,37 @@ struct Simplexes {
 
     explicit Simplexes(int dim): dim(dim) {}
     Simplexes(int dim, std::vector<int> &vals): dim(dim), vals(vals) {}
-    explicit Simplexes(SimplexesList sl);
+    explicit Simplexes(SimplexesList &sl);
 
-    size_t size() const {
+    [[nodiscard]] size_t size() const {
         return vals.size();
+    }
+
+    void reorient() {
+        if (dim == 0)
+            return;
+        for (int i = 0; i < vals.size(); i+=dim+1) {
+            std::swap(vals[i], vals[i+1]);
+        }
+    }
+
+    void print() {
+        if (vals.empty()) {
+            std::cout << "[]" << std::endl;
+        }
+        std::cout << "[(" << vals[0];
+        for (int i = 1; i < dim+1; i++) {
+            std::cout << "," << vals[i];
+        }
+        std::cout << ")";
+        for (int i = dim+1; i < vals.size(); i+= dim+1) {
+            std::cout << ", (" << vals[i];
+            for (int j = i+1; j < i+dim+1; j++) {
+                std::cout << "," << vals[j];
+            }
+            std::cout << ")";
+        }
+        std::cout << "]";
     }
 };
 
@@ -44,7 +72,7 @@ struct SimplexesList {
     int elem_size;
     Simplexes temp;
 
-    explicit SimplexesList(Simplexes s) : dim(s.dim), elem_size(s.size()), temp(s.dim) {
+    explicit SimplexesList(Simplexes &s) : dim(s.dim), elem_size(s.size()), temp(s.dim) {
         temp.vals.reserve(s.size());
     }
 
@@ -63,15 +91,17 @@ struct SimplexesList {
     }
 };
 
-Simplexes::Simplexes(SimplexesList sl): Simplexes(sl.dim, sl.vals) {}
+Simplexes::Simplexes(SimplexesList &sl): Simplexes(sl.dim, sl.vals) {}
 
 struct GeomGen {
     std::vector<std::vector<std::optional<tc::Cosets>>> coset_memo;
+    std::vector<std::optional<Simplexes>> triangulate_memo;
     tc::Group &context;
 
     explicit GeomGen(tc::Group &g): context(g) {
         size_t num_sg = std::pow(2, g.ngens);
         coset_memo.resize(num_sg);
+        triangulate_memo.resize(num_sg);
         for (size_t i = 0; i < num_sg; i++) {
             auto num_sg_sg = std::pow(2, num_gens_from_key(i));
             coset_memo[i].resize(num_sg_sg, std::nullopt);
@@ -102,6 +132,18 @@ struct GeomGen {
         std::sort(s_sg_gens.begin(), s_sg_gens.end());
 
         return s_sg_gens;
+    }
+
+    int get_parity(std::vector<int> &g_gens, std::vector<int> &sg_gens) {
+        if (g_gens.size() != sg_gens.size() + 1)
+            return 0;
+        auto s_sg_gens = prepare_gens(g_gens, sg_gens);
+        const int loop_max = g_gens.size()-1;
+        for (int i = 0; i < loop_max; i++) {
+            if (s_sg_gens[i] != i)
+                return i % 2;
+        }
+        return loop_max % 2;
     }
 
     tc::Cosets _solve(std::vector<int> &g_gens, std::vector<int> &sg_gens) {
@@ -150,6 +192,8 @@ struct GeomGen {
         for (const auto val : items.vals) {
             ret.vals.push_back(map[val]);
         }
+        if (get_parity(g_gens, sg_gens) == 1)
+            ret.reorient();
         return ret;
     }
 
@@ -167,11 +211,7 @@ struct GeomGen {
                 ret.vals.push_back(table.get(coset,gen));
             }
             // Reorient the simplexes
-            if (ret.dim > 0) {
-                for (int i = 0; i < ret.size(); i += ret.dim+1) {
-                    std::swap(ret.vals[i],ret.vals[i+1]);
-                }
-            }
+            ret.reorient();
             return ret;
         };
 
@@ -180,4 +220,43 @@ struct GeomGen {
 
         return Simplexes(ret);
     }
+
+    Simplexes triangulate(std::vector<int> &g_gens);
+
+    Simplexes _triangulate(std::vector<int> &g_gens) {
+        Simplexes S(g_gens.size());
+        if (g_gens.empty()) {
+            S.vals.push_back(0);
+            return S;
+        }
+        std::vector<int> sg_gens(g_gens.size()-1);
+        for (int i = 0; i < g_gens.size(); i++) {
+            int k = 0;
+            for (int j = 0; j < g_gens.size(); j++) {
+                if (j != i) {
+                    sg_gens[k++] = g_gens[j];
+                }
+            }
+            auto sub_simps = triangulate(sg_gens);
+            int start = sub_simps.size();
+            sub_simps = tile(g_gens, sg_gens, sub_simps);
+            for (int l = start; l < sub_simps.size(); l+=S.dim) {
+                S.vals.push_back(0);
+                for (int m = l; m < l+S.dim; m++) {
+                    S.vals.push_back(sub_simps.vals[m]);
+                }
+            }
+
+        }
+        return S;
+    }
+
 };
+
+Simplexes GeomGen::triangulate(std::vector<int> &g_gens) {
+    int key = get_key_from_gens(g_gens);
+    if (!triangulate_memo[key]) {
+        triangulate_memo[key] = _triangulate(g_gens);
+    }
+    return *triangulate_memo[key];
+}
