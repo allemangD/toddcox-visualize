@@ -18,13 +18,6 @@ __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x000000
 }
 #endif
 
-float floatmod(float x, float m) {
-    if (x < 0) {
-        x += (float)((int)((-x)/m) + 1)*m;
-    }
-    return x - ((float)((int)(x / m)))*m;
-}
-
 int main(int argc, char *argv[]) {
     //region init window
     if (!glfwInit()) {
@@ -50,24 +43,17 @@ int main(int argc, char *argv[]) {
 
     std::cout << utilInfo();
 
-    GLuint pgm;
+    GLuint pipe;
+    glCreateProgramPipelines(1, &pipe);
+
+    GLuint vs, fs;
 
     try {
-//        GLuint vs = utilCompileFiles(GL_VERTEX_SHADER, {"shaders/ortho.vs.glsl"});
-//        GLuint vs = utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo.vs.glsl"});
-//        GLuint fs = utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"});
-//        GLuint fs = utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/w-axis-hue.fs.glsl"});
+        vs = utilCreateShaderProgramFile(GL_VERTEX_SHADER, {"shaders/ortho.vs.glsl"});
+        fs = utilCreateShaderProgramFile(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"});
 
-//        pgm = utilLinkProgram({vs, fs});
-
-        pgm = utilLinkProgram({
-            utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo-proper.vs.glsl"}),
-//            utilCompileFiles(GL_VERTEX_SHADER, {"shaders/ortho.vs.glsl"}),
-//            utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo.vs.glsl"}),
-//            utilCompileFiles(GL_GEOMETRY_SHADER, {"shaders/stereo-proper.gm.glsl"}),
-            utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"}),
-//            utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/w-axis-hue.fs.glsl"})
-        });
+        glUseProgramStages(pipe, GL_VERTEX_SHADER_BIT, vs);
+        glUseProgramStages(pipe, GL_FRAGMENT_SHADER_BIT, fs);
     } catch (const gl_error &e) {
         std::cerr << e.what() << std::endl;
         glfwTerminate();
@@ -75,16 +61,12 @@ int main(int argc, char *argv[]) {
     }
 
     auto group = tc::group::H(3);
-//    auto group = tc::group::B(5);
-//    auto group = tc::group::A(5);
     GeomGen gg(group);
     auto res = gg.solve();
     auto mirrors = mirror(group);
 
     auto corners = plane_intersections(mirrors);
-//    auto start = barycentric(corners, {.75f, .75f, .75f, .75f});
     auto start = barycentric(corners, {1.00f, 0.1f, 0.01f, 0.005f});
-//    auto start = barycentric(corners, {1, 1, 0.05, 1});
     auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
 
     GLuint vbo;
@@ -128,11 +110,11 @@ int main(int argc, char *argv[]) {
     float _ts[numts];
     float _ts_temp[numts];
     for (int i = 0; i < numts; ++i) {
-        _ts[i] = ((float)i - (numts/2.f))*0.1f;
+        _ts[i] = ((float) i - (numts / 2.f)) * 0.1f;
     }
-    float* ts = _ts;
-    float* ts_temp = _ts_temp;
-    float* swap_t;
+    float *ts = _ts;
+    float *ts_temp = _ts_temp;
+    float *swap_t;
     float alpha = 0.0001;
     float beta = 0.0002;
 
@@ -143,7 +125,7 @@ int main(int argc, char *argv[]) {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(pgm);
+        glBindProgramPipeline(pipe);
         glEnable(GL_PROGRAM_POINT_SIZE);
         glEnable(GL_POINT_SMOOTH);
         glEnable(GL_DEPTH_TEST);
@@ -154,19 +136,16 @@ int main(int argc, char *argv[]) {
         auto aspect = (float) width / (float) height;
         auto pheight = 1.4f;
         auto pwidth = aspect * pheight;
-//        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -2.0f, 2.0f);
         glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
-        glUniformMatrix4fv(0, 1, false, glm::value_ptr(proj));
+        glProgramUniformMatrix4fv(vs, 0, 1, false, glm::value_ptr(proj));
 
         auto st = (float) glfwGetTime() / 8;
         auto t = st / 7;
-//        printf("ts: [%f", ts[0]);
-        ts_temp[0] = ts[0] + alpha * (float)std::cos(rates[0] * t) + beta * (-ts[0]);
-        for (size_t i = 1; i < numts; i++){
-//            printf( ", %f", ts[i]);
-            ts_temp[i] = ts[i] + alpha * (float)std::cos(rates[i] * t) + beta * (-ts[i]);
+        ts_temp[0] = ts[0] + alpha * (float) std::cos(rates[0] * t) + beta * (-ts[0]);
+        for (size_t i = 1; i < numts; i++) {
+            ts_temp[i] = ts[i] + alpha * (float) std::cos(rates[i] * t) + beta * (-ts[i]);
         }
-//        printf("]\n");
+
         swap_t = ts;
         ts = ts_temp;
         ts_temp = swap_t;
@@ -177,13 +156,12 @@ int main(int argc, char *argv[]) {
         view *= utilRotate(1, 2, st * ts[3]);
 //        view *= utilRotate(1, 3, st * ts[4]);
 //        view *= utilRotate(2, 3, st * ts[5]);
-        glUniformMatrix4fv(1, 1, false, glm::value_ptr(view));
+        glProgramUniformMatrix4fv(vs, 1, 1, false, glm::value_ptr(view));
         //endregion
 
-        glUniform3f(2, 1.0f, 1.0f, 1.0f);
 //        glDrawArrays(GL_POINTS, 0, points.size());
 
-        glUniform3f(2, 1.0f, 1.0f, 1.0f);
+        glProgramUniform3f(fs, 2, 1.0f, 1.0f, 1.0f);
         for (int i = 0; i < group.ngens; ++i) {
             auto ibo = edge_ibo[i];
             auto count = edge_count[i];

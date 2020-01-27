@@ -29,6 +29,26 @@ public:
     explicit program_error(const char *string) : gl_error(string) {}
 };
 
+template<class T, GLenum prop>
+T utilGetShader(GLuint shader) {
+    GLint res;
+    glGetShaderiv(shader, prop, &res);
+    return static_cast<T>(res);
+}
+
+#define getShaderInfoLogLength utilGetShader<size_t, GL_INFO_LOG_LENGTH>
+#define getShaderCompileStatus utilGetShader<size_t, GL_COMPILE_STATUS>
+
+template<class T, GLenum prop>
+T utilGetProgram(GLuint program) {
+    GLint res;
+    glGetProgramiv(program, prop, &res);
+    return static_cast<T>(res);
+}
+
+#define getProgramInfoLogLength utilGetProgram<size_t, GL_INFO_LOG_LENGTH>
+#define getProgramLinkStatus utilGetProgram<size_t, GL_LINK_STATUS>
+
 void utilShaderSource(GLuint shader, const std::vector<std::string> &sources) {
     char const *ptrs[sources.size()];
     for (size_t i = 0; i < sources.size(); ++i) {
@@ -37,17 +57,15 @@ void utilShaderSource(GLuint shader, const std::vector<std::string> &sources) {
     glShaderSource(shader, sources.size(), ptrs, nullptr);
 }
 
-std::string utilShaderInfoLog(GLuint shader) {
-    int len;
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
+std::string getShaderInfoLog(GLuint shader) {
+    int len = getShaderInfoLogLength(shader);
     char buffer[len];
     glGetShaderInfoLog(shader, len, nullptr, buffer);
     return std::string(buffer);
 }
 
-std::string utilProgramInfoLog(GLuint program) {
-    int len;
-    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
+std::string getProgramInfoLog(GLuint program) {
+    int len = getProgramInfoLogLength(program);
     char buffer[len];
     glGetProgramInfoLog(program, len, nullptr, buffer);
     return std::string(buffer);
@@ -86,11 +104,9 @@ GLuint utilCompileFiles(const GLenum type, const std::vector<std::string> &files
     utilShaderSource(shader, sources);
     glCompileShader(shader);
 
-    int success;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (success) return shader;
+    if (getShaderCompileStatus(shader)) return shader;
 
-    throw shader_error(utilShaderInfoLog(shader));
+    throw shader_error(getShaderInfoLog(shader));
 }
 
 GLuint utilLinkProgram(const std::vector<GLuint> &shaders) {
@@ -100,9 +116,26 @@ GLuint utilLinkProgram(const std::vector<GLuint> &shaders) {
     }
     glLinkProgram(program);
 
-    int success;
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (success)return program;
+    if (getProgramLinkStatus(program)) return program;
 
-    throw program_error(utilProgramInfoLog(program));
+    throw program_error(getProgramInfoLog(program));
+}
+
+GLuint utilCreateShaderProgram(GLenum type, const std::vector<std::string> &src) {
+    std::vector<const char *> c_str(src.size());
+    std::transform(src.begin(), src.end(), c_str.begin(), [](auto &str) {
+        return str.c_str();
+    });
+
+    GLuint program = glCreateShaderProgramv(type, src.size(), &c_str[0]);
+
+    if (getProgramLinkStatus(program)) return program;
+
+    throw program_error(getProgramInfoLog(program));
+}
+
+GLuint utilCreateShaderProgramFile(GLenum type, const std::vector<std::string> &files) {
+    std::vector<std::string> sources(files.size());
+    std::transform(files.begin(), files.end(), sources.begin(), utilReadFile);
+    return utilCreateShaderProgram(type, sources);
 }
