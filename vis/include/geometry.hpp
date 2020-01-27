@@ -241,12 +241,11 @@ struct GeomGen {
             int start = sub_simps.size();
             sub_simps = tile(g_gens, sg_gens, sub_simps);
             for (int l = start; l < sub_simps.size(); l+=S.dim) {
-                S.vals.push_back(0);
                 for (int m = l; m < l+S.dim; m++) {
                     S.vals.push_back(sub_simps.vals[m]);
                 }
+                S.vals.push_back(0);
             }
-
         }
         return S;
     }

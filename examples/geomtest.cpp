@@ -6,27 +6,27 @@
 #include <geometry.hpp>
 #include <iostream>
 
-int main () {
-    auto g = tc::schlafli({3,2});
+int main() {
+    auto g = tc::schlafli({3, 2});
     GeomGen gg(g);
 
     auto path = gg.solve().path;
 
     //std::vector<std::string>  = {"a", "b", "c"};
     std::string base = "";
-    auto words = path.walk<std::string, std::string>(base,{"a","b","c"}, [](auto s1, auto g){return s1+g;});
+    auto words = path.walk<std::string, std::string>(base, {"a", "b", "c"}, [](auto s1, auto g) { return s1 + g; });
     for (const auto word : words) {
         std::cout << word << std::endl;
     }
 
-    std::vector<int> gens = {0,1,2};
+    std::vector<int> gens = {0, 1, 2};
     auto s = gg.triangulate(gens);
     s.print();
     return 0;
 
     auto g_gens = gg.group_gens();
-    std::vector<int> sg_gens = {1,2};
-    auto ns = gg.tile(g_gens,sg_gens,s);
+    std::vector<int> sg_gens = {1, 2};
+    auto ns = gg.tile(g_gens, sg_gens, s);
 
     std::cout << "Before: " << std::endl;
     std::cout << '\t';

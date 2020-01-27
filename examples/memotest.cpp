@@ -39,20 +39,20 @@ int main() {
     GeomGen mbig(big);
 
     auto s1 = std::chrono::system_clock::now();
-    auto res1 = mbig.solve({0,1,2,3,4,7}, {2,4,7});
+    auto res1 = mbig.solve({0, 1, 2, 3, 4, 7}, {2, 4, 7});
     auto e1 = std::chrono::system_clock::now();
 
     std::chrono::duration<double> t1 = e1 - s1;
     std::cout << t1.count() << ": " << res1.size() << std::endl;
 
     auto s2 = std::chrono::system_clock::now();
-    auto res2 = mbig.solve({0,2,4,7,1,3}, {4,7,2});
+    auto res2 = mbig.solve({0, 2, 4, 7, 1, 3}, {4, 7, 2});
     auto e2 = std::chrono::system_clock::now();
 
     std::chrono::duration<double> t2 = e2 - s2;
     std::cout << t2.count() << ": " << res2.size() << std::endl;
 
-    std::vector<int> gens = {0,1,2,3,4,5};
+    std::vector<int> gens = {0, 1, 2, 3, 4, 5};
     auto s3 = std::chrono::system_clock::now();
     auto res3 = mbig.triangulate(gens);
     auto e3 = std::chrono::system_clock::now();

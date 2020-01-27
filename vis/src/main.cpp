@@ -27,7 +27,6 @@ float floatmod(float x, float m) {
 
 int main(int argc, char *argv[]) {
     //region init window
-
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return EXIT_FAILURE;
@@ -47,7 +46,6 @@ int main(int argc, char *argv[]) {
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
     glfwSwapInterval(0);
-
     //endregion
 
     std::cout << utilInfo();
@@ -66,7 +64,7 @@ int main(int argc, char *argv[]) {
             utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo-proper.vs.glsl"}),
 //            utilCompileFiles(GL_VERTEX_SHADER, {"shaders/ortho.vs.glsl"}),
 //            utilCompileFiles(GL_VERTEX_SHADER, {"shaders/stereo.vs.glsl"}),
-            utilCompileFiles(GL_GEOMETRY_SHADER, {"shaders/stereo-proper.gm.glsl"}),
+//            utilCompileFiles(GL_GEOMETRY_SHADER, {"shaders/stereo-proper.gm.glsl"}),
             utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"}),
 //            utilCompileFiles(GL_FRAGMENT_SHADER, {"shaders/w-axis-hue.fs.glsl"})
         });
@@ -76,7 +74,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    auto group = tc::group::H(4);
+    auto group = tc::group::H(3);
 //    auto group = tc::group::B(5);
 //    auto group = tc::group::A(5);
     GeomGen gg(group);
@@ -101,8 +99,10 @@ int main(int argc, char *argv[]) {
     std::vector<GLuint> edge_ibo;
     auto g_gens = gg.group_gens();
 
-    for (const auto i : g_gens) {
-        std::vector<int> sg_gens = {i};
+    GLenum mode = GL_TRIANGLES;
+
+    {
+        std::vector<int> sg_gens = {0, 1};
         const auto data = gg.tile(g_gens, sg_gens, gg.triangulate(sg_gens)).vals;
         edge_count.push_back(data.size());
 
@@ -147,6 +147,8 @@ int main(int argc, char *argv[]) {
         glEnable(GL_PROGRAM_POINT_SIZE);
         glEnable(GL_POINT_SMOOTH);
         glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
 
         //region uniforms
         auto aspect = (float) width / (float) height;
@@ -171,15 +173,15 @@ int main(int argc, char *argv[]) {
         auto view = glm::identity<glm::mat4>();
         view *= utilRotate(0, 1, st * ts[0]);
         view *= utilRotate(0, 2, st * ts[1]);
-        view *= utilRotate(0, 3, st * ts[2]);
+//        view *= utilRotate(0, 3, st * ts[2]);
         view *= utilRotate(1, 2, st * ts[3]);
-        view *= utilRotate(1, 3, st * ts[4]);
-        view *= utilRotate(2, 3, st * ts[5]);
+//        view *= utilRotate(1, 3, st * ts[4]);
+//        view *= utilRotate(2, 3, st * ts[5]);
         glUniformMatrix4fv(1, 1, false, glm::value_ptr(view));
         //endregion
 
         glUniform3f(2, 1.0f, 1.0f, 1.0f);
-        glDrawArrays(GL_POINTS, 0, points.size());
+//        glDrawArrays(GL_POINTS, 0, points.size());
 
         glUniform3f(2, 1.0f, 1.0f, 1.0f);
         for (int i = 0; i < group.ngens; ++i) {
@@ -187,7 +189,7 @@ int main(int argc, char *argv[]) {
             auto count = edge_count[i];
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-            glDrawElements(GL_LINES, count, GL_UNSIGNED_INT, nullptr);
+            glDrawElements(mode, count, GL_UNSIGNED_INT, nullptr);
         }
 
         glfwSwapBuffers(window);
