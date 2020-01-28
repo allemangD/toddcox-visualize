@@ -18,6 +18,31 @@ __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x000000
 }
 #endif
 
+struct Matrices {
+    glm::mat4 proj;
+    glm::mat4 view;
+};
+
+Matrices build(GLFWwindow *window, float st) {
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+
+    auto aspect = (float) width / (float) height;
+    auto pheight = 1.4f;
+    auto pwidth = aspect * pheight;
+    glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
+
+    auto view = glm::identity<glm::mat4>();
+    view *= utilRotate(0, 1, st * .40f);
+    view *= utilRotate(0, 2, st * .20f);
+    view *= utilRotate(0, 3, st * 1.30f);
+    view *= utilRotate(1, 2, st * .50f);
+    view *= utilRotate(1, 3, st * .25f);
+    view *= utilRotate(2, 3, st * 1.42f);
+
+    return {proj, view};
+}
+
 int main(int argc, char *argv[]) {
     //region init window
     if (!glfwInit()) {
@@ -43,80 +68,80 @@ int main(int argc, char *argv[]) {
 
     std::cout << utilInfo();
 
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    glEnable(GL_POINT_SMOOTH);
+    glEnable(GL_DEPTH_TEST);
+//    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+
+    //region shaders
     GLuint pipe;
     glCreateProgramPipelines(1, &pipe);
 
-    GLuint vs, fs;
+    GLuint vs, gm, fs;
 
     try {
-        vs = utilCreateShaderProgramFile(GL_VERTEX_SHADER, {"shaders/ortho.vs.glsl"});
+        vs = utilCreateShaderProgramFile(GL_VERTEX_SHADER, {"shaders/4d/4d.vs.glsl"});
+        gm = utilCreateShaderProgramFile(GL_GEOMETRY_SHADER, {"shaders/4d/4d.gm.glsl"});
         fs = utilCreateShaderProgramFile(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"});
 
         glUseProgramStages(pipe, GL_VERTEX_SHADER_BIT, vs);
+        glUseProgramStages(pipe, GL_GEOMETRY_SHADER_BIT, gm);
         glUseProgramStages(pipe, GL_FRAGMENT_SHADER_BIT, fs);
     } catch (const gl_error &e) {
         std::cerr << e.what() << std::endl;
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
+    //endregion
 
-    auto group = tc::group::H(3);
+    //region points
+    auto group = tc::group::H(4);
     GeomGen gg(group);
     auto res = gg.solve();
     auto mirrors = mirror(group);
 
     auto corners = plane_intersections(mirrors);
-    auto start = barycentric(corners, {1.00f, 0.1f, 0.01f, 0.005f});
+    auto start = barycentric(corners, {1.00f, 0.1f, 0.01f, 0.05f});
     auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
+
+    auto g_gens = gg.group_gens();
+    std::vector<int> sg_gens = {0, 1, 2};
+    const std::vector<int> simps = gg.tile(g_gens, sg_gens, gg.triangulate(sg_gens)).vals;
+    //endregion
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec4) * points.size(), &points[0], GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, false, 0, nullptr);
-
-    std::vector<int> edge_count;
-    std::vector<GLuint> edge_ibo;
-    auto g_gens = gg.group_gens();
-
-    GLenum mode = GL_TRIANGLES;
-
-    {
-        std::vector<int> sg_gens = {0, 1};
-        const auto data = gg.tile(g_gens, sg_gens, gg.triangulate(sg_gens)).vals;
-        edge_count.push_back(data.size());
-
-        GLuint ibo;
-        glGenBuffers(1, &ibo);
-        glBindBuffer(GL_ARRAY_BUFFER, ibo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(int) * data.size(), &data[0], GL_STATIC_DRAW);
-        edge_ibo.push_back(ibo);
-    }
-
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    size_t numts = 7;
-    float rates[numts];
-    rates[0] = 1.237;
-    rates[1] = 2.439;
-    rates[2] = 5.683;
-    rates[3] = -3.796;
-    rates[4] = 0.787;
-    rates[5] = -1.893;
-    rates[6] = 3.699;
+    GLuint ubo;
+    glGenBuffers(1, &ubo);
 
-    float _ts[numts];
-    float _ts_temp[numts];
-    for (int i = 0; i < numts; ++i) {
-        _ts[i] = ((float) i - (numts / 2.f)) * 0.1f;
-    }
-    float *ts = _ts;
-    float *ts_temp = _ts_temp;
-    float *swap_t;
-    float alpha = 0.0001;
-    float beta = 0.0002;
+    GLuint ibo;
+    glGenBuffers(1, &ibo);
+    glBindBuffer(GL_ARRAY_BUFFER, ibo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * simps.size(), &simps[0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbo);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
+
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, ibo);
+    glEnableVertexAttribArray(0);
+    glVertexAttribIPointer(0, 4, GL_INT, 0, nullptr);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glBindVertexArray(0);
+
+    std::cout << points.size() << " points" << std::endl;
+    std::cout << simps.size() << " simplexes" << std::endl;
 
     while (!glfwWindowShouldClose(window)) {
         int width, height;
@@ -125,50 +150,20 @@ int main(int argc, char *argv[]) {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glBindProgramPipeline(pipe);
-        glEnable(GL_PROGRAM_POINT_SIZE);
-        glEnable(GL_POINT_SMOOTH);
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-
-        //region uniforms
-        auto aspect = (float) width / (float) height;
-        auto pheight = 1.4f;
-        auto pwidth = aspect * pheight;
-        glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
-        glProgramUniformMatrix4fv(vs, 0, 1, false, glm::value_ptr(proj));
-
         auto st = (float) glfwGetTime() / 8;
-        auto t = st / 7;
-        ts_temp[0] = ts[0] + alpha * (float) std::cos(rates[0] * t) + beta * (-ts[0]);
-        for (size_t i = 1; i < numts; i++) {
-            ts_temp[i] = ts[i] + alpha * (float) std::cos(rates[i] * t) + beta * (-ts[i]);
-        }
+        Matrices mats = build(window, st);
+        glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(mats), &mats, GL_STATIC_DRAW);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-        swap_t = ts;
-        ts = ts_temp;
-        ts_temp = swap_t;
-        auto view = glm::identity<glm::mat4>();
-        view *= utilRotate(0, 1, st * ts[0]);
-        view *= utilRotate(0, 2, st * ts[1]);
-//        view *= utilRotate(0, 3, st * ts[2]);
-        view *= utilRotate(1, 2, st * ts[3]);
-//        view *= utilRotate(1, 3, st * ts[4]);
-//        view *= utilRotate(2, 3, st * ts[5]);
-        glProgramUniformMatrix4fv(vs, 1, 1, false, glm::value_ptr(view));
-        //endregion
-
-//        glDrawArrays(GL_POINTS, 0, points.size());
+        glBindVertexArray(vao);
+        glBindProgramPipeline(pipe);
 
         glProgramUniform3f(fs, 2, 1.0f, 1.0f, 1.0f);
-        for (int i = 0; i < group.ngens; ++i) {
-            auto ibo = edge_ibo[i];
-            auto count = edge_count[i];
+        glDrawArrays(GL_POINTS, 0, simps.size() / 4);
 
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-            glDrawElements(mode, count, GL_UNSIGNED_INT, nullptr);
-        }
+        glBindProgramPipeline(0);
+        glBindVertexArray(0);
 
         glfwSwapBuffers(window);
 
