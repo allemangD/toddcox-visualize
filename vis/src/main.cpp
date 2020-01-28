@@ -102,12 +102,35 @@ int main(int argc, char *argv[]) {
     auto mirrors = mirror(group);
 
     auto corners = plane_intersections(mirrors);
-    auto start = barycentric(corners, {1.00f, 0.1f, 0.01f, 0.01f});
+//    auto start = barycentric(corners, {1.0f, 1.0f, 1.0f, 1.0f});
+    auto start = barycentric(corners, {1.00f, 0.2f, 0.1f, 0.05f});
+//    auto start = barycentric(corners, {0.05f, 0.1f, 0.2f, 1.00f});
     auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
 
     auto g_gens = gg.group_gens();
-    std::vector<int> sg_gens = {0, 1, 2};
-    const std::vector<int> simps = gg.tile(g_gens, sg_gens, gg.triangulate(sg_gens)).vals;
+
+    std::vector<GLuint> vaos;
+    std::vector<GLuint> ibos;
+    std::vector<unsigned> counts;
+
+    for (auto sg_gens : Combos(g_gens, 3)) {
+        const std::vector<int> data = gg.tile(g_gens, sg_gens, gg.triangulate(sg_gens)).vals;
+
+        GLuint vao = utilCreateVertexArray();
+        GLuint ibo = utilCreateBuffer();
+        unsigned count = data.size();
+
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, ibo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(int) * count, &data[0], GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribIPointer(0, 4, GL_INT, 0, nullptr);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        vaos.push_back(vao);
+        ibos.push_back(ibo);
+        counts.push_back(count);
+    }
     //endregion
 
     GLuint vbo;
@@ -119,29 +142,10 @@ int main(int argc, char *argv[]) {
     GLuint ubo;
     glGenBuffers(1, &ubo);
 
-    GLuint ibo;
-    glGenBuffers(1, &ibo);
-    glBindBuffer(GL_ARRAY_BUFFER, ibo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(int) * simps.size(), &simps[0], GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbo);
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
 
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, ibo);
-    glEnableVertexAttribArray(0);
-    glVertexAttribIPointer(0, 4, GL_INT, 0, nullptr);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
     glBindVertexArray(0);
-
-    std::cout << points.size() << " points" << std::endl;
-    std::cout << simps.size() << " simplexes" << std::endl;
 
     while (!glfwWindowShouldClose(window)) {
         int width, height;
@@ -156,11 +160,18 @@ int main(int argc, char *argv[]) {
         glBufferData(GL_UNIFORM_BUFFER, sizeof(mats), &mats, GL_STATIC_DRAW);
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-        glBindVertexArray(vao);
-        glBindProgramPipeline(pipe);
+        for (int i = 0; i < vaos.size(); ++i) {
+            auto c = glm::mix(
+                glm::vec3(.3, .2, .5),
+                glm::vec3(.9, .9, .95),
+                (float) (i + 1) / vaos.size()
+            );
 
-        glProgramUniform3f(fs, 2, 1.0f, 1.0f, 1.0f);
-        glDrawArrays(GL_POINTS, 0, simps.size() / 4);
+            glBindProgramPipeline(pipe);
+            glBindVertexArray(vaos[i]);
+            glProgramUniform3f(fs, 2, c.r, c.g, c.b);
+            glDrawArrays(GL_POINTS, 0, counts[i] / 4);
+        }
 
         glBindProgramPipeline(0);
         glBindVertexArray(0);

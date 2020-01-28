@@ -4,6 +4,7 @@
 #include <cmath>
 #include <optional>
 #include <iostream>
+#include "combo_iterator.hpp"
 
 size_t get_key_from_gens(std::vector<int> &gens) {
     size_t key = 0;
@@ -229,14 +230,7 @@ struct GeomGen {
             S.vals.push_back(0);
             return S;
         }
-        std::vector<int> sg_gens(g_gens.size()-1);
-        for (int i = 0; i < g_gens.size(); i++) {
-            int k = 0;
-            for (int j = 0; j < g_gens.size(); j++) {
-                if (j != i) {
-                    sg_gens[k++] = g_gens[j];
-                }
-            }
+        for (std::vector<int> sg_gens : Combos(g_gens, g_gens.size() - 1)) {
             auto sub_simps = triangulate(sg_gens);
             int start = sub_simps.size();
             sub_simps = tile(g_gens, sg_gens, sub_simps);

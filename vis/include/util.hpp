@@ -139,3 +139,23 @@ GLuint utilCreateShaderProgramFile(GLenum type, const std::vector<std::string> &
     std::transform(files.begin(), files.end(), sources.begin(), utilReadFile);
     return utilCreateShaderProgram(type, sources);
 }
+
+std::vector<GLuint> utilCreateVertexArrays(int n) {
+    std::vector<GLuint> res(n);
+    glCreateVertexArrays(n, &res[0]);
+    return res;
+}
+
+GLuint utilCreateVertexArray() {
+    return utilCreateVertexArrays(1)[0];
+}
+
+std::vector<GLuint> utilCreateBuffers(int n) {
+    std::vector<GLuint> res(n);
+    glCreateBuffers(n, &res[0]);
+    return res;
+}
+
+GLuint utilCreateBuffer() {
+    return utilCreateBuffers(1)[0];
+}
