@@ -40,7 +40,7 @@ void main() {
     float x = 0.7;
 
     for (int i = 0; i < 4; ++i) {
-        if (pos4[i].w+x < 0) {
+        if (pos4[i].w < 0) {
             lo[L++] = i;
         } else {
             hi[H++] = i;
@@ -53,7 +53,7 @@ void main() {
         vec4 a = pos4[lo[l]];
         vec4 b = pos4[hi[h]];
 
-        float t = unmix(a.w+x, b.w+x);
+        float t = unmix(a.w, b.w);
         sect[S++] = mix(a, b, t);
     }
 

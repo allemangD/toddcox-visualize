@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     auto mirrors = mirror(group);
 
     auto corners = plane_intersections(mirrors);
-    auto start = barycentric(corners, {1.00f, 0.1f, 0.01f, 0.05f});
+    auto start = barycentric(corners, {1.00f, 0.1f, 0.01f, 0.01f});
     auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
 
     auto g_gens = gg.group_gens();
