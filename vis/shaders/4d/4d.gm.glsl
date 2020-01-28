@@ -31,13 +31,6 @@ void emit(vec4 v) {
 }
 
 void main() {
-    //    vec4 pos4[4];
-    //    for (int i = 0; i < 4; ++i) pos4[i] = view * verts[vInds[0][i]];
-    //
-    //    for (int i = 0; i < 4; ++i) emit(pos4[i]);
-    //    EndPrimitive();
-    //    return;
-
     vec4 pos4[4];
     for (int i = 0; i < 4; ++i) pos4[i] = view * verts[vInds[0][i]];
 
@@ -62,7 +55,6 @@ void main() {
 
         float t = unmix(a.w+x, b.w+x);
         sect[S++] = mix(a, b, t);
-        //                sect[S++] = (0.0 - a.w) / (b.w - a.w) * (b - a) + a;
     }
 
     for (int s = 0; s < S; ++s) {
