@@ -3,13 +3,14 @@
 #include <tc/core.hpp>
 #include <cmath>
 #include <optional>
+#include <numeric>
 #include <iostream>
 #include "combo_iterator.hpp"
 
 size_t get_key_from_gens(std::vector<int> &gens) {
     size_t key = 0;
     for (const auto gen : gens) {
-        key += (1u << (unsigned)gen);
+        key += (1u << (unsigned) gen);
     }
     return key;
 }
@@ -25,81 +26,49 @@ size_t num_gens_from_key(size_t key) {
     return count;
 }
 
-struct SimplexesList;
-
 struct Simplexes {
     int dim;
     std::vector<int> vals;
 
-    explicit Simplexes(int dim): dim(dim) {}
-    Simplexes(int dim, std::vector<int> &vals): dim(dim), vals(vals) {}
-    explicit Simplexes(SimplexesList &sl);
+    Simplexes() : dim(0), vals() {}
+
+    explicit Simplexes(int dim) : dim(dim), vals() {}
+
+    Simplexes(int dim, std::vector<int> &vals) : dim(dim), vals(vals) {}
+
+    explicit Simplexes(const std::vector<Simplexes> &parts) {
+        dim = parts[0].dim;
+
+        size_t count = 0;
+        for (const auto &part : parts) {
+            count += part.size();
+        }
+        vals.reserve(count);
+
+        for (const auto &part : parts) {
+            vals.insert(vals.end(), part.vals.begin(), part.vals.end());
+        }
+    }
 
     [[nodiscard]] size_t size() const {
         return vals.size();
     }
 
-    void reorient() {
+    void flip() {
         if (dim == 0)
             return;
-        for (int i = 0; i < vals.size(); i+=dim+1) {
-            std::swap(vals[i], vals[i+1]);
+        for (int i = 0; i < vals.size(); i += dim + 1) {
+            std::swap(vals[i], vals[i + 1]);
         }
-    }
-
-    void print() {
-        if (vals.empty()) {
-            std::cout << "[]" << std::endl;
-        }
-        std::cout << "[(" << vals[0];
-        for (int i = 1; i < dim+1; i++) {
-            std::cout << "," << vals[i];
-        }
-        std::cout << ")";
-        for (int i = dim+1; i < vals.size(); i+= dim+1) {
-            std::cout << ", (" << vals[i];
-            for (int j = i+1; j < i+dim+1; j++) {
-                std::cout << "," << vals[j];
-            }
-            std::cout << ")";
-        }
-        std::cout << "]";
     }
 };
-
-struct SimplexesList {
-    int dim;
-    std::vector<int> vals;
-    int elem_size;
-    Simplexes temp;
-
-    explicit SimplexesList(Simplexes &s) : dim(s.dim), elem_size(s.size()), temp(s.dim) {
-        temp.vals.reserve(s.size());
-    }
-
-    void reserve(size_t i) {
-        vals.reserve(elem_size * i);
-    }
-
-    Simplexes& get(size_t i) {
-        temp.vals.clear();
-        temp.vals.insert(temp.vals.end(), vals.begin()+elem_size*i, vals.begin()+elem_size*(i+1));
-        return temp;
-    }
-
-    void push_back(Simplexes s) {
-        vals.insert(vals.end(), s.vals.begin(), s.vals.end());
-    }
-};
-
-Simplexes::Simplexes(SimplexesList &sl): Simplexes(sl.dim, sl.vals) {}
 
 struct GeomGen {
     std::vector<std::vector<std::optional<tc::Cosets>>> coset_memo;
     std::vector<std::optional<Simplexes>> triangulate_memo;
     tc::Group &context;
 
-    explicit GeomGen(tc::Group &g): context(g) {
+    explicit GeomGen(tc::Group &g) : context(g) {
         size_t num_sg = std::pow(2, g.ngens);
         coset_memo.resize(num_sg);
         triangulate_memo.resize(num_sg);
@@ -111,7 +80,7 @@ struct GeomGen {
 
     std::vector<int> group_gens() {
         std::vector<int> gens(context.ngens);
-        for (int i=0; i < context.ngens; i++) {
+        for (int i = 0; i < context.ngens; i++) {
             gens[i] = i;
         }
         return gens;
@@ -139,7 +108,7 @@ struct GeomGen {
         if (g_gens.size() != sg_gens.size() + 1)
             return 0;
         auto s_sg_gens = prepare_gens(g_gens, sg_gens);
-        const int loop_max = g_gens.size()-1;
+        const int loop_max = g_gens.size() - 1;
         for (int i = 0; i < loop_max; i++) {
             if (s_sg_gens[i] != i)
                 return i % 2;
@@ -184,9 +153,9 @@ struct GeomGen {
         auto table = solve_g(g_gens);
         auto path = solve_g(sg_gens).path;
 
-        auto coset_map = [table](int coset, int gen){return table.get(coset,gen);};
+        auto coset_map = [table](int coset, int gen) { return table.get(coset, gen); };
 
-        auto map = path.walk<int,int>(0, s_sg_gens, coset_map);
+        auto map = path.walk<int, int>(0, s_sg_gens, coset_map);
 
         Simplexes ret(items.dim);
         ret.vals.reserve(items.size());
@@ -194,7 +163,7 @@ struct GeomGen {
             ret.vals.push_back(map[val]);
         }
         if (get_parity(g_gens, sg_gens) == 1)
-            ret.reorient();
+            ret.flip();
         return ret;
     }
 
@@ -204,22 +173,17 @@ struct GeomGen {
         auto table = solve_g(g_gens);
         auto path = _solve(g_gens, sg_gens).path;
 
-        auto simplex_map = [table](const Simplexes& items, int gen) -> Simplexes {
-            Simplexes ret(items.dim);
-            ret.vals.reserve(items.vals.size());
-            // Move the simplexes
-            for (const auto coset : items.vals) {
-                ret.vals.push_back(table.get(coset,gen));
+        auto simplex_map = [table](Simplexes from, int gen) -> Simplexes {
+            for (auto &coset : from.vals) {
+                coset = table.get(coset, gen);
             }
-            // Reorient the simplexes
-            ret.reorient();
-            return ret;
+            from.flip();
+            return from;
         };
 
-        SimplexesList ret(base);
-        path.walk<SimplexesList, Simplexes, int>(ret, base, group_gens(), simplex_map);
+        auto r = path.walk<Simplexes, int>(base, group_gens(), simplex_map);
 
-        return Simplexes(ret);
+        return Simplexes(r);
     }
 
     Simplexes triangulate(std::vector<int> &g_gens);
@@ -234,8 +198,8 @@ struct GeomGen {
             auto sub_simps = triangulate(sg_gens);
             int start = sub_simps.size();
             sub_simps = tile(g_gens, sg_gens, sub_simps);
-            for (int l = start; l < sub_simps.size(); l+=S.dim) {
-                for (int m = l; m < l+S.dim; m++) {
+            for (int l = start; l < sub_simps.size(); l += S.dim) {
+                for (int m = l; m < l + S.dim; m++) {
                     S.vals.push_back(sub_simps.vals[m]);
                 }
                 S.vals.push_back(0);
