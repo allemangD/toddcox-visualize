@@ -173,11 +173,12 @@ struct Mesh {
         }
     }
 
+    [[nodiscard]]
     Mesh<N> recontext(
         const tc::Group &context,
         const std::vector<int> &g_gens,
         const std::vector<int> &sg_gens
-    ) {
+    ) const {
         const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
         // todo memo recontext
         const auto table = solve_g(context, g_gens);
@@ -200,11 +201,12 @@ struct Mesh {
         return res;
     }
 
+    [[nodiscard]]
     Mesh<N> tile(
         const tc::Group &context,
         const std::vector<int> &g_gens,
         const std::vector<int> &sg_gens
-    ) {
+    ) const {
         Mesh<N> base = recontext(context, g_gens, sg_gens);
         const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
 
@@ -220,7 +222,8 @@ struct Mesh {
         return merge(all);
     }
 
-    Mesh<N + 1> fan(int root) {
+    [[nodiscard]]
+    Mesh<N + 1> fan(int root) const {
         std::vector<Primitive<N + 1>> res(prims.size());
         std::transform(prims.begin(), prims.end(), res.begin(),
             [root](const Primitive<N> &prim) {

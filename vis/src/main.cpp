@@ -122,10 +122,9 @@ int main(int argc, char *argv[]) {
 //    };
     auto chosen = combos;
 
-    for (const auto& sg_gens : chosen) {
-        const Mesh<4> &base = triangulate<4>(group, sg_gens);
-        const auto &s = base;
-//         s = tile(context, g_gens, sg_gens, base);
+    for (const auto &sg_gens : chosen) {
+        const auto s = triangulate<4>(group, sg_gens)
+            .tile(group, g_gens, sg_gens);
 
         GLuint vao = utilCreateVertexArray();
         GLuint ibo = utilCreateBuffer();
@@ -133,7 +132,7 @@ int main(int argc, char *argv[]) {
 
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, ibo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(Primitive<4>) * count, &s.prims[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Primitive<4>) * s.size(), &s.prims[0], GL_STATIC_DRAW);
         glEnableVertexAttribArray(0);
         glVertexAttribIPointer(0, 4, GL_INT, 0, nullptr);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -181,7 +180,7 @@ int main(int argc, char *argv[]) {
             glBindProgramPipeline(pipe);
             glBindVertexArray(vaos[i]);
             glProgramUniform3f(fs, 2, c.r, c.g, c.b);
-            glDrawArrays(GL_POINTS, 0, counts[i] / 4);
+            glDrawArrays(GL_POINTS, 0, counts[i]);
         }
 
         glBindProgramPipeline(0);
