@@ -4,7 +4,6 @@
 #include <iostream>
 
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/string_cast.hpp>
 
 #include <tc/groups.hpp>
 
@@ -97,9 +96,6 @@ int main(int argc, char *argv[]) {
 
     //region points
     auto group = tc::group::H(4);
-//    GeomGen<4> gg4(group);
-//    GeomGen<3> gg3(group);
-//    auto res = gg4.solve();
     auto res = group.solve();
     auto mirrors = mirror(group);
 
