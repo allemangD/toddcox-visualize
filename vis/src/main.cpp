@@ -97,8 +97,10 @@ int main(int argc, char *argv[]) {
 
     //region points
     auto group = tc::group::H(4);
-    GeomGen gg(group);
-    auto res = gg.solve();
+//    GeomGen<4> gg4(group);
+//    GeomGen<3> gg3(group);
+//    auto res = gg4.solve();
+    auto res = group.solve();
     auto mirrors = mirror(group);
 
     auto corners = plane_intersections(mirrors);
@@ -107,7 +109,7 @@ int main(int argc, char *argv[]) {
 //    auto start = barycentric(corners, {0.05f, 0.1f, 0.2f, 1.00f});
     auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
 
-    auto g_gens = gg.group_gens();
+    auto g_gens = gens(group);
 
     std::vector<GLuint> vaos;
     std::vector<GLuint> ibos;
@@ -120,17 +122,18 @@ int main(int argc, char *argv[]) {
 //    };
     auto chosen = combos;
 
-    for (auto sg_gens : chosen) {
-        auto s = gg.tile(g_gens, sg_gens, gg.triangulate(sg_gens));
-        const std::vector<int> data = s.vals;
+    for (const auto& sg_gens : chosen) {
+        const Mesh<4> &base = triangulate<4>(group, sg_gens);
+        const auto &s = base;
+//         s = tile(context, g_gens, sg_gens, base);
 
         GLuint vao = utilCreateVertexArray();
         GLuint ibo = utilCreateBuffer();
-        unsigned count = data.size();
+        unsigned count = s.size();
 
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, ibo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(int) * count, &data[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Primitive<4>) * count, &s.prims[0], GL_STATIC_DRAW);
         glEnableVertexAttribArray(0);
         glVertexAttribIPointer(0, 4, GL_INT, 0, nullptr);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
