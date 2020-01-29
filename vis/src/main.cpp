@@ -114,11 +114,11 @@ int main(int argc, char *argv[]) {
     std::vector<unsigned> counts;
 
     auto combos = Combos(g_gens, 3);
-    std::vector<std::vector<int>> chosen = {
-        {1, 2, 3},
-        {0, 2, 3},
-    };
-//    chosen = std::vector<std::vector<int>>(combos.begin(), combos.end());
+//    std::vector<std::vector<int>> chosen = {
+//        {1, 2, 3},
+//        {0, 2, 3},
+//    };
+    auto chosen = combos;
 
     for (auto sg_gens : chosen) {
         auto s = gg.tile(g_gens, sg_gens, gg.triangulate(sg_gens));
@@ -170,11 +170,9 @@ int main(int argc, char *argv[]) {
 
         for (int i = 0; i < vaos.size(); ++i) {
             auto c = glm::mix(
-                glm::vec3(1,0,0),
-                glm::vec3(.2,.2,.3),
-//                glm::vec3(.3, .2, .5),
-//                glm::vec3(.9, .9, .95),
-                (float) (i) / (vaos.size()-1.f)
+                glm::vec3(.3, .2, .5),
+                glm::vec3(.9, .9, .95),
+                (float) (i) / (vaos.size() - 1.f)
             );
 
             glBindProgramPipeline(pipe);
