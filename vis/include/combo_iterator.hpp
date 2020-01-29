@@ -6,6 +6,13 @@
 
 template<class T>
 struct ComboIterator {
+    typedef ComboIterator<T> self_type;
+    typedef const std::vector<T> value_type;;
+    typedef const std::vector<T> *pointer;
+    typedef const std::vector<T> &reference;
+    typedef size_t difference_type;
+    typedef std::forward_iterator_tag iterator_category;
+
     const std::vector<T> &vals;
     const size_t k;
     size_t n;
@@ -23,28 +30,43 @@ struct ComboIterator {
         set_curr();
     }
 
+    ~ComboIterator() = default;
+
     void set_curr() {
         for (size_t i = 0, j = 0; i < vals.size(); ++i) {
             if (bits[i]) curr[j++] = vals[i];
         }
     }
 
-    const std::vector<T> &operator*() const {
-        return curr;
-    }
-
-    void operator++() {
-        std::next_permutation(bits.begin(), bits.end());
-        set_curr();
-        ++n;
+    [[nodiscard]] bool operator==(const ComboIterator<T> &o) const {
+        return n == o.n;
     }
 
     [[nodiscard]] bool operator!=(const ComboIterator<T> &o) const {
         return n != o.n;
     }
 
-    [[nodiscard]] bool operator==(const ComboIterator<T> &o) const {
-        return n == o.n;
+    reference operator*() const {
+        return curr;
+    }
+
+    pointer operator->() const {
+        return &curr;
+    }
+
+    self_type operator++(int) {
+        std::next_permutation(bits.begin(), bits.end());
+        set_curr();
+        ++n;
+        return *this;
+    }
+
+    self_type operator++() {
+        self_type r = *this;
+        std::next_permutation(bits.begin(), bits.end());
+        set_curr();
+        ++n;
+        return r;
     }
 };
 
