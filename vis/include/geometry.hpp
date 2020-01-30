@@ -180,7 +180,6 @@ struct Mesh {
         const std::vector<int> &sg_gens
     ) const {
         const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
-        // todo memo recontext
         const auto table = solve_g(context, g_gens);
         const auto path = solve_g(context, sg_gens).path;
 
@@ -210,7 +209,6 @@ struct Mesh {
         Mesh<N> base = recontext(context, g_gens, sg_gens);
         const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
 
-        // todo memo tile
         const auto table = solve_g(context, g_gens);
         const auto path = solve(context, g_gens, sg_gens).path;
 
