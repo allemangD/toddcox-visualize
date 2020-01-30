@@ -3,7 +3,8 @@ A new (basic) implementation of the Todd-Coxeter algorithm for Coxeter groups in
 
 ---
 
-Example output with group F4.
+![Example render](images/600-slice.png)
+![Example render](images/500-multi.png)
+![Example render](images/f4-slice.png)
+![Example render](images/f4-wire.png)
 
-![Example render](screen.png)
- 

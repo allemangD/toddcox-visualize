@@ -115,7 +115,6 @@ int main(int argc, char *argv[]) {
     GLuint proj_pipe;
     glCreateProgramPipelines(1, &proj_pipe);
 
-//    GLuint defer, direct_ortho, direct_stereo, slice, curve_stereo, solid;
     GLuint defer, direct_ortho, direct_stereo;
     GLuint slice, curve_ortho, curve_stereo;
     GLuint solid;
@@ -131,14 +130,13 @@ int main(int argc, char *argv[]) {
 
         solid = utilCreateShaderProgramFile(GL_FRAGMENT_SHADER, {"shaders/solid.fs.glsl"});
 
-        glUseProgramStages(slice_pipe, GL_VERTEX_SHADER_BIT, defer);
-        glUseProgramStages(slice_pipe, GL_GEOMETRY_SHADER_BIT, slice);
-        glUseProgramStages(slice_pipe, GL_FRAGMENT_SHADER_BIT, solid);
-
         glUseProgramStages(proj_pipe, GL_VERTEX_SHADER_BIT, direct_stereo);
 //        glUseProgramStages(proj_pipe, GL_GEOMETRY_SHADER_BIT, curve_stereo);
         glUseProgramStages(proj_pipe, GL_FRAGMENT_SHADER_BIT, solid);
 
+        glUseProgramStages(slice_pipe, GL_VERTEX_SHADER_BIT, defer);
+        glUseProgramStages(slice_pipe, GL_GEOMETRY_SHADER_BIT, slice);
+        glUseProgramStages(slice_pipe, GL_FRAGMENT_SHADER_BIT, solid);
     } catch (const gl_error &e) {
         std::cerr << e.what() << std::endl;
         glfwTerminate();
