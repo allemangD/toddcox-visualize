@@ -63,6 +63,8 @@ int main(int argc, char *argv[]) {
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
     glfwSwapInterval(0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glfwSwapBuffers(window);
     //endregion
 
     std::cout << utilInfo();
