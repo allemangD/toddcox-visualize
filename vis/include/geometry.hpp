@@ -214,7 +214,7 @@ struct Mesh {
         const auto table = solve_g(context, g_gens);
         const auto path = solve(context, g_gens, sg_gens).path;
 
-        const auto all = path.template walk<Mesh<N>, int>(base, g_gens, [table](Mesh<N> from, int gen) {
+        const auto all = path.template walk<Mesh<N>, int>(base, gens(context), [table](Mesh<N> from, int gen) {
             from.apply(table, gen);
             return from;
         });
