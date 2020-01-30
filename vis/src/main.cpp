@@ -20,7 +20,40 @@ __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x000000
 struct Matrices {
     glm::mat4 proj;
     glm::mat4 view;
+
+    Matrices(const glm::mat4 &proj, const glm::mat4 &view)
+        : proj(proj), view(view) {
+    }
 };
+
+template<unsigned N>
+struct MeshRef {
+    GLuint vao;
+    GLuint ibo;
+    unsigned primitive_count;
+    unsigned index_count;
+
+    explicit MeshRef(const Mesh<N> &mesh) {
+        vao = utilCreateVertexArray();
+        ibo = utilCreateBuffer();
+        primitive_count = mesh.size();
+        index_count = primitive_count * N;
+
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, ibo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Primitive<N>) * primitive_count, &mesh.prims[0], GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribIPointer(0, N, GL_INT, 0, nullptr);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+};
+
+float factor(unsigned index, unsigned size) {
+    auto num = (float) index;
+    auto den = size > 1 ? (float) size - 1 : 1;
+    return num / den;
+}
 
 Matrices build(GLFWwindow *window, float st) {
     int width, height;
@@ -39,7 +72,7 @@ Matrices build(GLFWwindow *window, float st) {
     view *= utilRotate(1, 3, st * .25f);
     view *= utilRotate(2, 3, st * 1.42f);
 
-    return {proj, view};
+    return Matrices(proj, view);
 }
 
 int main(int argc, char *argv[]) {
@@ -76,19 +109,36 @@ int main(int argc, char *argv[]) {
     glCullFace(GL_BACK);
 
     //region shaders
-    GLuint pipe;
-    glCreateProgramPipelines(1, &pipe);
+    GLuint slice_pipe;
+    glCreateProgramPipelines(1, &slice_pipe);
 
-    GLuint vs, gm, fs;
+    GLuint proj_pipe;
+    glCreateProgramPipelines(1, &proj_pipe);
+
+//    GLuint defer, direct_ortho, direct_stereo, slice, curve_stereo, solid;
+    GLuint defer, direct_ortho, direct_stereo;
+    GLuint slice, curve_ortho, curve_stereo;
+    GLuint solid;
 
     try {
-        vs = utilCreateShaderProgramFile(GL_VERTEX_SHADER, {"shaders/4d/4d.vs.glsl"});
-        gm = utilCreateShaderProgramFile(GL_GEOMETRY_SHADER, {"shaders/4d/4d.gm.glsl"});
-        fs = utilCreateShaderProgramFile(GL_FRAGMENT_SHADER, {"shaders/one-color.fs.glsl"});
+        defer = utilCreateShaderProgramFile(GL_VERTEX_SHADER, {"shaders/slice/deferred.vs.glsl"});
+        direct_ortho = utilCreateShaderProgramFile(GL_VERTEX_SHADER, {"shaders/direct-ortho.vs.glsl"});
+        direct_stereo = utilCreateShaderProgramFile(GL_VERTEX_SHADER, {"shaders/direct-stereo.vs.glsl"});
 
-        glUseProgramStages(pipe, GL_VERTEX_SHADER_BIT, vs);
-        glUseProgramStages(pipe, GL_GEOMETRY_SHADER_BIT, gm);
-        glUseProgramStages(pipe, GL_FRAGMENT_SHADER_BIT, fs);
+        slice = utilCreateShaderProgramFile(GL_GEOMETRY_SHADER, {"shaders/slice/slice.gm.glsl"});
+        curve_stereo = utilCreateShaderProgramFile(GL_GEOMETRY_SHADER, {"shaders/curve-stereo.gm.glsl"});
+        curve_ortho = utilCreateShaderProgramFile(GL_GEOMETRY_SHADER, {"shaders/curve-ortho.gm.glsl"});
+
+        solid = utilCreateShaderProgramFile(GL_FRAGMENT_SHADER, {"shaders/solid.fs.glsl"});
+
+        glUseProgramStages(slice_pipe, GL_VERTEX_SHADER_BIT, defer);
+        glUseProgramStages(slice_pipe, GL_GEOMETRY_SHADER_BIT, slice);
+        glUseProgramStages(slice_pipe, GL_FRAGMENT_SHADER_BIT, solid);
+
+        glUseProgramStages(proj_pipe, GL_VERTEX_SHADER_BIT, direct_stereo);
+//        glUseProgramStages(proj_pipe, GL_GEOMETRY_SHADER_BIT, curve_stereo);
+        glUseProgramStages(proj_pipe, GL_FRAGMENT_SHADER_BIT, solid);
+
     } catch (const gl_error &e) {
         std::cerr << e.what() << std::endl;
         glfwTerminate();
@@ -109,36 +159,26 @@ int main(int argc, char *argv[]) {
 
     auto g_gens = gens(group);
 
-    std::vector<GLuint> vaos;
-    std::vector<GLuint> ibos;
-    std::vector<unsigned> counts;
+    const unsigned WIRES_N = 2;
+    const GLenum WIRE_MODE = GL_LINES;
+    std::vector<MeshRef<WIRES_N>> wires;
 
-    auto combos = Combos(g_gens, 3);
-//    std::vector<std::vector<int>> chosen = {
-//        {1, 2, 3},
-//        {0, 2, 3},
-//    };
-    auto chosen = combos;
+    for (const auto &sg_gens : Combos(g_gens, WIRES_N - 1)) {
+        const auto s = triangulate<WIRES_N>(group, sg_gens).tile(group, g_gens, sg_gens);
 
-    for (const auto &sg_gens : chosen) {
-        const auto s = triangulate<4>(group, sg_gens)
-            .tile(group, g_gens, sg_gens);
-
-        GLuint vao = utilCreateVertexArray();
-        GLuint ibo = utilCreateBuffer();
-        unsigned count = s.size();
-
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, ibo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(Primitive<4>) * s.size(), &s.prims[0], GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribIPointer(0, 4, GL_INT, 0, nullptr);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        vaos.push_back(vao);
-        ibos.push_back(ibo);
-        counts.push_back(count);
+        wires.emplace_back(s);
     }
+
+    const unsigned SLICES_N = 4;
+    const GLenum SLICES_MODE = GL_POINTS;
+    std::vector<MeshRef<SLICES_N>> slices;
+
+    for (const auto &sg_gens : Combos(g_gens, SLICES_N - 1)) {
+        const auto s = triangulate<SLICES_N>(group, sg_gens).tile(group, g_gens, sg_gens);
+
+        slices.emplace_back(s);
+    }
+
     //endregion
 
     GLuint vbo;
@@ -168,17 +208,33 @@ int main(int argc, char *argv[]) {
         glBufferData(GL_UNIFORM_BUFFER, sizeof(mats), &mats, GL_STATIC_DRAW);
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-        for (int i = 0; i < vaos.size(); ++i) {
-            auto c = glm::mix(
-                glm::vec3(.3, .2, .5),
-                glm::vec3(.9, .9, .95),
-                (float) (i) / (vaos.size() - 1.f)
-            );
+        const auto wires_dark = glm::vec3(.3, .3,.3);
+        const auto wires_light = wires_dark;
+        glBindProgramPipeline(proj_pipe);
+        for (int i = 0; i < wires.size(); i++) {
+            const auto &ref = wires[i];
 
-            glBindProgramPipeline(pipe);
-            glBindVertexArray(vaos[i]);
-            glProgramUniform3f(fs, 2, c.r, c.g, c.b);
-            glDrawArrays(GL_POINTS, 0, counts[i]);
+            const float f = factor(i, slices.size());
+            glm::vec3 c = glm::mix(wires_dark, wires_light, f);
+            glProgramUniform3f(solid, 2, c.r, c.g, c.b);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ref.ibo);
+            glDrawElements(WIRE_MODE, ref.index_count, GL_UNSIGNED_INT, nullptr);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        }
+
+        const auto slice_dark = glm::vec3(.5, .3, .7);
+        const auto slice_light = glm::vec3(.9, .9, .95);
+        glBindProgramPipeline(slice_pipe);
+        for (int i = 0; i < slices.size(); i++) {
+            const auto &ref = slices[i];
+
+            const float f = factor(i, slices.size());
+            glm::vec3 c = glm::mix(slice_dark, slice_light, f);
+            glProgramUniform3f(solid, 2, c.r, c.g, c.b);
+
+            glBindVertexArray(ref.vao);
+            glDrawArrays(SLICES_MODE, 0, ref.primitive_count);
         }
 
         glBindProgramPipeline(0);
