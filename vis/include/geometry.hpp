@@ -13,6 +13,8 @@
  */
 template<unsigned N>
 struct Primitive {
+    static_assert(N > 0, "Primitives must contain at least one point. Primitive<0> or lower is impossible.");
+
     std::array<unsigned, N> inds;
 
     Primitive() = default;
@@ -230,7 +232,7 @@ Mesh<N> triangulate(
     const tc::Group &context,
     const std::vector<int> &g_gens
 ) {
-    if (g_gens.size() + 1 != N)
+    if (g_gens.size() + 1 != N) // todo make static assert
         throw std::logic_error("g_gens size must be one less than N");
 
     const auto &combos = Combos(g_gens, g_gens.size() - 1);
@@ -247,12 +249,15 @@ Mesh<N> triangulate(
     return merge(meshes);
 }
 
+/**
+ * Single-index primitives should not be further triangulated.
+ */
 template<>
 Mesh<1> triangulate<1>(
     const tc::Group &context,
     const std::vector<int> &g_gens
 ) {
-    if (not g_gens.empty())
+    if (not g_gens.empty()) // todo make static assert
         throw std::logic_error("g_gens must be empty for a trivial Mesh");
 
     Mesh<1> res;

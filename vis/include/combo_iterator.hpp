@@ -80,6 +80,7 @@ struct Combos {
     const std::vector<T> &vals;
     size_t k;
 
+    // todo make k a template argument
     Combos(const std::vector<T> &vals, size_t k) : vals(vals), k(k) {
     }
 
