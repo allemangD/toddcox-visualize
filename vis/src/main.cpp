@@ -81,22 +81,22 @@ void run(GLFWwindow *window) {
 //    glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
-    auto defer = cgl::compile_shaderprogram(
-        GL_VERTEX_SHADER, "shaders/slice/deferred.vs.glsl");
-    auto direct_ortho = cgl::compile_shaderprogram(
-        GL_VERTEX_SHADER, "shaders/direct-ortho.vs.glsl");
-    auto direct_stereo = cgl::compile_shaderprogram(
-        GL_VERTEX_SHADER, "shaders/direct-stereo.vs.glsl");
+    auto defer = cgl::vert_program(
+        utilReadFile("shaders/slice/deferred.vs.glsl"));
+    auto direct_ortho = cgl::vert_program(
+        utilReadFile("shaders/direct-ortho.vs.glsl"));
+    auto direct_stereo = cgl::vert_program(
+        utilReadFile("shaders/direct-stereo.vs.glsl"));
 
-    auto slice = cgl::compile_shaderprogram(
-        GL_GEOMETRY_SHADER, "shaders/slice/slice.gm.glsl");
-    auto curve_stereo = cgl::compile_shaderprogram(
-        GL_GEOMETRY_SHADER, "shaders/curve-stereo.gm.glsl");
-    auto curve_ortho = cgl::compile_shaderprogram(
-        GL_GEOMETRY_SHADER, "shaders/curve-ortho.gm.glsl");
+    auto slice = cgl::geom_program(
+        utilReadFile("shaders/slice/slice.gm.glsl"));
+    auto curve_stereo = cgl::geom_program(
+        utilReadFile("shaders/curve-stereo.gm.glsl"));
+    auto curve_ortho = cgl::geom_program(
+        utilReadFile("shaders/curve-ortho.gm.glsl"));
 
-    auto solid = cgl::compile_shaderprogram(
-        GL_FRAGMENT_SHADER, "shaders/solid.fs.glsl");
+    auto solid = cgl::frag_program(
+        utilReadFile("shaders/solid.fs.glsl"));
 
     cgl::pipeline proj_pipe;
     proj_pipe.use_stages(direct_stereo);

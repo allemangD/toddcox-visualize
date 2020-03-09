@@ -48,17 +48,17 @@ namespace cgl {
         }
     };
 
+    template<GLenum mode>
     class shader {
     protected:
         GLuint id{};
-        GLenum mode;
 
     public:
-        shader(GLenum mode) : mode(mode) {
+        shader() {
             id = glCreateShader(mode);
         }
 
-        shader(GLenum mode, const std::string &src) : shader(mode) {
+        shader(const std::string &src) : shader() {
             set_source(src);
 
             if (!compile())
@@ -68,7 +68,6 @@ namespace cgl {
         shader(shader &) = delete;
 
         shader(shader &&o) noexcept {
-            mode = o.mode;
             id = std::exchange(o.id, 0);
         };
 
@@ -78,10 +77,6 @@ namespace cgl {
 
         operator GLuint() const {
             return id;
-        }
-
-        [[nodiscard]] GLenum get_mode() const {
-            return mode;
         }
 
         [[nodiscard]] int get(GLenum pname) const {
@@ -144,11 +139,13 @@ namespace cgl {
             return std::string(buffer);
         }
 
-        void attach(const shader &sh) {
+        template<GLenum mode>
+        void attach(const shader<mode> &sh) {
             glAttachShader(id, sh);
         }
 
-        void detach(const shader &sh) {
+        template<GLenum mode>
+        void detach(const shader<mode> &sh) {
             glDetachShader(id, sh);
         }
 
@@ -158,17 +155,15 @@ namespace cgl {
         }
     };
 
+    template<GLenum mode>
     class shaderprogram : public program {
-    protected:
-        GLenum mode;
-
     public:
-        shaderprogram(GLenum mode) : program(), mode(mode) {
+        shaderprogram() : program() {
             glProgramParameteri(id, GL_PROGRAM_SEPARABLE, GL_TRUE);
         }
 
-        shaderprogram(GLenum mode, const std::string &src) : shaderprogram(mode) {
-            shader sh(mode, src);
+        shaderprogram(const std::string &src) : shaderprogram() {
+            shader<mode> sh(src);
 
             attach(sh);
 
@@ -176,14 +171,6 @@ namespace cgl {
                 throw shader_error(get_info_log());
 
             detach(sh);
-        }
-
-        shaderprogram(shaderprogram &&o) noexcept : program(std::move(o)) {
-            mode = o.mode;
-        }
-
-        [[nodiscard]] GLenum get_mode() const {
-            return mode;
         }
     };
 
@@ -211,29 +198,28 @@ namespace cgl {
             return id;
         }
 
-        void use_stages(const shaderprogram &pgm) {
-            GLbitfield bits;
-            switch (pgm.get_mode()) {
-            case GL_VERTEX_SHADER:
-                bits = GL_VERTEX_SHADER_BIT;
-                break;
-            case GL_TESS_CONTROL_SHADER:
-                bits = GL_TESS_CONTROL_SHADER_BIT;
-                break;
-            case GL_TESS_EVALUATION_SHADER:
-                bits = GL_TESS_EVALUATION_SHADER_BIT;
-                break;
-            case GL_GEOMETRY_SHADER:
-                bits = GL_GEOMETRY_SHADER_BIT;
-                break;
-            case GL_FRAGMENT_SHADER:
-                bits = GL_FRAGMENT_SHADER_BIT;
-                break;
-            default:
-                throw std::domain_error("invalid shaderprogram mode");
-            }
+        void use_stages(const shaderprogram<GL_VERTEX_SHADER> &pgm) {
+            glUseProgramStages(id, GL_VERTEX_SHADER_BIT, pgm);
+        }
 
-            glUseProgramStages(id, bits, pgm);
+        void use_stages(const shaderprogram<GL_TESS_CONTROL_SHADER> &pgm) {
+            glUseProgramStages(id, GL_TESS_CONTROL_SHADER_BIT, pgm);
+        }
+
+        void use_stages(const shaderprogram<GL_TESS_EVALUATION_SHADER> &pgm) {
+            glUseProgramStages(id, GL_TESS_EVALUATION_SHADER_BIT, pgm);
+        }
+
+        void use_stages(const shaderprogram<GL_GEOMETRY_SHADER> &pgm) {
+            glUseProgramStages(id, GL_GEOMETRY_SHADER_BIT, pgm);
+        }
+
+        void use_stages(const shaderprogram<GL_FRAGMENT_SHADER> &pgm) {
+            glUseProgramStages(id, GL_FRAGMENT_SHADER_BIT, pgm);
+        }
+
+        void use_stages(const shaderprogram<GL_COMPUTE_SHADER> &pgm) {
+            glUseProgramStages(id, GL_COMPUTE_SHADER_BIT, pgm);
         }
 
         [[nodiscard]] int get(GLenum pname) const {
@@ -250,11 +236,17 @@ namespace cgl {
         }
     };
 
-    shader compile_shader(GLenum mode, const std::string &file) {
-        return shader(mode, utilReadFile(file));
-    }
+    using vert_shader = shader<GL_VERTEX_SHADER>;
+    using tctl_shader = shader<GL_TESS_CONTROL_SHADER>;
+    using tevl_shader = shader<GL_TESS_EVALUATION_SHADER>;
+    using geom_shader = shader<GL_GEOMETRY_SHADER>;
+    using frag_shader = shader<GL_FRAGMENT_SHADER>;
+    using comp_shader = shader<GL_COMPUTE_SHADER>;
 
-    shaderprogram compile_shaderprogram(GLenum mode, const std::string &file) {
-        return shaderprogram(mode, utilReadFile(file));
-    }
+    using vert_program = shaderprogram<GL_VERTEX_SHADER>;
+    using tctl_program = shaderprogram<GL_TESS_CONTROL_SHADER>;
+    using tevl_program = shaderprogram<GL_TESS_EVALUATION_SHADER>;
+    using geom_program = shaderprogram<GL_GEOMETRY_SHADER>;
+    using frag_program = shaderprogram<GL_FRAGMENT_SHADER>;
+    using comp_program = shaderprogram<GL_COMPUTE_SHADER>;
 }
