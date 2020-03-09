@@ -58,6 +58,13 @@ namespace cgl {
             id = glCreateShader(mode);
         }
 
+        shader(GLenum mode, const std::string &src) : shader(mode) {
+            set_source(src);
+
+            if (!compile())
+                throw shader_error(get_info_log());
+        }
+
         shader(shader &) = delete;
 
         shader(shader &&o) noexcept {
@@ -160,6 +167,17 @@ namespace cgl {
             glProgramParameteri(id, GL_PROGRAM_SEPARABLE, GL_TRUE);
         }
 
+        shaderprogram(GLenum mode, const std::string &src) : shaderprogram(mode) {
+            shader sh(mode, src);
+
+            attach(sh);
+
+            if (!link())
+                throw shader_error(get_info_log());
+
+            detach(sh);
+        }
+
         shaderprogram(shaderprogram &&o) noexcept : program(std::move(o)) {
             mode = o.mode;
         }
@@ -211,6 +229,8 @@ namespace cgl {
             case GL_FRAGMENT_SHADER:
                 bits = GL_FRAGMENT_SHADER_BIT;
                 break;
+            default:
+                throw std::domain_error("invalid shaderprogram mode");
             }
 
             glUseProgramStages(id, bits, pgm);
@@ -230,37 +250,11 @@ namespace cgl {
         }
     };
 
-    shader compile_shader(GLenum mode, const std::string &src) {
-        shader res(mode);
-
-        res.set_source(src);
-
-        if (!res.compile())
-            throw shader_error(res.get_info_log());
-
-        return res;
+    shader compile_shader(GLenum mode, const std::string &file) {
+        return shader(mode, utilReadFile(file));
     }
 
-    shader compile_shader_file(GLenum mode, const std::string &file) {
-        return compile_shader(mode, utilReadFile(file));
-    }
-
-    shaderprogram compile_shaderprogram(GLenum mode, const std::string &src) {
-        shader sh = compile_shader(mode, src);
-
-        shaderprogram res(mode);
-
-        res.attach(sh);
-
-        if (!res.link())
-            throw shader_error(res.get_info_log());
-
-        res.detach(sh);
-
-        return res;
-    }
-
-    shaderprogram compile_shaderprogram_file(GLenum mode, const std::string &file) {
-        return compile_shaderprogram(mode, utilReadFile(file));
+    shaderprogram compile_shaderprogram(GLenum mode, const std::string &file) {
+        return shaderprogram(mode, utilReadFile(file));
     }
 }
