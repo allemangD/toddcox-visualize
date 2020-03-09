@@ -7,12 +7,21 @@
 namespace cgl {
     template<class T>
     class buffer {
-        GLuint id;
+        GLuint id{};
 
     public:
-        buffer() : id(0) {
+        buffer() {
             glCreateBuffers(1, &id);
-            std::cout << "create " << id << std::endl;
+        }
+
+        buffer(const T &data, GLenum usage = GL_STATIC_DRAW)
+            : buffer() {
+            put(data, usage);
+        }
+
+        buffer(const std::vector<T> &data, GLenum usage = GL_STATIC_DRAW)
+            : buffer() {
+            put(data, usage);
         }
 
         buffer(buffer &) = delete;
@@ -29,15 +38,23 @@ namespace cgl {
         operator GLuint() const {
             return id;
         }
+
+        void put(const T &data, GLenum usage = GL_STATIC_DRAW) {
+            glNamedBufferData(id, sizeof(T), &data, usage);
+        }
+
+        void put(const std::vector<T> &data, GLenum usage = GL_STATIC_DRAW) {
+            glNamedBufferData(id, sizeof(T) * data.size(), &data[0], usage);
+        }
     };
 
     class shader {
     protected:
-        GLuint id;
+        GLuint id{};
         GLenum mode;
 
     public:
-        shader(GLenum mode) : mode(mode), id(0) {
+        shader(GLenum mode) : mode(mode) {
             id = glCreateShader(mode);
         }
 
@@ -86,10 +103,10 @@ namespace cgl {
 
     class program {
     protected:
-        GLuint id;
+        GLuint id{};
 
     public:
-        program() : id(0) {
+        program() {
             id = glCreateProgram();
         }
 
@@ -154,10 +171,10 @@ namespace cgl {
 
     class pipeline {
     protected:
-        GLuint id;
+        GLuint id{};
 
     public:
-        pipeline() : id(0) {
+        pipeline() {
             glCreateProgramPipelines(1, &id);
         }
 

@@ -128,14 +128,9 @@ void run(GLFWwindow *window) {
 
     //endregion
 
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec4) * points.size(), &points[0], GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    cgl::buffer<glm::vec4> vbo(points);
 
-    GLuint ubo;
-    glGenBuffers(1, &ubo);
+    cgl::buffer<Matrices> ubo;
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbo);
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
@@ -151,9 +146,7 @@ void run(GLFWwindow *window) {
 
         auto st = (float) glfwGetTime() / 8;
         Matrices mats = build(window, st);
-        glBindBuffer(GL_UNIFORM_BUFFER, ubo);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(mats), &mats, GL_STATIC_DRAW);
-        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+        ubo.put(mats);
 
         glLineWidth(1.5);
         const auto wires_dark = glm::vec3(.3, .3, .3);
