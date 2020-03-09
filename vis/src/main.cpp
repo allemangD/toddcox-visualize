@@ -11,6 +11,8 @@
 #include "mirror.hpp"
 #include "geometry.hpp"
 
+#include <cgl/render.hpp>
+
 #ifdef _WIN32
 extern "C" {
 __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x00000001;
@@ -42,9 +44,6 @@ struct MeshRef {
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, ibo);
         glBufferData(GL_ARRAY_BUFFER, sizeof(Primitive<N>) * primitive_count, &mesh.prims[0], GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribIPointer(0, N, GL_INT, 0, nullptr);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
 };
@@ -75,74 +74,34 @@ Matrices build(GLFWwindow *window, float st) {
     return Matrices(proj, view);
 }
 
-int main(int argc, char *argv[]) {
-    //region init window
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    auto window = glfwCreateWindow(
-        1920, 1080,
-        "Coset Visualization",
-        nullptr, nullptr);
-
-    if (!window) {
-        std::cerr << "Failed to create window" << std::endl;
-        glfwTerminate();
-        exit(EXIT_FAILURE);
-    }
-
-    glfwMakeContextCurrent(window);
-    gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
-    glfwSwapInterval(0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glfwSwapBuffers(window);
-    //endregion
-
-    std::cout << utilInfo();
-
+void run(GLFWwindow *window) {
     glEnable(GL_PROGRAM_POINT_SIZE);
     glEnable(GL_POINT_SMOOTH);
     glEnable(GL_DEPTH_TEST);
 //    glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
-    //region shaders
-    GLuint slice_pipe;
-    glCreateProgramPipelines(1, &slice_pipe);
+    auto defer = cgl::compile_shaderprogram_file(
+        GL_VERTEX_SHADER, "shaders/slice/deferred.vs.glsl");
+    auto direct_ortho = cgl::compile_shaderprogram_file(
+        GL_VERTEX_SHADER, "shaders/direct-ortho.vs.glsl");
+    auto direct_stereo = cgl::compile_shaderprogram_file(
+        GL_VERTEX_SHADER, "shaders/direct-stereo.vs.glsl");
 
-    GLuint proj_pipe;
-    glCreateProgramPipelines(1, &proj_pipe);
+    auto slice = cgl::compile_shaderprogram_file(
+        GL_GEOMETRY_SHADER, "shaders/slice/slice.gm.glsl");
+    auto curve_stereo = cgl::compile_shaderprogram_file(
+        GL_GEOMETRY_SHADER, "shaders/curve-stereo.gm.glsl");
+    auto curve_ortho = cgl::compile_shaderprogram_file(
+        GL_GEOMETRY_SHADER, "shaders/curve-ortho.gm.glsl");
 
-    GLuint defer, direct_ortho, direct_stereo;
-    GLuint slice, curve_ortho, curve_stereo;
-    GLuint solid;
+    auto solid = cgl::compile_shaderprogram_file(
+        GL_FRAGMENT_SHADER, "shaders/solid.fs.glsl");
 
-    try {
-        defer = utilCreateShaderProgramFile(GL_VERTEX_SHADER, {"shaders/slice/deferred.vs.glsl"});
-        direct_ortho = utilCreateShaderProgramFile(GL_VERTEX_SHADER, {"shaders/direct-ortho.vs.glsl"});
-        direct_stereo = utilCreateShaderProgramFile(GL_VERTEX_SHADER, {"shaders/direct-stereo.vs.glsl"});
-
-        slice = utilCreateShaderProgramFile(GL_GEOMETRY_SHADER, {"shaders/slice/slice.gm.glsl"});
-        curve_stereo = utilCreateShaderProgramFile(GL_GEOMETRY_SHADER, {"shaders/curve-stereo.gm.glsl"});
-        curve_ortho = utilCreateShaderProgramFile(GL_GEOMETRY_SHADER, {"shaders/curve-ortho.gm.glsl"});
-
-        solid = utilCreateShaderProgramFile(GL_FRAGMENT_SHADER, {"shaders/solid.fs.glsl"});
-
-        glUseProgramStages(proj_pipe, GL_VERTEX_SHADER_BIT, direct_stereo);
-//        glUseProgramStages(proj_pipe, GL_GEOMETRY_SHADER_BIT, curve_stereo);
-        glUseProgramStages(proj_pipe, GL_FRAGMENT_SHADER_BIT, solid);
-
-        glUseProgramStages(slice_pipe, GL_VERTEX_SHADER_BIT, defer);
-        glUseProgramStages(slice_pipe, GL_GEOMETRY_SHADER_BIT, slice);
-        glUseProgramStages(slice_pipe, GL_FRAGMENT_SHADER_BIT, solid);
-    } catch (const gl_error &e) {
-        std::cerr << e.what() << std::endl;
-        glfwTerminate();
-        exit(EXIT_FAILURE);
-    }
-    //endregion
+    cgl::pipeline proj_pipe;
+    proj_pipe.use_stages(direct_stereo);
+    proj_pipe.use_stages(curve_stereo);
+    proj_pipe.use_stages(solid);
 
     //region points
     auto group = tc::group::H(4);
@@ -165,16 +124,6 @@ int main(int argc, char *argv[]) {
         const auto s = triangulate<WIRES_N>(group, sg_gens).tile(group, g_gens, sg_gens);
 
         wires.emplace_back(s);
-    }
-
-    const unsigned SLICES_N = 4;
-    const GLenum SLICES_MODE = GL_POINTS;
-    std::vector<MeshRef<SLICES_N>> slices;
-
-    for (const auto &sg_gens : Combos(g_gens, SLICES_N - 1)) {
-        const auto s = triangulate<SLICES_N>(group, sg_gens).tile(group, g_gens, sg_gens);
-
-        slices.emplace_back(s);
     }
 
     //endregion
@@ -206,33 +155,16 @@ int main(int argc, char *argv[]) {
         glBufferData(GL_UNIFORM_BUFFER, sizeof(mats), &mats, GL_STATIC_DRAW);
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-        const auto wires_dark = glm::vec3(.3, .3,.3);
+        glLineWidth(1.5);
+        const auto wires_dark = glm::vec3(.3, .3, .3);
         const auto wires_light = wires_dark;
         glBindProgramPipeline(proj_pipe);
-        for (int i = 0; i < wires.size(); i++) {
-            const auto &ref = wires[i];
-
-            const float f = factor(i, slices.size());
-            glm::vec3 c = glm::mix(wires_dark, wires_light, f);
-            glProgramUniform3f(solid, 2, c.r, c.g, c.b);
+        for (auto ref : wires) {
+            glProgramUniform3f(solid, 2, 1, 1, 1);
 
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ref.ibo);
             glDrawElements(WIRE_MODE, ref.index_count, GL_UNSIGNED_INT, nullptr);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        }
-
-        const auto slice_dark = glm::vec3(.5, .3, .7);
-        const auto slice_light = glm::vec3(.9, .9, .95);
-        glBindProgramPipeline(slice_pipe);
-        for (int i = 0; i < slices.size(); i++) {
-            const auto &ref = slices[i];
-
-            const float f = factor(i, slices.size());
-            glm::vec3 c = glm::mix(slice_dark, slice_light, f);
-            glProgramUniform3f(solid, 2, c.r, c.g, c.b);
-
-            glBindVertexArray(ref.vao);
-            glDrawArrays(SLICES_MODE, 0, ref.primitive_count);
         }
 
         glBindProgramPipeline(0);
@@ -242,6 +174,36 @@ int main(int argc, char *argv[]) {
 
         glfwPollEvents();
     }
+}
+
+int main(int argc, char *argv[]) {
+    //region init window
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    auto window = glfwCreateWindow(
+        1920, 1080,
+        "Coset Visualization",
+        nullptr, nullptr);
+
+    if (!window) {
+        std::cerr << "Failed to create window" << std::endl;
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
+
+    glfwMakeContextCurrent(window);
+    gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
+    glfwSwapInterval(1);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glfwSwapBuffers(window);
+    //endregion
+
+    std::cout << utilInfo();
+
+    run(window);
 
     glfwTerminate();
     return EXIT_SUCCESS;
