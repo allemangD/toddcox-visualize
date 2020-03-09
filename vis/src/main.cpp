@@ -91,10 +91,11 @@ void run(GLFWwindow *window) {
 
     auto solid = cgl::pgm::frag::file("shaders/solid.fs.glsl");
 
-    cgl::pipeline proj_pipe;
-    proj_pipe.use_stages(direct_stereo);
-    proj_pipe.use_stages(curve_stereo);
-    proj_pipe.use_stages(solid);
+    auto proj_pipe = cgl::pipeline();
+    proj_pipe
+        .stage(direct_stereo)
+        .stage(curve_stereo)
+        .stage(solid);
 
     //region points
     auto group = tc::group::H(4);

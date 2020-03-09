@@ -8,7 +8,7 @@
 #include "combo_iterator.hpp"
 
 /**
- * An primitive with N indices.
+ * An primitive stage N indices.
  * @tparam N
  */
 template<unsigned N>

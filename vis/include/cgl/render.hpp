@@ -206,30 +206,6 @@ namespace cgl {
             return id;
         }
 
-        void use_stages(const shaderprogram<GL_VERTEX_SHADER> &pgm) {
-            glUseProgramStages(id, GL_VERTEX_SHADER_BIT, pgm);
-        }
-
-        void use_stages(const shaderprogram<GL_TESS_CONTROL_SHADER> &pgm) {
-            glUseProgramStages(id, GL_TESS_CONTROL_SHADER_BIT, pgm);
-        }
-
-        void use_stages(const shaderprogram<GL_TESS_EVALUATION_SHADER> &pgm) {
-            glUseProgramStages(id, GL_TESS_EVALUATION_SHADER_BIT, pgm);
-        }
-
-        void use_stages(const shaderprogram<GL_GEOMETRY_SHADER> &pgm) {
-            glUseProgramStages(id, GL_GEOMETRY_SHADER_BIT, pgm);
-        }
-
-        void use_stages(const shaderprogram<GL_FRAGMENT_SHADER> &pgm) {
-            glUseProgramStages(id, GL_FRAGMENT_SHADER_BIT, pgm);
-        }
-
-        void use_stages(const shaderprogram<GL_COMPUTE_SHADER> &pgm) {
-            glUseProgramStages(id, GL_COMPUTE_SHADER_BIT, pgm);
-        }
-
         [[nodiscard]] int get(GLenum pname) const {
             GLint res;
             glGetProgramPipelineiv(id, pname, &res);
@@ -241,6 +217,36 @@ namespace cgl {
             char buffer[len];
             glGetProgramPipelineInfoLog(id, len, nullptr, buffer);
             return std::string(buffer);
+        }
+
+        pipeline &stage(const shaderprogram<GL_VERTEX_SHADER> &pgm) {
+            glUseProgramStages(id, GL_VERTEX_SHADER_BIT, pgm);
+            return *this;
+        }
+
+        pipeline &stage(const shaderprogram<GL_TESS_CONTROL_SHADER> &pgm) {
+            glUseProgramStages(id, GL_TESS_CONTROL_SHADER_BIT, pgm);
+            return *this;
+        }
+
+        pipeline &stage(const shaderprogram<GL_TESS_EVALUATION_SHADER> &pgm) {
+            glUseProgramStages(id, GL_TESS_EVALUATION_SHADER_BIT, pgm);
+            return *this;
+        }
+
+        pipeline &stage(const shaderprogram<GL_GEOMETRY_SHADER> &pgm) {
+            glUseProgramStages(id, GL_GEOMETRY_SHADER_BIT, pgm);
+            return *this;
+        }
+
+        pipeline &stage(const shaderprogram<GL_FRAGMENT_SHADER> &pgm) {
+            glUseProgramStages(id, GL_FRAGMENT_SHADER_BIT, pgm);
+            return *this;
+        }
+
+        pipeline &stage(const shaderprogram<GL_COMPUTE_SHADER> &pgm) {
+            glUseProgramStages(id, GL_COMPUTE_SHADER_BIT, pgm);
+            return *this;
         }
     };
 
