@@ -12,3 +12,8 @@ add_executable(vis src/main.cpp)
 target_include_directories(vis PRIVATE include)
 target_link_libraries(vis PRIVATE tc glad glm glfw)
 add_dependencies(vis shaders)
+
+add_executable(test src/test.cpp)
+target_include_directories(test PRIVATE include)
+target_link_libraries(test PRIVATE tc glad glm glfw)
+add_dependencies(test shaders)

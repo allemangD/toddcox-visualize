@@ -46,6 +46,12 @@ namespace cgl {
         void put(const std::vector<T> &data, GLenum usage = GL_STATIC_DRAW) {
             glNamedBufferData(id, sizeof(T) * data.size(), &data[0], usage);
         }
+
+        void bound(GLenum target, const std::function<void()> &action) const {
+            glBindBuffer(target, id);
+            action();
+            glBindBuffer(target, 0);
+        }
     };
 
     template<GLenum mode>
@@ -248,7 +254,22 @@ namespace cgl {
             glUseProgramStages(id, GL_COMPUTE_SHADER_BIT, pgm);
             return *this;
         }
+
+        void bound(const std::function<void()> &action) const {
+            glBindProgramPipeline(id);
+            action();
+            glBindProgramPipeline(0);
+        }
     };
+
+    namespace sh {
+        using vert = shader<GL_VERTEX_SHADER>;
+        using tcs = shader<GL_TESS_CONTROL_SHADER>;
+        using tes = shader<GL_TESS_EVALUATION_SHADER>;
+        using geom = shader<GL_GEOMETRY_SHADER>;
+        using frag = shader<GL_FRAGMENT_SHADER>;
+        using comp = shader<GL_COMPUTE_SHADER>;
+    }
 
     namespace pgm {
         using vert = shaderprogram<GL_VERTEX_SHADER>;
@@ -258,4 +279,34 @@ namespace cgl {
         using frag = shaderprogram<GL_FRAGMENT_SHADER>;
         using comp = shaderprogram<GL_COMPUTE_SHADER>;
     }
+
+    class vertexarray {
+        GLuint id{};
+
+    public:
+        vertexarray() {
+            glCreateVertexArrays(1, &id);
+        }
+
+        vertexarray(vertexarray &) = delete;
+
+        vertexarray(vertexarray &&o) noexcept {
+            id = std::exchange(o.id, 0);
+        }
+
+        ~vertexarray() {
+            glDeleteVertexArrays(1, &id);
+            id = 0;
+        }
+
+        operator GLuint() const {
+            return id;
+        }
+
+        void bound(const std::function<void()> &action) const {
+            glBindVertexArray(id);
+            action();
+            glBindVertexArray(0);
+        }
+    };
 }
