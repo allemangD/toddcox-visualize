@@ -81,22 +81,15 @@ void run(GLFWwindow *window) {
 //    glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
-    auto defer = cgl::vert_program(
-        utilReadFile("shaders/slice/deferred.vs.glsl"));
-    auto direct_ortho = cgl::vert_program(
-        utilReadFile("shaders/direct-ortho.vs.glsl"));
-    auto direct_stereo = cgl::vert_program(
-        utilReadFile("shaders/direct-stereo.vs.glsl"));
+    auto defer = cgl::pgm::vert::file("shaders/slice/deferred.vs.glsl");
+    auto direct_ortho = cgl::pgm::vert::file("shaders/direct-ortho.vs.glsl");
+    auto direct_stereo = cgl::pgm::vert::file("shaders/direct-stereo.vs.glsl");
 
-    auto slice = cgl::geom_program(
-        utilReadFile("shaders/slice/slice.gm.glsl"));
-    auto curve_stereo = cgl::geom_program(
-        utilReadFile("shaders/curve-stereo.gm.glsl"));
-    auto curve_ortho = cgl::geom_program(
-        utilReadFile("shaders/curve-ortho.gm.glsl"));
+    auto slice = cgl::pgm::geom::file("shaders/slice/slice.gm.glsl");
+    auto curve_stereo = cgl::pgm::geom::file("shaders/curve-stereo.gm.glsl");
+    auto curve_ortho = cgl::pgm::geom::file("shaders/curve-ortho.gm.glsl");
 
-    auto solid = cgl::frag_program(
-        utilReadFile("shaders/solid.fs.glsl"));
+    auto solid = cgl::pgm::frag::file("shaders/solid.fs.glsl");
 
     cgl::pipeline proj_pipe;
     proj_pipe.use_stages(direct_stereo);

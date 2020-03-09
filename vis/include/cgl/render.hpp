@@ -65,6 +65,10 @@ namespace cgl {
                 throw shader_error(get_info_log());
         }
 
+        static shader<mode> file(const std::string &name) {
+            return shader<mode>(utilReadFile(name));
+        }
+
         shader(shader &) = delete;
 
         shader(shader &&o) noexcept {
@@ -172,6 +176,10 @@ namespace cgl {
 
             detach(sh);
         }
+
+        static shaderprogram<mode> file(const std::string &name) {
+            return shaderprogram<mode>(utilReadFile(name));
+        }
     };
 
     class pipeline {
@@ -236,17 +244,12 @@ namespace cgl {
         }
     };
 
-    using vert_shader = shader<GL_VERTEX_SHADER>;
-    using tctl_shader = shader<GL_TESS_CONTROL_SHADER>;
-    using tevl_shader = shader<GL_TESS_EVALUATION_SHADER>;
-    using geom_shader = shader<GL_GEOMETRY_SHADER>;
-    using frag_shader = shader<GL_FRAGMENT_SHADER>;
-    using comp_shader = shader<GL_COMPUTE_SHADER>;
-
-    using vert_program = shaderprogram<GL_VERTEX_SHADER>;
-    using tctl_program = shaderprogram<GL_TESS_CONTROL_SHADER>;
-    using tevl_program = shaderprogram<GL_TESS_EVALUATION_SHADER>;
-    using geom_program = shaderprogram<GL_GEOMETRY_SHADER>;
-    using frag_program = shaderprogram<GL_FRAGMENT_SHADER>;
-    using comp_program = shaderprogram<GL_COMPUTE_SHADER>;
+    namespace pgm {
+        using vert = shaderprogram<GL_VERTEX_SHADER>;
+        using tcs = shaderprogram<GL_TESS_CONTROL_SHADER>;
+        using tes = shaderprogram<GL_TESS_EVALUATION_SHADER>;
+        using geom = shaderprogram<GL_GEOMETRY_SHADER>;
+        using frag = shaderprogram<GL_FRAGMENT_SHADER>;
+        using comp = shaderprogram<GL_COMPUTE_SHADER>;
+    }
 }
