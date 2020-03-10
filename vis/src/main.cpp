@@ -129,6 +129,7 @@ void run(GLFWwindow *window) {
     auto curve_ortho = cgl::pgm::geom::file("shaders/curve-ortho.gm.glsl");
 
     auto solid = cgl::pgm::frag::file("shaders/solid.fs.glsl");
+    auto diffuse = cgl::pgm::frag::file("shaders/diffuse.fs.glsl");
 
     auto proj_pipe = cgl::pipeline();
     proj_pipe
@@ -139,7 +140,7 @@ void run(GLFWwindow *window) {
     slice_pipe
         .stage(defer)
         .stage(slice)
-        .stage(solid);
+        .stage(diffuse);
 
     //region points
     auto group = tc::group::F4();
@@ -157,11 +158,16 @@ void run(GLFWwindow *window) {
     auto wire_data = merge(poly_parts<2>(group));
     DirectMesh<2> wires(GL_LINES, wire_data);
 
+    const auto slice_dark = glm::vec3(.5, .3, .7);
+    const auto slice_light = glm::vec3(.9, .9, .95);
+
     const auto slice_parts = poly_parts<4>(group);
     auto slice_data = merge(slice_parts);
     auto slice_colors = std::vector<glm::vec4>(slice_data.size());
     for (int i = 0, k = 0; i < slice_parts.size(); ++i) {
-        glm::vec3 color((float) i / (float) (slice_parts.size() - 1));
+        auto fac = factor(i, slice_parts.size());
+        glm::vec3 color = glm::mix(slice_dark, slice_light, fac);
+
         for (int j = 0; j < slice_parts[i].size(); ++j, ++k) {
             slice_colors[k] = glm::vec4(color, 1);
         }
@@ -191,9 +197,10 @@ void run(GLFWwindow *window) {
 
         glLineWidth(1.5);
 
-//        proj_pipe.bound([&]() {
-//            wires.draw();
-//        });
+        glProgramUniform3f(solid, 2, 0.3, 0.3, 0.3);
+        proj_pipe.bound([&]() {
+            wires.draw();
+        });
 
         slice_pipe.bound([&]() {
             slices.draw();
