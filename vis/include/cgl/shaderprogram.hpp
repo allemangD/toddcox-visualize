@@ -13,34 +13,34 @@
 
 namespace cgl{
     template<GLenum mode>
-    class shaderprogram : public program {
+    class ShaderProgram : public Program {
     public:
-        shaderprogram() : program() {
+        ShaderProgram() : Program() {
             glProgramParameteri(id, GL_PROGRAM_SEPARABLE, GL_TRUE);
         }
 
-        shaderprogram(const std::string &src) : shaderprogram() {
-            shader<mode> sh(src);
+        ShaderProgram(const std::string &src) : ShaderProgram() {
+            Shader<mode> sh(src);
 
             attach(sh);
 
             if (!link())
-                throw shader_error(get_info_log());
+                throw ShaderError(get_info_log());
 
             detach(sh);
         }
 
-        static shaderprogram<mode> file(const std::string &name) {
-            return shaderprogram<mode>(utilReadFile(name));
+        static ShaderProgram<mode> file(const std::string &name) {
+            return ShaderProgram<mode>(utilReadFile(name));
         }
     };
 
     namespace pgm {
-        using vert = shaderprogram<GL_VERTEX_SHADER>;
-        using tcs = shaderprogram<GL_TESS_CONTROL_SHADER>;
-        using tes = shaderprogram<GL_TESS_EVALUATION_SHADER>;
-        using geom = shaderprogram<GL_GEOMETRY_SHADER>;
-        using frag = shaderprogram<GL_FRAGMENT_SHADER>;
-        using comp = shaderprogram<GL_COMPUTE_SHADER>;
+        using vert = ShaderProgram<GL_VERTEX_SHADER>;
+        using tcs = ShaderProgram<GL_TESS_CONTROL_SHADER>;
+        using tes = ShaderProgram<GL_TESS_EVALUATION_SHADER>;
+        using geom = ShaderProgram<GL_GEOMETRY_SHADER>;
+        using frag = ShaderProgram<GL_FRAGMENT_SHADER>;
+        using comp = ShaderProgram<GL_COMPUTE_SHADER>;
     }
 }

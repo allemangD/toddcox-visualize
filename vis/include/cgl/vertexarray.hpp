@@ -10,21 +10,21 @@
 #include <cgl/buffer.hpp>
 
 namespace cgl {
-    class vertexarray {
+    class VertexArray {
         GLuint id{};
 
     public:
-        vertexarray() {
+        VertexArray() {
             glCreateVertexArrays(1, &id);
         }
 
-        vertexarray(vertexarray &) = delete;
+        VertexArray(VertexArray &) = delete;
 
-        vertexarray(vertexarray &&o) noexcept {
+        VertexArray(VertexArray &&o) noexcept {
             id = std::exchange(o.id, 0);
         }
 
-        ~vertexarray() {
+        ~VertexArray() {
             glDeleteVertexArrays(1, &id);
             id = 0;
         }
@@ -42,7 +42,7 @@ namespace cgl {
         template<class T>
         void pointer(
             GLuint index,
-            const buffer<T> &buf,
+            const Buffer<T> &buf,
             unsigned size,
             GLenum type,
             bool normalized = false,
@@ -59,7 +59,7 @@ namespace cgl {
         template<class T>
         void ipointer(
             GLuint index,
-            const buffer<T> &buf,
+            const Buffer<T> &buf,
             unsigned size,
             GLenum type,
             unsigned stride = 0

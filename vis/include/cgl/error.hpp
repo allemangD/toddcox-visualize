@@ -5,24 +5,24 @@
 #include <glad/glad.h>
 
 namespace cgl {
-    class gl_error : public std::domain_error {
+    class GlError : public std::domain_error {
     public:
-        explicit gl_error(const std::string &arg) : domain_error(arg) {}
+        explicit GlError(const std::string &arg) : domain_error(arg) {}
 
-        explicit gl_error(const char *string) : domain_error(string) {}
+        explicit GlError(const char *string) : domain_error(string) {}
     };
 
-    class shader_error : public gl_error {
+    class ShaderError : public GlError {
     public:
-        explicit shader_error(const std::string &arg) : gl_error(arg) {}
+        explicit ShaderError(const std::string &arg) : GlError(arg) {}
 
-        explicit shader_error(const char *string) : gl_error(string) {}
+        explicit ShaderError(const char *string) : GlError(string) {}
     };
 
-    class program_error : public gl_error {
+    class ProgramError : public GlError {
     public:
-        explicit program_error(const std::string &arg) : gl_error(arg) {}
+        explicit ProgramError(const std::string &arg) : GlError(arg) {}
 
-        explicit program_error(const char *string) : gl_error(string) {}
+        explicit ProgramError(const char *string) : GlError(string) {}
     };
 }

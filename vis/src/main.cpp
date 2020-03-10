@@ -33,9 +33,9 @@ struct Matrices {
 template<unsigned N, class V>
 struct Drawable {
     GLenum mode{};
-    cgl::vertexarray vao{};
-    cgl::buffer<Primitive<N>> ibo{};
-    cgl::buffer<V> vbo{};
+    cgl::VertexArray vao{};
+    cgl::Buffer<Primitive<N>> ibo{};
+    cgl::Buffer<V> vbo{};
 
     Drawable(GLenum mode) : mode(mode), vao(), ibo(), vbo() {}
 
@@ -179,10 +179,10 @@ void run(GLFWwindow *window) {
     slices.vao.ipointer(0, slices.ibo, 4, GL_UNSIGNED_INT);
     slices.vao.pointer(1, slices.vbo, 3, GL_FLOAT);
 
-    auto vbo = cgl::buffer<glm::vec4>(points(group));
+    auto vbo = cgl::Buffer<glm::vec4>(points(group));
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbo);
 
-    auto ubo = cgl::buffer<Matrices>();
+    auto ubo = cgl::Buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
 
     while (!glfwWindowShouldClose(window)) {

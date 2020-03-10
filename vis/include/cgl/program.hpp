@@ -11,22 +11,22 @@
 #include <util.hpp>
 
 namespace cgl {
-    class program {
+    class Program {
     protected:
         GLuint id{};
 
     public:
-        program() {
+        Program() {
             id = glCreateProgram();
         }
 
-        program(program &) = delete;
+        Program(Program &) = delete;
 
-        program(program &&o) noexcept {
+        Program(Program &&o) noexcept {
             id = std::exchange(o.id, 0);
         };
 
-        ~program() {
+        ~Program() {
             glDeleteProgram(id);
         }
 
@@ -48,12 +48,12 @@ namespace cgl {
         }
 
         template<GLenum mode>
-        void attach(const shader<mode> &sh) {
+        void attach(const Shader<mode> &sh) {
             glAttachShader(id, sh);
         }
 
         template<GLenum mode>
-        void detach(const shader<mode> &sh) {
+        void detach(const Shader<mode> &sh) {
             glDetachShader(id, sh);
         }
 

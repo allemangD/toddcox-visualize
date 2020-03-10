@@ -6,31 +6,31 @@
 
 namespace cgl {
     template<class T>
-    class buffer {
+    class Buffer {
         GLuint id{};
 
     public:
-        buffer() {
+        Buffer() {
             glCreateBuffers(1, &id);
         }
 
-        buffer(const T &data, GLenum usage = GL_STATIC_DRAW)
-            : buffer() {
+        Buffer(const T &data, GLenum usage = GL_STATIC_DRAW)
+            : Buffer() {
             put(data, usage);
         }
 
-        buffer(const std::vector<T> &data, GLenum usage = GL_STATIC_DRAW)
-            : buffer() {
+        Buffer(const std::vector<T> &data, GLenum usage = GL_STATIC_DRAW)
+            : Buffer() {
             put(data, usage);
         }
 
-        buffer(buffer &) = delete;
+        Buffer(Buffer &) = delete;
 
-        buffer(buffer &&o) noexcept {
+        Buffer(Buffer &&o) noexcept {
             id = std::exchange(o.id, 0);
         };
 
-        ~buffer() {
+        ~Buffer() {
             glDeleteBuffers(1, &id);
             id = 0;
         }

@@ -11,33 +11,33 @@
 
 namespace cgl {
     template<GLenum mode>
-    class shader {
+    class Shader {
     protected:
         GLuint id{};
 
     public:
-        shader() {
+        Shader() {
             id = glCreateShader(mode);
         }
 
-        shader(const std::string &src) : shader() {
+        Shader(const std::string &src) : Shader() {
             set_source(src);
 
             if (!compile())
-                throw shader_error(get_info_log());
+                throw ShaderError(get_info_log());
         }
 
-        static shader<mode> file(const std::string &name) {
-            return shader<mode>(utilReadFile(name));
+        static Shader<mode> file(const std::string &name) {
+            return Shader<mode>(utilReadFile(name));
         }
 
-        shader(shader &) = delete;
+        Shader(Shader &) = delete;
 
-        shader(shader &&o) noexcept {
+        Shader(Shader &&o) noexcept {
             id = std::exchange(o.id, 0);
         };
 
-        ~shader() {
+        ~Shader() {
             glDeleteShader(id);
         }
 
@@ -70,11 +70,11 @@ namespace cgl {
     };
 
     namespace sh {
-        using vert = shader<GL_VERTEX_SHADER>;
-        using tcs = shader<GL_TESS_CONTROL_SHADER>;
-        using tes = shader<GL_TESS_EVALUATION_SHADER>;
-        using geom = shader<GL_GEOMETRY_SHADER>;
-        using frag = shader<GL_FRAGMENT_SHADER>;
-        using comp = shader<GL_COMPUTE_SHADER>;
+        using vert = Shader<GL_VERTEX_SHADER>;
+        using tcs = Shader<GL_TESS_CONTROL_SHADER>;
+        using tes = Shader<GL_TESS_EVALUATION_SHADER>;
+        using geom = Shader<GL_GEOMETRY_SHADER>;
+        using frag = Shader<GL_FRAGMENT_SHADER>;
+        using comp = Shader<GL_COMPUTE_SHADER>;
     }
 }
