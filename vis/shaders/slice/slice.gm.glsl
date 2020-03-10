@@ -13,8 +13,10 @@ layout(std140, binding=1) uniform Matrices {
 };
 
 in ivec4 vInds[];
+in vec4 vCol[];
 
 out vec4 pos;
+out vec4 col;
 
 out gl_PerVertex {
     vec4 gl_Position;
@@ -26,6 +28,7 @@ float unmix(float u, float v) {
 
 void emit(vec4 v) {
     pos = v;
+    col = vCol[0];
     gl_Position = proj * vec4(v.xyz, 1);
     EmitVertex();
 }

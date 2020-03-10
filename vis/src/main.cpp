@@ -51,7 +51,7 @@ struct DeferredMesh {
     cgl::vertexarray vao;
     cgl::buffer<Primitive<N>> ibo;
 
-    explicit DeferredMesh(const Mesh<N> &mesh)
+    explicit DeferredMesh(const Mesh<N> &mesh, const cgl::buffer<glm::vec4> &color)
         : ibo(), vao() {
 
         ibo.put(mesh.prims);
@@ -60,6 +60,10 @@ struct DeferredMesh {
             ibo.bound(GL_ARRAY_BUFFER, [&]() {
                 glEnableVertexAttribArray(0);
                 glVertexAttribIPointer(0, N, GL_INT, 0, nullptr);
+            });
+            color.bound(GL_ARRAY_BUFFER, [&]() {
+                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, nullptr);
             });
         });
     }
@@ -153,8 +157,17 @@ void run(GLFWwindow *window) {
     auto wire_data = merge(poly_parts<2>(group));
     DirectMesh<2> wires(GL_LINES, wire_data);
 
-    auto slice_data = merge(poly_parts<4>(group));
-    DeferredMesh<4> slices(slice_data);
+    const auto slice_parts = poly_parts<4>(group);
+    auto slice_data = merge(slice_parts);
+    auto slice_colors = std::vector<glm::vec4>(slice_data.size());
+    for (int i = 0, k = 0; i < slice_parts.size(); ++i) {
+        glm::vec3 color((float) i / (float) (slice_parts.size() - 1));
+        for (int j = 0; j < slice_parts[i].size(); ++j, ++k) {
+            slice_colors[k] = glm::vec4(color, 1);
+        }
+    }
+    cgl::buffer<glm::vec4> slice_colors_buf(slice_colors);
+    DeferredMesh<4> slices(slice_data, slice_colors_buf);
 
     //endregion
 
@@ -176,17 +189,12 @@ void run(GLFWwindow *window) {
         Matrices mats = build(window, st);
         ubo.put(mats);
 
-        const auto wires_dark = glm::vec3(.3, .3, .3);
-        const auto wires_light = wires_dark;
-
         glLineWidth(1.5);
 
-        glProgramUniform3f(solid, 2, 0.9, 0.9, 0.9);
-        proj_pipe.bound([&]() {
-            wires.draw();
-        });
+//        proj_pipe.bound([&]() {
+//            wires.draw();
+//        });
 
-        glProgramUniform3f(solid, 2, 0.9, 0.1, 0.1);
         slice_pipe.bound([&]() {
             slices.draw();
         });

@@ -10,8 +10,10 @@ layout(std140, binding=1) uniform Matrices {
 };
 
 layout(location=0) in ivec4 inds;
+layout(location=1) in vec4 col;
 
 out ivec4 vInds;
+out vec4 vCol;
 
 out gl_PerVertex {
     vec4 gl_Position;
@@ -20,6 +22,7 @@ out gl_PerVertex {
 
 void main() {
     vInds = inds;
+    vCol = col;
 
     vec4 pos = view * verts[vInds.x];
     gl_Position = proj * vec4(pos.xyz, 1);
