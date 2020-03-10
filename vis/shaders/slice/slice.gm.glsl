@@ -15,8 +15,9 @@ layout(std140, binding=1) uniform Matrices {
 in ivec4 vInds[];
 in vec4 vCol[];
 
-out vec4 pos;
-out vec4 col;
+layout(location=0) out vec4 pos;
+layout(location=1) out vec4 col;
+layout(location=2) out vec3 normal;
 
 out gl_PerVertex {
     vec4 gl_Position;
@@ -59,6 +60,17 @@ void main() {
         float t = unmix(a.w, b.w);
         sect[S++] = mix(a, b, t);
     }
+
+    normal = cross(sect[1].xyz - sect[0].xyz, sect[2].xyz - sect[0].xyz);
+    normal = normalize(normal);
+
+    float r = dot(normal, sect[0].xyz);
+
+    if (abs(r) < 0.001)
+        r = dot(normal, sect[0].xyz + vec3(0, 0, 1));
+
+    if (r < 0)
+        normal *= -1;
 
     for (int s = 0; s < S; ++s) {
         emit(sect[s]);

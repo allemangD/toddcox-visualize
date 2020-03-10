@@ -31,6 +31,7 @@ void main() {
     for (int i = 0; i < SUBS; i++) {
         vpos = mix(gpos[0], gpos[1], i * 1.0f / (SUBS - 1));
         vpos = normalize(vpos);
+
         gl_Position = proj * stereo(vpos);
         EmitVertex();
     }
