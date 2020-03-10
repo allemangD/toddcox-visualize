@@ -28,49 +28,37 @@ struct Matrices {
     }
 };
 
-template<unsigned N>
-struct DirectMesh {
-    cgl::buffer<Primitive<N>> ibo;
+template<unsigned N, class V>
+struct BufferMesh {
     GLenum mode;
+    std::shared_ptr<cgl::vertexarray> vao;
+    std::shared_ptr<cgl::buffer<Primitive<N>>> ibo;
+    std::shared_ptr<cgl::buffer<V>> vbo;
 
-    explicit DirectMesh(GLenum mode, const Mesh<N> &mesh)
-        : ibo(), mode(mode) {
+    BufferMesh() = delete;
 
-        ibo.put(mesh.prims);
-    }
+    BufferMesh(BufferMesh &) = delete;
 
-    void draw() const {
-        ibo.bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
-            glDrawElements(mode, ibo.count() * N, GL_UNSIGNED_INT, nullptr);
-        });
-    }
-};
+    BufferMesh(BufferMesh &&) = delete;
 
-template<unsigned N>
-struct DeferredMesh {
-    cgl::vertexarray vao;
-    cgl::buffer<Primitive<N>> ibo;
+    explicit BufferMesh(
+        GLenum mode,
+        std::shared_ptr<cgl::vertexarray> vao,
+        std::shared_ptr<cgl::buffer<Primitive<N>>> ibo,
+        std::shared_ptr<cgl::buffer<V>> vbo
+    ) : mode(mode), vao(vao), ibo(ibo), vbo(vbo) {}
 
-    explicit DeferredMesh(const Mesh<N> &mesh, const cgl::buffer<glm::vec4> &color)
-        : ibo(), vao() {
-
-        ibo.put(mesh.prims);
-
-        vao.bound([&]() {
-            ibo.bound(GL_ARRAY_BUFFER, [&]() {
-                glEnableVertexAttribArray(0);
-                glVertexAttribIPointer(0, N, GL_INT, 0, nullptr);
-            });
-            color.bound(GL_ARRAY_BUFFER, [&]() {
-                glEnableVertexAttribArray(1);
-                glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, nullptr);
-            });
+    void draw_deferred() {
+        vao->bound([&]() {
+            glDrawArrays(GL_POINTS, 0, ibo->count() * N);
         });
     }
 
-    void draw() const {
-        vao.bound([&]() {
-            glDrawArrays(GL_POINTS, 0, ibo.count() * N);
+    void draw_direct() {
+        vao->bound([&]() {
+            ibo->bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
+                glDrawElements(mode, ibo->count() * N, GL_UNSIGNED_INT, nullptr);
+            });
         });
     }
 };
@@ -113,6 +101,41 @@ std::vector<Mesh<N>> poly_parts(const tc::Group &group) {
     return parts;
 }
 
+class Shaders {
+public:
+    cgl::pgm::vert defer = cgl::pgm::vert::file(
+        "shaders/slice/deferred.vs.glsl");
+    cgl::pgm::vert direct_ortho = cgl::pgm::vert::file(
+        "shaders/direct-ortho.vs.glsl");
+    cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
+        "shaders/direct-stereo.vs.glsl");
+
+    cgl::pgm::geom slice = cgl::pgm::geom::file(
+        "shaders/slice/slice.gm.glsl");
+    cgl::pgm::geom curve_stereo = cgl::pgm::geom::file(
+        "shaders/curve-stereo.gm.glsl");
+    cgl::pgm::geom curve_ortho = cgl::pgm::geom::file(
+        "shaders/curve-ortho.gm.glsl");
+
+    cgl::pgm::frag solid = cgl::pgm::frag::file(
+        "shaders/solid.fs.glsl");
+    cgl::pgm::frag diffuse = cgl::pgm::frag::file(
+        "shaders/diffuse.fs.glsl");
+};
+
+std::vector<glm::vec4> points(const tc::Group &group) {
+    auto cosets = group.solve();
+    auto mirrors = mirror(group);
+
+    auto corners = plane_intersections(mirrors);
+
+//    auto start = barycentric(corners, {1.0f, 1.0f, 1.0f, 1.0f});
+    auto start = barycentric(corners, {1.00f, 0.2f, 0.1f, 0.05f});
+//    auto start = barycentric(corners, {0.05f, 0.1f, 0.2f, 1.00f});
+
+    return cosets.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
+}
+
 void run(GLFWwindow *window) {
     glEnable(GL_PROGRAM_POINT_SIZE);
     glEnable(GL_POINT_SMOOTH);
@@ -120,49 +143,36 @@ void run(GLFWwindow *window) {
 //    glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
-    auto defer = cgl::pgm::vert::file("shaders/slice/deferred.vs.glsl");
-    auto direct_ortho = cgl::pgm::vert::file("shaders/direct-ortho.vs.glsl");
-    auto direct_stereo = cgl::pgm::vert::file("shaders/direct-stereo.vs.glsl");
-
-    auto slice = cgl::pgm::geom::file("shaders/slice/slice.gm.glsl");
-    auto curve_stereo = cgl::pgm::geom::file("shaders/curve-stereo.gm.glsl");
-    auto curve_ortho = cgl::pgm::geom::file("shaders/curve-ortho.gm.glsl");
-
-    auto solid = cgl::pgm::frag::file("shaders/solid.fs.glsl");
-    auto diffuse = cgl::pgm::frag::file("shaders/diffuse.fs.glsl");
+    Shaders sh;
 
     auto proj_pipe = cgl::pipeline();
     proj_pipe
-        .stage(direct_stereo)
-        .stage(solid);
+        .stage(sh.direct_stereo)
+        .stage(sh.solid);
 
     auto slice_pipe = cgl::pipeline();
     slice_pipe
-        .stage(defer)
-        .stage(slice)
-        .stage(diffuse);
+        .stage(sh.defer)
+        .stage(sh.slice)
+        .stage(sh.diffuse);
 
-    //region points
     auto group = tc::group::F4();
-    auto res = group.solve();
-    auto mirrors = mirror(group);
-
-    auto corners = plane_intersections(mirrors);
-//    auto start = barycentric(corners, {1.0f, 1.0f, 1.0f, 1.0f});
-    auto start = barycentric(corners, {1.00f, 0.2f, 0.1f, 0.05f});
-//    auto start = barycentric(corners, {0.05f, 0.1f, 0.2f, 1.00f});
-    auto points = res.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
-
-    auto g_gens = gens(group);
 
     auto wire_data = merge(poly_parts<2>(group));
-    DirectMesh<2> wires(GL_LINES, wire_data);
+    BufferMesh<2, float> wires(
+        GL_LINES,
+        std::make_shared<cgl::vertexarray>(),
+        std::make_shared<cgl::buffer<Primitive<2>>(wire_data.prims()),
+        std::make_shared<cgl::buffer<float>>()
+    );
+//    DirectMesh<2> wires(GL_LINES, wire_data);
 
     const auto slice_dark = glm::vec3(.5, .3, .7);
     const auto slice_light = glm::vec3(.9, .9, .95);
 
     const auto slice_parts = poly_parts<4>(group);
     auto slice_data = merge(slice_parts);
+
     auto slice_colors = std::vector<glm::vec4>(slice_data.size());
     for (int i = 0, k = 0; i < slice_parts.size(); ++i) {
         auto fac = factor(i, slice_parts.size());
@@ -173,15 +183,13 @@ void run(GLFWwindow *window) {
         }
     }
     cgl::buffer<glm::vec4> slice_colors_buf(slice_colors);
-    DeferredMesh<4> slices(slice_data, slice_colors_buf);
 
-    //endregion
+//    DeferredMesh<4> slices(slice_data, slice_colors_buf);
 
-    cgl::buffer<glm::vec4> vbo(points);
-
-    cgl::buffer<Matrices> ubo;
-
+    auto vbo = cgl::buffer<glm::vec4>(points(group));
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbo);
+
+    auto ubo = cgl::buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
 
     while (!glfwWindowShouldClose(window)) {
@@ -197,14 +205,14 @@ void run(GLFWwindow *window) {
 
         glLineWidth(1.5);
 
-        glProgramUniform3f(solid, 2, 0.3, 0.3, 0.3);
+        glProgramUniform3f(sh.solid, 2, 0.3, 0.3, 0.3);
         proj_pipe.bound([&]() {
             wires.draw();
         });
 
-        slice_pipe.bound([&]() {
-            slices.draw();
-        });
+//        slice_pipe.bound([&]() {
+//            slices.draw();
+//        });
 
         glfwSwapInterval(2);
         glfwSwapBuffers(window);
