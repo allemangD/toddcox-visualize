@@ -11,7 +11,9 @@
 #include "mirror.hpp"
 #include "geometry.hpp"
 
-#include <cgl/render.hpp>
+#include <cgl/vertexarray.hpp>
+#include <cgl/shaderprogram.hpp>
+#include <cgl/pipeline.hpp>
 
 #ifdef _WIN32
 extern "C" {
