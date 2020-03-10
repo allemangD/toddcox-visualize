@@ -39,6 +39,16 @@ namespace cgl {
             return id;
         }
 
+        [[nodiscard]] size_t size() const {
+            GLint res;
+            glGetNamedBufferParameteriv(id, GL_BUFFER_SIZE, &res);
+            return (size_t) res;
+        }
+
+        [[nodiscard]] size_t count() const {
+            return size() / sizeof(T);
+        }
+
         void put(const T &data, GLenum usage = GL_STATIC_DRAW) {
             glNamedBufferData(id, sizeof(T), &data, usage);
         }

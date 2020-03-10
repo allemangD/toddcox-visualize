@@ -29,18 +29,45 @@ struct Matrices {
 };
 
 template<unsigned N>
-struct MeshRef {
+struct DirectMesh {
+    cgl::buffer<Primitive<N>> ibo;
+    GLenum mode;
+
+    explicit DirectMesh(GLenum mode, const Mesh<N> &mesh)
+        : ibo(), mode(mode) {
+
+        ibo.put(mesh.prims);
+    }
+
+    void draw() const {
+        ibo.bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
+            glDrawElements(mode, ibo.count() * N, GL_UNSIGNED_INT, nullptr);
+        });
+    }
+};
+
+template<unsigned N>
+struct DeferredMesh {
     cgl::vertexarray vao;
     cgl::buffer<Primitive<N>> ibo;
 
-    unsigned primitive_count;
-    unsigned index_count;
+    explicit DeferredMesh(const Mesh<N> &mesh)
+        : ibo(), vao() {
 
-    explicit MeshRef(const Mesh<N> &mesh) : vao(), ibo() {
-        primitive_count = mesh.size();
-        index_count = primitive_count * N;
+        ibo.put(mesh.prims);
 
-        ibo.put(mesh.prims);;
+        vao.bound([&]() {
+            ibo.bound(GL_ARRAY_BUFFER, [&]() {
+                glEnableVertexAttribArray(0);
+                glVertexAttribIPointer(0, N, GL_INT, 0, nullptr);
+            });
+        });
+    }
+
+    void draw() const {
+        vao.bound([&]() {
+            glDrawArrays(GL_POINTS, 0, ibo.count() * N);
+        });
     }
 };
 
@@ -70,6 +97,18 @@ Matrices build(GLFWwindow *window, float st) {
     return Matrices(proj, view);
 }
 
+template<unsigned N>
+std::vector<Mesh<N>> poly_parts(const tc::Group &group) {
+    std::vector<Mesh<N>> parts;
+    auto g_gens = gens(group);
+    for (const auto &sg_gens : Combos(g_gens, N - 1)) {
+        parts.push_back(
+            triangulate<N>(group, sg_gens).tile(group, g_gens, sg_gens)
+        );
+    }
+    return parts;
+}
+
 void run(GLFWwindow *window) {
     glEnable(GL_PROGRAM_POINT_SIZE);
     glEnable(GL_POINT_SMOOTH);
@@ -90,11 +129,16 @@ void run(GLFWwindow *window) {
     auto proj_pipe = cgl::pipeline();
     proj_pipe
         .stage(direct_stereo)
-        .stage(curve_stereo)
+        .stage(solid);
+
+    auto slice_pipe = cgl::pipeline();
+    slice_pipe
+        .stage(defer)
+        .stage(slice)
         .stage(solid);
 
     //region points
-    auto group = tc::group::H(4);
+    auto group = tc::group::F4();
     auto res = group.solve();
     auto mirrors = mirror(group);
 
@@ -106,15 +150,11 @@ void run(GLFWwindow *window) {
 
     auto g_gens = gens(group);
 
-    const unsigned WIRES_N = 2;
-    const GLenum WIRE_MODE = GL_LINES;
-    std::vector<MeshRef<WIRES_N>> wires;
+    auto wire_data = merge(poly_parts<2>(group));
+    DirectMesh<2> wires(GL_LINES, wire_data);
 
-    for (const auto &sg_gens : Combos(g_gens, WIRES_N - 1)) {
-        const auto s = triangulate<WIRES_N>(group, sg_gens).tile(group, g_gens, sg_gens);
-
-        wires.emplace_back(s);
-    }
+    auto slice_data = merge(poly_parts<4>(group));
+    DeferredMesh<4> slices(slice_data);
 
     //endregion
 
@@ -124,8 +164,6 @@ void run(GLFWwindow *window) {
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbo);
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
-
-    glBindVertexArray(0);
 
     while (!glfwWindowShouldClose(window)) {
         int width, height;
@@ -138,20 +176,22 @@ void run(GLFWwindow *window) {
         Matrices mats = build(window, st);
         ubo.put(mats);
 
-        glLineWidth(1.5);
         const auto wires_dark = glm::vec3(.3, .3, .3);
         const auto wires_light = wires_dark;
 
-        proj_pipe.bound([&]() {
-            for (const auto &ref : wires) {
-                glProgramUniform3f(solid, 2, 1, 1, 1);
+        glLineWidth(1.5);
 
-                ref.ibo.bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
-                    glDrawElements(WIRE_MODE, ref.index_count, GL_UNSIGNED_INT, nullptr);
-                });
-            }
+        glProgramUniform3f(solid, 2, 0.9, 0.9, 0.9);
+        proj_pipe.bound([&]() {
+            wires.draw();
         });
 
+        glProgramUniform3f(solid, 2, 0.9, 0.1, 0.1);
+        slice_pipe.bound([&]() {
+            slices.draw();
+        });
+
+        glfwSwapInterval(2);
         glfwSwapBuffers(window);
 
         glfwPollEvents();
