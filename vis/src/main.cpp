@@ -30,21 +30,17 @@ struct Matrices {
 
 template<unsigned N>
 struct MeshRef {
-    GLuint vao;
-    GLuint ibo;
+    cgl::vertexarray vao;
+    cgl::buffer<Primitive<N>> ibo;
+
     unsigned primitive_count;
     unsigned index_count;
 
-    explicit MeshRef(const Mesh<N> &mesh) {
-        vao = utilCreateVertexArray();
-        ibo = utilCreateBuffer();
+    explicit MeshRef(const Mesh<N> &mesh) : vao(), ibo() {
         primitive_count = mesh.size();
         index_count = primitive_count * N;
 
-        glBindVertexArray(vao);
-        glBindBuffer(GL_ARRAY_BUFFER, ibo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(Primitive<N>) * primitive_count, &mesh.prims[0], GL_STATIC_DRAW);
-        glBindVertexArray(0);
+        ibo.put(mesh.prims);;
     }
 };
 
@@ -145,17 +141,16 @@ void run(GLFWwindow *window) {
         glLineWidth(1.5);
         const auto wires_dark = glm::vec3(.3, .3, .3);
         const auto wires_light = wires_dark;
-        glBindProgramPipeline(proj_pipe);
-        for (auto ref : wires) {
-            glProgramUniform3f(solid, 2, 1, 1, 1);
 
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ref.ibo);
-            glDrawElements(WIRE_MODE, ref.index_count, GL_UNSIGNED_INT, nullptr);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        }
+        proj_pipe.bound([&]() {
+            for (const auto &ref : wires) {
+                glProgramUniform3f(solid, 2, 1, 1, 1);
 
-        glBindProgramPipeline(0);
-        glBindVertexArray(0);
+                ref.ibo.bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
+                    glDrawElements(WIRE_MODE, ref.index_count, GL_UNSIGNED_INT, nullptr);
+                });
+            }
+        });
 
         glfwSwapBuffers(window);
 
