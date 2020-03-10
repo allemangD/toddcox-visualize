@@ -78,7 +78,7 @@ namespace cgl {
             set_source(src);
 
             if (!compile())
-                throw shader_error(get_info_log());
+                throw shader_error<mode>(get_info_log());
         }
 
         static shader<mode> file(const std::string &name) {
@@ -188,7 +188,7 @@ namespace cgl {
             attach(sh);
 
             if (!link())
-                throw shader_error(get_info_log());
+                throw shader_error<mode>(get_info_log());
 
             detach(sh);
         }

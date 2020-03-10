@@ -30,34 +30,27 @@ struct Matrices {
 
 template<unsigned N, class V>
 struct BufferMesh {
-    GLenum mode;
-    std::shared_ptr<cgl::vertexarray> vao;
-    std::shared_ptr<cgl::buffer<Primitive<N>>> ibo;
-    std::shared_ptr<cgl::buffer<V>> vbo;
+    GLenum mode{};
+    cgl::vertexarray vao{};
+    cgl::buffer<Primitive<N>> ibo{};
+    cgl::buffer<V> vbo{};
 
-    BufferMesh() = delete;
+    BufferMesh(GLenum mode) : mode(mode), vao(), ibo(), vbo() {}
 
     BufferMesh(BufferMesh &) = delete;
 
     BufferMesh(BufferMesh &&) = delete;
 
-    explicit BufferMesh(
-        GLenum mode,
-        std::shared_ptr<cgl::vertexarray> vao,
-        std::shared_ptr<cgl::buffer<Primitive<N>>> ibo,
-        std::shared_ptr<cgl::buffer<V>> vbo
-    ) : mode(mode), vao(vao), ibo(ibo), vbo(vbo) {}
-
     void draw_deferred() {
-        vao->bound([&]() {
-            glDrawArrays(GL_POINTS, 0, ibo->count() * N);
+        vao.bound([&]() {
+            glDrawArrays(GL_POINTS, 0, ibo.count() * N);
         });
     }
 
     void draw_direct() {
-        vao->bound([&]() {
-            ibo->bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
-                glDrawElements(mode, ibo->count() * N, GL_UNSIGNED_INT, nullptr);
+        vao.bound([&]() {
+            ibo.bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
+                glDrawElements(mode, ibo.count() * N, GL_UNSIGNED_INT, nullptr);
             });
         });
     }
@@ -159,13 +152,8 @@ void run(GLFWwindow *window) {
     auto group = tc::group::F4();
 
     auto wire_data = merge(poly_parts<2>(group));
-    BufferMesh<2, float> wires(
-        GL_LINES,
-        std::make_shared<cgl::vertexarray>(),
-        std::make_shared<cgl::buffer<Primitive<2>>(wire_data.prims()),
-        std::make_shared<cgl::buffer<float>>()
-    );
-//    DirectMesh<2> wires(GL_LINES, wire_data);
+    auto wires = BufferMesh<2, float>(GL_LINES);
+    wires.ibo.put(wire_data.prims);
 
     const auto slice_dark = glm::vec3(.5, .3, .7);
     const auto slice_light = glm::vec3(.9, .9, .95);
@@ -173,18 +161,29 @@ void run(GLFWwindow *window) {
     const auto slice_parts = poly_parts<4>(group);
     auto slice_data = merge(slice_parts);
 
-    auto slice_colors = std::vector<glm::vec4>(slice_data.size());
+    auto slice_colors = std::vector<glm::vec3>(slice_data.size());
     for (int i = 0, k = 0; i < slice_parts.size(); ++i) {
         auto fac = factor(i, slice_parts.size());
         glm::vec3 color = glm::mix(slice_dark, slice_light, fac);
 
         for (int j = 0; j < slice_parts[i].size(); ++j, ++k) {
-            slice_colors[k] = glm::vec4(color, 1);
+            slice_colors[k] = color;
         }
     }
-    cgl::buffer<glm::vec4> slice_colors_buf(slice_colors);
 
-//    DeferredMesh<4> slices(slice_data, slice_colors_buf);
+    BufferMesh<4, glm::vec3> slices(GL_POINTS);
+    slices.ibo.put(slice_data.prims);
+    slices.vbo.put(slice_colors);
+    slices.vao.bound([&]() {
+        slices.ibo.bound(GL_ARRAY_BUFFER, [&]() {
+            glEnableVertexAttribArray(0);
+            glVertexAttribIPointer(0, 4, GL_UNSIGNED_INT, 0, nullptr);
+            slices.vbo.bound(GL_ARRAY_BUFFER, [&]() {
+                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+            });
+        });
+    });
 
     auto vbo = cgl::buffer<glm::vec4>(points(group));
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbo);
@@ -207,12 +206,12 @@ void run(GLFWwindow *window) {
 
         glProgramUniform3f(sh.solid, 2, 0.3, 0.3, 0.3);
         proj_pipe.bound([&]() {
-            wires.draw();
+            wires.draw_direct();
         });
 
-//        slice_pipe.bound([&]() {
-//            slices.draw();
-//        });
+        slice_pipe.bound([&]() {
+            slices.draw_deferred();
+        });
 
         glfwSwapInterval(2);
         glfwSwapBuffers(window);

@@ -15,6 +15,7 @@ public:
     explicit gl_error(const char *string) : domain_error(string) {}
 };
 
+template<GLenum mode>
 class shader_error : public gl_error {
 public:
     explicit shader_error(const std::string &arg) : gl_error(arg) {}
@@ -106,7 +107,7 @@ GLuint utilCompileFiles(const GLenum type, const std::vector<std::string> &files
 
     if (getShaderCompileStatus(shader)) return shader;
 
-    throw shader_error(getShaderInfoLog(shader));
+    throw shader_error<GL_VERTEX_SHADER>(getShaderInfoLog(shader));
 }
 
 GLuint utilLinkProgram(const std::vector<GLuint> &shaders) {
