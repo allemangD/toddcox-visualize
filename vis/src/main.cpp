@@ -29,17 +29,17 @@ struct Matrices {
 };
 
 template<unsigned N, class V>
-struct BufferMesh {
+struct Drawable {
     GLenum mode{};
     cgl::vertexarray vao{};
     cgl::buffer<Primitive<N>> ibo{};
     cgl::buffer<V> vbo{};
 
-    BufferMesh(GLenum mode) : mode(mode), vao(), ibo(), vbo() {}
+    Drawable(GLenum mode) : mode(mode), vao(), ibo(), vbo() {}
 
-    BufferMesh(BufferMesh &) = delete;
+    Drawable(Drawable &) = delete;
 
-    BufferMesh(BufferMesh &&) = delete;
+    Drawable(Drawable &&) = delete;
 
     void draw_deferred() {
         vao.bound([&]() {
@@ -152,9 +152,6 @@ void run(GLFWwindow *window) {
     auto group = tc::group::F4();
 
     auto wire_data = merge(poly_parts<2>(group));
-    auto wires = BufferMesh<2, float>(GL_LINES);
-    wires.ibo.put(wire_data.prims);
-
     const auto slice_dark = glm::vec3(.5, .3, .7);
     const auto slice_light = glm::vec3(.9, .9, .95);
 
@@ -171,19 +168,14 @@ void run(GLFWwindow *window) {
         }
     }
 
-    BufferMesh<4, glm::vec3> slices(GL_POINTS);
+    Drawable<2, float> wires(GL_LINES);
+    wires.ibo.put(wire_data.prims);
+
+    Drawable<4, glm::vec3> slices(GL_POINTS);
     slices.ibo.put(slice_data.prims);
     slices.vbo.put(slice_colors);
-    slices.vao.bound([&]() {
-        slices.ibo.bound(GL_ARRAY_BUFFER, [&]() {
-            glEnableVertexAttribArray(0);
-            glVertexAttribIPointer(0, 4, GL_UNSIGNED_INT, 0, nullptr);
-            slices.vbo.bound(GL_ARRAY_BUFFER, [&]() {
-                glEnableVertexAttribArray(1);
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-            });
-        });
-    });
+    slices.vao.ipointer(0, slices.ibo, 4, GL_UNSIGNED_INT);
+    slices.vao.pointer(1, slices.vbo, 3, GL_FLOAT);
 
     auto vbo = cgl::buffer<glm::vec4>(points(group));
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbo);

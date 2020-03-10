@@ -318,5 +318,38 @@ namespace cgl {
             action();
             glBindVertexArray(0);
         }
+
+        template<class T>
+        void pointer(
+            GLuint index,
+            const buffer<T> &buf,
+            unsigned size,
+            GLenum type,
+            bool normalized = false,
+            unsigned stride = 0
+        ) const {
+            bound([&]() {
+                glEnableVertexAttribArray(index);
+                buf.bound(GL_ARRAY_BUFFER, [&]() {
+                    glVertexAttribPointer(index, size, type, normalized, stride, nullptr);
+                });
+            });
+        }
+
+        template<class T>
+        void ipointer(
+            GLuint index,
+            const buffer<T> &buf,
+            unsigned size,
+            GLenum type,
+            unsigned stride = 0
+        ) const {
+            bound([&]() {
+                glEnableVertexAttribArray(index);
+                buf.bound(GL_ARRAY_BUFFER, [&]() {
+                    glVertexAttribIPointer(index, size, type, stride, nullptr);
+                });
+            });
+        }
     };
 }
