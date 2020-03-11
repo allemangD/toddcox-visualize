@@ -89,10 +89,12 @@ std::vector<std::vector<Primitive<N>>> poly_parts(const tc::Group &group) {
     std::vector<std::vector<Primitive<N>>> parts;
     auto g_gens = gens(group);
     for (const auto &sg_gens : Combos(g_gens, N - 1)) {
-        parts.push_back(
-            tile(triangulate<N>(group, sg_gens), group, g_gens, sg_gens)
-        );
+        const auto &base = triangulate<N>(group, sg_gens);
+        const auto &all = tile(base, group, g_gens, sg_gens);
+//        const auto &all = recontext(base, group, g_gens, sg_gens);
+        parts.push_back(all);
     }
+    parts.erase(parts.end() - 1, parts.end());
     return parts;
 }
 
@@ -118,17 +120,21 @@ public:
         "shaders/diffuse.fs.glsl");
 };
 
-std::vector<glm::vec4> points(const tc::Group &group) {
+std::vector<vec4> points(const tc::Group &group) {
     auto cosets = group.solve();
-    auto mirrors = mirror(group);
+    auto mirrors = mirror<5>(group);
 
     auto corners = plane_intersections(mirrors);
 
+    auto start = barycentric(corners, {1.00f, 0.2f, 0.1f, 0.05f, 0.025f});
 //    auto start = barycentric(corners, {1.0f, 1.0f, 1.0f, 1.0f});
-    auto start = barycentric(corners, {1.00f, 0.2f, 0.1f, 0.05f});
 //    auto start = barycentric(corners, {0.05f, 0.1f, 0.2f, 1.00f});
 
-    return cosets.path.walk<glm::vec4, glm::vec4>(start, mirrors, reflect);
+    auto higher = cosets.path.walk<vec5, vec5>(start, mirrors, reflect<vec5>);
+    std::vector<vec4> res(higher.size());
+    std::transform(higher.begin(), higher.end(), res.begin(), stereo<4>);
+
+    return res;
 }
 
 void run(GLFWwindow *window) {
@@ -151,7 +157,7 @@ void run(GLFWwindow *window) {
         .stage(sh.slice)
         .stage(sh.diffuse);
 
-    auto group = tc::group::F4();
+    auto group = tc::schlafli({5, 3, 3, 2});
 
     auto wire_data = merge(poly_parts<2>(group));
     const auto slice_dark = glm::vec3(.5, .3, .7);
@@ -179,7 +185,7 @@ void run(GLFWwindow *window) {
     slices.vao.ipointer(0, slices.ibo, 4, GL_UNSIGNED_INT);
     slices.vao.pointer(1, slices.vbo, 3, GL_FLOAT);
 
-    auto vbo = cgl::Buffer<glm::vec4>(points(group));
+    auto vbo = cgl::Buffer<vec4>(points(group));
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbo);
 
     auto ubo = cgl::Buffer<Matrices>();
@@ -200,7 +206,7 @@ void run(GLFWwindow *window) {
 
         glProgramUniform3f(sh.solid, 2, 0.3, 0.3, 0.3);
         proj_pipe.bound([&]() {
-            wires.draw_direct();
+//            wires.draw_direct();
         });
 
         slice_pipe.bound([&]() {
