@@ -85,12 +85,12 @@ Matrices build(GLFWwindow *window, float st) {
 }
 
 template<unsigned N>
-std::vector<Mesh<N>> poly_parts(const tc::Group &group) {
-    std::vector<Mesh<N>> parts;
+std::vector<std::vector<Primitive<N>>> poly_parts(const tc::Group &group) {
+    std::vector<std::vector<Primitive<N>>> parts;
     auto g_gens = gens(group);
     for (const auto &sg_gens : Combos(g_gens, N - 1)) {
         parts.push_back(
-            triangulate<N>(group, sg_gens).tile(group, g_gens, sg_gens)
+            tile(triangulate<N>(group, sg_gens), group, g_gens, sg_gens)
         );
     }
     return parts;
@@ -171,10 +171,10 @@ void run(GLFWwindow *window) {
     }
 
     Drawable<2, float> wires(GL_LINES);
-    wires.ibo.put(wire_data.prims);
+    wires.ibo.put(wire_data);
 
     Drawable<4, glm::vec3> slices(GL_POINTS);
-    slices.ibo.put(slice_data.prims);
+    slices.ibo.put(slice_data);
     slices.vbo.put(slice_colors);
     slices.vao.ipointer(0, slices.ibo, 4, GL_UNSIGNED_INT);
     slices.vao.pointer(1, slices.vbo, 3, GL_FLOAT);

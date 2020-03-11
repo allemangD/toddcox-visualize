@@ -108,127 +108,121 @@ tc::Cosets solve(
     return context.subgroup(g_gens).solve(proper_sg_gens);
 }
 
+/**
+ * Apply some context transformation to all primitives of this mesh.
+ */
 template<unsigned N>
-struct Mesh {
-    std::vector<Primitive<N>> prims;
-
-    Mesh() : prims() {}
-
-    Mesh(const Mesh<N> &) = default;
-
-    explicit Mesh(std::vector<Primitive<N>> &prims) : prims(prims) {}
-
-    [[nodiscard]] size_t size() const {
-        return prims.size();
+std::vector<Primitive<N>> apply(std::vector<Primitive<N>> prims, const tc::Cosets &table, int gen) {
+    for (auto &prim : prims) {
+        prim.apply(table, gen);
     }
+    return prims;
+}
 
-    /**
-     * Apply some context transformation to all primitives of this mesh.
-     */
-    void apply(const tc::Cosets &table, int gen) {
-        for (auto &prim : prims) {
-            prim.apply(table, gen);
+/**
+ * Reverse the orientation of all primitives in this mesh.
+ */
+template<unsigned N>
+void flip(std::vector<Primitive<N>> prims) {
+    for (auto &prim : prims) {
+        prim.flip();
+    }
+}
+
+/**
+ * Convert the indexes of this mesh to those of a different context, using g_gens to build the parent context and sg_gens to build this context.
+ */
+template<unsigned N>
+[[nodiscard]]
+std::vector<Primitive<N>> recontext(
+    std::vector<Primitive<N>> prims,
+    const tc::Group &context,
+    const std::vector<int> &g_gens,
+    const std::vector<int> &sg_gens
+) {
+    const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
+    const auto table = solve(context, g_gens, {});
+    const auto path = solve(context, sg_gens, {}).path;
+
+    auto map = path.template walk<int, int>(0, proper_sg_gens, [table](int coset, int gen) {
+        return table.get(coset, gen);
+    });
+
+    std::vector<Primitive<N>> res(prims);
+    for (Primitive<N> &prim : res) {
+        for (auto &ind : prim.inds) {
+            ind = map[ind];
         }
     }
 
-    /**
-     * Reverse the orientation of all primitives in this mesh.
-     */
-    void flip() {
-        for (auto &prim : prims) {
-            prim.flip();
-        }
-    }
+    if (get_parity(context, g_gens, sg_gens) == 1)
+        flip(res);
 
-    /**
-     * Convert the indexes of this mesh to those of a different context, using g_gens to build the parent context and sg_gens to build this context.
-     */
-    [[nodiscard]]
-    Mesh<N> recontext(
-        const tc::Group &context,
-        const std::vector<int> &g_gens,
-        const std::vector<int> &sg_gens
-    ) const {
-        const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
-        const auto table = solve(context, g_gens, {});
-        const auto path = solve(context, sg_gens, {}).path;
-
-        auto map = path.template walk<int, int>(0, proper_sg_gens, [table](int coset, int gen) {
-            return table.get(coset, gen);
-        });
-
-        Mesh<N> res = *this;
-        for (Primitive<N> &prim : res.prims) {
-            for (auto &ind : prim.inds) {
-                ind = map[ind];
-            }
-        }
-
-        if (get_parity(context, g_gens, sg_gens) == 1)
-            res.flip();
-
-        return res;
-    }
-
-    [[nodiscard]]
-    Mesh<N> tile(
-        const tc::Group &context,
-        const std::vector<int> &g_gens,
-        const std::vector<int> &sg_gens
-    ) const {
-        Mesh<N> base = recontext(context, g_gens, sg_gens);
-        const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
-
-        const auto table = solve(context, g_gens, {});
-        const auto path = solve(context, g_gens, sg_gens).path;
-
-        const auto all = path.template walk<Mesh<N>, int>(base, gens(context), [table](Mesh<N> from, int gen) {
-            from.apply(table, gen);
-            return from;
-        });
-
-        return merge(all);
-    }
-
-    /**
-     * Produce a mesh of higher dimension by fanning a single point to all primitives in this mesh.
-     */
-    [[nodiscard]]
-    Mesh<N + 1> fan(int root) const {
-        std::vector<Primitive<N + 1>> res(prims.size());
-        std::transform(prims.begin(), prims.end(), res.begin(),
-            [root](const Primitive<N> &prim) {
-                return Primitive<N + 1>(prim, root);
-            }
-        );
-        return Mesh<N + 1>(res);
-    }
-};
+    return res;
+}
 
 /**
  * Union several meshes of the same dimension
  */
 template<unsigned N>
-Mesh<N> merge(const std::vector<Mesh<N>> &meshes) {
+std::vector<Primitive<N>> merge(const std::vector<std::vector<Primitive<N>>> &meshes) {
     size_t size = 0;
     for (const auto &mesh : meshes) {
         size += mesh.size();
     }
 
-    std::vector<Primitive<N>> prims;
-    prims.reserve(size);
+    std::vector<Primitive<N>> res;
+    res.reserve(size);
     for (const auto &mesh : meshes) {
-        prims.insert(prims.end(), mesh.prims.begin(), mesh.prims.end());
+        res.insert(res.end(), mesh.begin(), mesh.end());
     }
 
-    return Mesh(prims);
+    return res;
+}
+
+template<unsigned N>
+[[nodiscard]]
+std::vector<Primitive<N>> tile(
+    std::vector<Primitive<N>> prims,
+    const tc::Group &context,
+    const std::vector<int> &g_gens,
+    const std::vector<int> &sg_gens
+) {
+    std::vector<Primitive<N>> base = recontext(prims, context, g_gens, sg_gens);
+    const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
+
+    const auto table = solve(context, g_gens, {});
+    const auto path = solve(context, g_gens, sg_gens).path;
+
+    auto _gens = gens(context);
+
+    auto res = path.walk<std::vector<Primitive<N>>, int>(base, gens(context), [&](auto from, auto gen) {
+        return apply(from, table, gen);
+    });
+
+    return merge(res);
+}
+
+/**
+ * Produce a mesh of higher dimension by fanning a single point to all primitives in this mesh.
+ */
+template<unsigned N>
+[[nodiscard]]
+std::vector<Primitive<N + 1>> fan(std::vector<Primitive<N>> prims, int root) {
+    std::vector<Primitive<N + 1>> res(prims.size());
+    std::transform(prims.begin(), prims.end(), res.begin(),
+        [root](const Primitive<N> &prim) {
+            return Primitive<N + 1>(prim, root);
+        }
+    );
+    return res;
 }
 
 /**
  * Produce a mesh of primitives that fill out the volume of the subgroup generated by generators g_gens within the group context
  */
 template<unsigned N>
-Mesh<N> triangulate(
+std::vector<Primitive<N>> triangulate(
     const tc::Group &context,
     const std::vector<int> &g_gens
 ) {
@@ -237,13 +231,13 @@ Mesh<N> triangulate(
 
     const auto &combos = Combos(g_gens, g_gens.size() - 1);
 
-    std::vector<Mesh<N>> meshes;
+    std::vector<std::vector<Primitive<N>>> meshes;
+
     for (const auto &sg_gens : combos) {
-        Mesh<N - 1> base = triangulate<N - 1>(context, sg_gens);
-        Mesh<N - 1> raised = base.tile(context, g_gens, sg_gens);
-        raised.prims.erase(raised.prims.begin(), raised.prims.begin() + base.size());
-        Mesh<N> fan = raised.fan(0);
-        meshes.push_back(fan);
+        auto base = triangulate<N - 1>(context, sg_gens);
+        auto raised = tile(base, context, g_gens, sg_gens);
+        raised.erase(raised.begin(), raised.begin() + base.size());
+        meshes.push_back(fan(raised, 0));
     }
 
     return merge(meshes);
@@ -253,14 +247,14 @@ Mesh<N> triangulate(
  * Single-index primitives should not be further triangulated.
  */
 template<>
-Mesh<1> triangulate<1>(
+std::vector<Primitive<1>> triangulate(
     const tc::Group &context,
     const std::vector<int> &g_gens
 ) {
     if (not g_gens.empty()) // todo make static assert
         throw std::logic_error("g_gens must be empty for a trivial Mesh");
 
-    Mesh<1> res;
-    res.prims.emplace_back();
+    std::vector<Primitive<1>> res;
+    res.emplace_back();
     return res;
 }
