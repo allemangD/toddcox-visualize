@@ -160,6 +160,7 @@ void run(GLFWwindow *window) {
     auto group = tc::schlafli({5, 3, 3, 2});
 
     auto wire_data = merge(poly_parts<2>(group));
+
     const auto slice_light = glm::vec3(.9, .9, .95);
 //    const auto slice_dark = slice_light;
     const auto slice_dark = glm::vec3(.5, .3, .7);
@@ -210,10 +211,10 @@ void run(GLFWwindow *window) {
             slices.draw_deferred();
         });
 
-        glProgramUniform4f(sh.solid, 2, 0.3, 0.3, 0.3, 0.4);
-        proj_pipe.bound([&]() {
-            wires.draw_direct();
-        });
+//        glProgramUniform4f(sh.solid, 2, 0.3, 0.3, 0.3, 0.4);
+//        proj_pipe.bound([&]() {
+//            wires.draw_direct();
+//        });
 
         glfwSwapInterval(2);
         glfwSwapBuffers(window);
