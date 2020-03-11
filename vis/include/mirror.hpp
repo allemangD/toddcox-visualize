@@ -16,25 +16,25 @@ using vec4 = vec<4>;
 using vec5 = vec<5>;
 
 template<class V>
-V operator*(V a, float b) {
+V operator*(V a, const float &b) {
     for (auto &e : a) e *= b;
     return a;
 }
 
 template<class V>
-V operator*(float b, V a) {
+V operator*(const float &b, V a) {
     for (auto &e : a) e *= b;
     return a;
 }
 
 template<class V>
-V operator/(V a, float b) {
+V operator/(V a, const float &b) {
     for (auto &e : a) e /= b;
     return a;
 }
 
 template<class V>
-V operator+(V a, V b) {
+V operator+(const V &a, V b) {
     for (int i = 0; i < a.size(); ++i) {
         a[i] += b[i];
     }
@@ -42,7 +42,7 @@ V operator+(V a, V b) {
 }
 
 template<class V>
-V operator-(V a, V b) {
+V operator-(V a, const V &b) {
     for (int i = 0; i < a.size(); ++i) {
         a[i] -= b[i];
     }
@@ -50,21 +50,28 @@ V operator-(V a, V b) {
 }
 
 template<class V>
-void operator-=(V &a, V b) {
+void operator-=(V &a, const V &b) {
     for (int i = 0; i < a.size(); ++i) {
         a[i] -= b[i];
     }
 }
 
 template<class V>
-float length(V a) {
+void operator+=(V &a, const V &b) {
+    for (int i = 0; i < a.size(); ++i) {
+        a[i] += b[i];
+    }
+}
+
+template<class V>
+float length(const V &a) {
     float sum = 0;
-    for (auto e : a) sum += e * e;
+    for (const auto &e : a) sum += e * e;
     return sqrtf(sum);
 }
 
 template<class V>
-V normalized(V a) {
+V normalized(const V &a) {
     return a / length(a);
 }
 
@@ -125,10 +132,10 @@ std::vector<vec<N>> mirror(const tc::Group &group) {
 }
 
 template<unsigned N>
-vec<N> stereo(vec<N + 1> v) {
+vec<N> stereo(const vec<N + 1> &v) {
     vec<N> r;
     for (int i = 0; i < N; ++i) {
-        r[i] = v[i] / (1-v[N]);
+        r[i] = v[i] / (1 - v[N]);
     }
     return r;
 }
@@ -145,33 +152,31 @@ V reflect(const V &a, const V &axis) {
 
 template<class V>
 V gram_schmidt_last(std::vector<V> vecs) {
-    int N = vecs.size();
-    for (int i = 0; i < N; ++i) {
+    for (int i = 0; i < vecs.size(); ++i) {
         for (int j = 0; j < i; ++j) {
             vecs[i] -= project(vecs[i], vecs[j]);
         }
     }
 
-    return normalized(vecs[N - 1]);
+    return normalized(vecs[vecs.size() - 1]);
 }
 
 template<class V>
-V barycentric(std::vector<V> basis, std::vector<float> coords) {
+V barycentric(const std::vector<V> &basis, const std::vector<float> &coords) {
     V res{};
 
     int N = std::min(basis.size(), coords.size());
     for (int i = 0; i < N; ++i) {
-        res = res + (basis[i] * coords[i]);
+        res += basis[i] * coords[i];
     }
     return normalized(res);
 }
 
 template<class V>
 std::vector<V> plane_intersections(std::vector<V> normals) {
-    int N = normals.size();
-    std::vector<V> results(N);
+    std::vector<V> results(normals.size());
 
-    for (int i = 0; i < N; ++i) {
+    for (int i = 0; i < normals.size(); ++i) {
         std::rotate(normals.begin(), normals.begin() + 1, normals.end());
         results[i] = gram_schmidt_last(normals);
     }

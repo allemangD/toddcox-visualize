@@ -91,10 +91,8 @@ std::vector<std::vector<Primitive<N>>> poly_parts(const tc::Group &group) {
     for (const auto &sg_gens : Combos(g_gens, N - 1)) {
         const auto &base = triangulate<N>(group, sg_gens);
         const auto &all = tile(base, group, g_gens, sg_gens);
-//        const auto &all = recontext(base, group, g_gens, sg_gens);
         parts.push_back(all);
     }
-    parts.erase(parts.end() - 1, parts.end());
     return parts;
 }
 
@@ -126,7 +124,7 @@ std::vector<vec4> points(const tc::Group &group) {
 
     auto corners = plane_intersections(mirrors);
 
-    auto start = barycentric(corners, {1.00f, 0.2f, 0.1f, 0.05f, 0.025f});
+    auto start = barycentric(corners, {1.0f, 0.2f, 0.1f, 0.05f, 0.025f});
 //    auto start = barycentric(corners, {1.0f, 1.0f, 1.0f, 1.0f});
 //    auto start = barycentric(corners, {0.05f, 0.1f, 0.2f, 1.00f});
 
@@ -160,10 +158,12 @@ void run(GLFWwindow *window) {
     auto group = tc::schlafli({5, 3, 3, 2});
 
     auto wire_data = merge(poly_parts<2>(group));
-    const auto slice_dark = glm::vec3(.5, .3, .7);
     const auto slice_light = glm::vec3(.9, .9, .95);
+//    const auto slice_dark = slice_light;
+    const auto slice_dark = glm::vec3(.5, .3, .7);
 
-    const auto slice_parts = poly_parts<4>(group);
+    auto slice_parts = poly_parts<4>(group);
+    slice_parts.erase(slice_parts.end() - 1, slice_parts.end());
     auto slice_data = merge(slice_parts);
 
     auto slice_colors = std::vector<glm::vec3>(slice_data.size());
@@ -206,7 +206,7 @@ void run(GLFWwindow *window) {
 
         glProgramUniform3f(sh.solid, 2, 0.3, 0.3, 0.3);
         proj_pipe.bound([&]() {
-//            wires.draw_direct();
+            wires.draw_direct();
         });
 
         slice_pipe.bound([&]() {
