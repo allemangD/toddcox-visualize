@@ -141,6 +141,8 @@ void run(GLFWwindow *window) {
     glEnable(GL_DEPTH_TEST);
 //    glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     Shaders sh;
 
@@ -204,13 +206,13 @@ void run(GLFWwindow *window) {
 
         glLineWidth(1.5);
 
-        glProgramUniform3f(sh.solid, 2, 0.3, 0.3, 0.3);
-        proj_pipe.bound([&]() {
-            wires.draw_direct();
-        });
-
         slice_pipe.bound([&]() {
             slices.draw_deferred();
+        });
+
+        glProgramUniform4f(sh.solid, 2, 0.3, 0.3, 0.3, 0.4);
+        proj_pipe.bound([&]() {
+            wires.draw_direct();
         });
 
         glfwSwapInterval(2);
