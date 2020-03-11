@@ -1,12 +1,15 @@
 #version 430
 
-layout(location=2) uniform vec4 c;
+layout(location=2) uniform vec4 col;
 
-in vec4 pos;
+layout(location=2) in vec3 normal;
 
 out vec4 color;
 
 void main() {
-    float d = smoothstep(-2, 2, pos.z);
-    color = vec4(c.xyz * d, c.w);
+    float bright = dot(normal, normalize(vec3(-0.6, 1, 2)));
+    bright = .6 + .3 * bright;
+
+    color = col;
+    color.xyz *= bright;
 }
