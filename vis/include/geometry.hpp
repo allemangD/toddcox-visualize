@@ -182,7 +182,7 @@ std::vector<Primitive<N>> merge(const std::vector<std::vector<Primitive<N>>> &me
 
 template<unsigned N>
 [[nodiscard]]
-std::vector<Primitive<N>> tile(
+std::vector<std::vector<Primitive<N>>> each_tile(
     std::vector<Primitive<N>> prims,
     const tc::Group &context,
     const std::vector<int> &g_gens,
@@ -199,6 +199,19 @@ std::vector<Primitive<N>> tile(
     auto res = path.walk<std::vector<Primitive<N>>, int>(base, gens(context), [&](auto from, auto gen) {
         return apply(from, table, gen);
     });
+
+    return res;
+}
+
+template<unsigned N>
+[[nodiscard]]
+std::vector<Primitive<N>> tile(
+    std::vector<Primitive<N>> prims,
+    const tc::Group &context,
+    const std::vector<int> &g_gens,
+    const std::vector<int> &sg_gens
+) {
+    auto res = each_tile<N>(prims, context, g_gens, sg_gens);
 
     return merge(res);
 }

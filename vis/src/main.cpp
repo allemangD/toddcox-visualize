@@ -14,6 +14,9 @@
 #include <cgl/vertexarray.hpp>
 #include <cgl/shaderprogram.hpp>
 #include <cgl/pipeline.hpp>
+#include <random>
+
+#include <chrono>
 
 #ifdef _WIN32
 extern "C" {
@@ -84,19 +87,21 @@ Matrices build(GLFWwindow *window, float st) {
 }
 
 template<unsigned N, class T>
-std::vector<Primitive<N>> hull(const tc::Group &group, T all_sg_gens) {
+auto hull(const tc::Group &group, T all_sg_gens) {
     std::vector<std::vector<Primitive<N>>> parts;
     auto g_gens = gens(group);
     for (const auto &sg_gens : all_sg_gens) {
         const auto &base = triangulate<N>(group, sg_gens);
-        const auto &all = tile(base, group, g_gens, sg_gens);
-        parts.push_back(all);
+        const auto &tiles = each_tile(base, group, g_gens, sg_gens);
+        for (const auto &tile : tiles) {
+            parts.push_back(tile);
+        }
     }
-    return merge<N>(parts);
+    return parts;
 }
 
 template<unsigned N>
-std::vector<Primitive<N>> full_hull(const tc::Group &group) {
+auto full_hull(const tc::Group &group) {
     auto g_gens = gens(group);
     const Combos<int> &combos = Combos(g_gens, N - 1);
     return hull<N, Combos<int>>(group, combos);
@@ -163,13 +168,18 @@ void run(GLFWwindow *window) {
 
     auto group = tc::schlafli({5, 3, 3, 2});
 
-    auto wire_data = full_hull<2>(group);
+//    auto wire_data = full_hull<2>(group);
 
     //    slice_parts.erase(slice_parts.end() - 1, slice_parts.end());
-    auto slice_face_data = hull<4>(group, (std::vector<std::vector<int>>) {
+    auto slice_faces = hull<4>(group, (std::vector<std::vector<int>>) {
         {0, 1, 2},
     });
-    auto slice_edge_data = hull<4>(group, (std::vector<std::vector<int>>) {
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine rand(seed);
+    std::shuffle(slice_faces.begin(), slice_faces.end(), rand);
+    slice_faces.erase(slice_faces.begin(), slice_faces.begin() + slice_faces.size() / 2);
+    auto slice_face_data = merge<4>(slice_faces);
+    auto slice_edges = hull<4>(group, (std::vector<std::vector<int>>) {
         {0, 1, 3},
         {0, 1, 4},
         {0, 2, 3},
@@ -178,20 +188,21 @@ void run(GLFWwindow *window) {
         {1, 2, 4},
         {1, 3, 4},
     });
+    auto slice_edge_data = merge<4>(slice_edges);
 
-    Drawable<2> wires(GL_LINES);
-    wires.ibo.put(wire_data);
+//    Drawable<2> wires(GL_LINES);
+//    wires.ibo.put(wire_data);
 
-    Drawable<4> slice_edges(GL_POINTS);
-    slice_edges.ibo.put(slice_edge_data);
-    slice_edges.vao.ipointer(0, slice_edges.ibo, 4, GL_UNSIGNED_INT);
+    Drawable<4> edges(GL_POINTS);
+    edges.ibo.put(slice_edge_data);
+    edges.vao.ipointer(0, edges.ibo, 4, GL_UNSIGNED_INT);
 
-    Drawable<4> slice_faces(GL_POINTS);
-    slice_faces.ibo.put(slice_face_data);
-    slice_faces.vao.ipointer(0, slice_faces.ibo, 4, GL_UNSIGNED_INT);
+    Drawable<4> faces(GL_POINTS);
+    faces.ibo.put(slice_face_data);
+    faces.vao.ipointer(0, faces.ibo, 4, GL_UNSIGNED_INT);
 
-    auto pbo_thick = cgl::Buffer<vec4>(points(group, {1.0f, 0.2f, 0.1f, 0.05f, 0.25f}));
-    auto pbo_thin = cgl::Buffer<vec4>(points(group, {1.0f, 0.2f, 0.1f, 0.05f, 0.0125f}));
+    auto pbo_thick = cgl::Buffer<vec4>(points(group, {1.0f, 0.2f, 0.1f, 0.05f, 0.025f}));
+    auto pbo_thin = cgl::Buffer<vec4>(points(group, {1.0f, 0.2f, 0.1f, 0.05f, 0.025f}));
 
     auto ubo = cgl::Buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
@@ -212,11 +223,11 @@ void run(GLFWwindow *window) {
         slice_pipe.bound([&]() {
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, pbo_thick);
             glProgramUniform4f(sh.solid, 2, 1.0, 1.0, 1.0, 1.0);
-            slice_edges.draw_deferred();
+            edges.draw_deferred();
 
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, pbo_thin);
             glProgramUniform4f(sh.solid, 2, 0.7, 0.7, 0.7, 1.0);
-            slice_faces.draw_deferred();
+            faces.draw_deferred();
         });
 
 //        proj_pipe.bound([&]() {
