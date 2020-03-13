@@ -1,72 +1,58 @@
 #pragma once
 
-#include <vector>
+#include <array>
 #include <algorithm>
+#include <numeric>
 #include <stdexcept>
 
-template<class T>
-struct ComboIterator {
-    typedef ComboIterator<T> self_type;
-    typedef const std::vector<T> value_type;;
-    typedef const std::vector<T> *pointer;
-    typedef const std::vector<T> &reference;
-    typedef size_t difference_type;
-    typedef std::forward_iterator_tag iterator_category;
+template<size_t N, size_t K>
+class ComboIterator {
+    static_assert(N > K, "N must be larger than K");
 
-    const std::vector<T> &vals;
-    const size_t k;
-    size_t n;
-    std::vector<bool> bits;
-    std::vector<T> curr;
+public:
+    size_t at;
+    std::array<bool, N> bits;
+    std::array<size_t, K> curr;
 
-    ComboIterator(ComboIterator &) = default;
-
-    ComboIterator(const std::vector<T> &vals, const size_t k, const size_t n)
-        : vals(vals), k(k), n(n), curr(k), bits(vals.size()) {
-        for (size_t i = 0; i < vals.size(); ++i) {
-            bits[i] = i < k;
+    void inc() {
+        std::prev_permutation(bits.begin(), bits.end());
+        for (int i = 0, k = 0; i < N; ++i) {
+            if (bits[i]) curr[k++] = i;
         }
-        std::reverse(bits.begin(), bits.end());
-        set_curr();
+        at++;
     }
 
-    ~ComboIterator() = default;
-
-    void set_curr() {
-        for (size_t i = 0, j = 0; i < vals.size(); ++i) {
-            if (bits[i]) curr[j++] = vals[i];
-        }
+public:
+    ComboIterator(size_t at = 0) : at(at), bits(), curr() {
+        std::iota(curr.begin(), curr.end(), 0);
+        std::fill(bits.begin(), bits.begin() + K, true);
     }
 
-    [[nodiscard]] bool operator==(const ComboIterator<T> &o) const {
-        return n == o.n;
+    [[nodiscard]] bool operator==(const ComboIterator<N, K> &o) const {
+        return at == o.at;
     }
 
-    [[nodiscard]] bool operator!=(const ComboIterator<T> &o) const {
-        return n != o.n;
+    [[nodiscard]] bool operator!=(const ComboIterator<N, K> &o) const {
+        return at != o.at;
     }
 
-    reference operator*() const {
+    auto operator*() const {
         return curr;
     }
 
-    pointer operator->() const {
+    const auto *operator->() const {
         return &curr;
     }
 
-    self_type operator++(int) {
-        std::next_permutation(bits.begin(), bits.end());
-        set_curr();
-        ++n;
-        return *this;
+    auto operator++(int) {
+        auto res = *this;
+        inc();
+        return res;
     }
 
-    self_type operator++() {
-        self_type r = *this;
-        std::next_permutation(bits.begin(), bits.end());
-        set_curr();
-        ++n;
-        return r;
+    auto operator++() &{
+        inc();
+        return *this;
     }
 };
 
@@ -75,21 +61,15 @@ size_t choose(size_t n, size_t k) {
     return n * choose(n - 1, k - 1) / k;
 }
 
-template<class T>
-struct Combos {
-    const std::vector<T> &vals;
-    size_t k;
-
-    // todo make k a template argument
-    Combos(const std::vector<T> &vals, size_t k) : vals(vals), k(k) {
+template<size_t N, size_t K>
+class Combos {
+private:
+public:
+    auto begin() const {
+        return ComboIterator<N, K>();
     }
 
-    [[nodiscard]] ComboIterator<T> begin() const {
-        return ComboIterator(vals, k, 0);
-    }
-
-    [[nodiscard]] ComboIterator<T> end() const {
-        int j = choose(vals.size(), k);
-        return ComboIterator(vals, k, j);
+    auto end() const {
+        return ComboIterator<N, K>(choose(N, K));
     }
 };
