@@ -64,14 +64,6 @@ void main() {
     normal = cross(sect[1].xyz - sect[0].xyz, sect[2].xyz - sect[0].xyz);
     normal = normalize(normal);
 
-    float r = dot(normal, sect[0].xyz);
-
-    if (abs(r) < 0.001)
-        r = dot(normal, sect[0].xyz + vec3(0, 0, 1));
-
-    if (r < 0)
-        normal *= -1;
-
     for (int s = 0; s < S; ++s) {
         emit(sect[s]);
     }

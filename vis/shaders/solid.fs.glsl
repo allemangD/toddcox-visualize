@@ -2,13 +2,15 @@
 
 layout(location=2) uniform vec4 col;
 
+layout(location=0) in vec3 pos;
 layout(location=2) in vec3 normal;
 
 out vec4 color;
 
 void main() {
-    float bright = dot(normal, normalize(vec3(-0.6, 1, 2)));
-    bright = .6 + .3 * bright;
+    float depth = .1 + .9 * smoothstep(-2, 2, pos.z);
+    float bright = abs(dot(normal, normalize(vec3(-0.6, 1, 2))));
+    bright = .6 + .3 * bright * depth;
 
     color = col;
     color.xyz *= bright;
