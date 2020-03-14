@@ -1,38 +1,43 @@
 #pragma once
 
+#include <vector>
 #include <array>
 #include <algorithm>
 #include <numeric>
 #include <stdexcept>
 
-template<size_t N, size_t K>
+size_t choose(size_t n, size_t k) {
+    if (k == 0) return 1;
+    return n * choose(n - 1, k - 1) / k;
+}
+
+template<class T>
 class ComboIterator {
-    static_assert(N > K, "N must be larger than K");
+private:
+    const std::vector<T> &options;
 
-public:
-    size_t at;
-    std::array<bool, N> bits;
-    std::array<size_t, K> curr;
+    std::vector<bool> bits;
+    std::vector<T> curr;
+    int at;
 
-    void inc() {
-        std::prev_permutation(bits.begin(), bits.end());
-        for (int i = 0, k = 0; i < N; ++i) {
-            if (bits[i]) curr[k++] = i;
+    void set_curr() {
+        for (int i = 0, j = 0; i < bits.size(); ++i) {
+            if (bits[i]) curr[j++] = options[i];
         }
-        at++;
     }
 
 public:
-    ComboIterator(size_t at = 0) : at(at), bits(), curr() {
-        std::iota(curr.begin(), curr.end(), 0);
-        std::fill(bits.begin(), bits.begin() + K, true);
+    ComboIterator(const std::vector<T> &options, int k, int at = 0)
+        : options(options), bits(options.size()), curr(k), at(at) {
+        std::fill(bits.begin(), bits.begin() + k, true);
+        set_curr();
     }
 
-    [[nodiscard]] bool operator==(const ComboIterator<N, K> &o) const {
+    [[nodiscard]] bool operator==(const ComboIterator<T> &o) const {
         return at == o.at;
     }
 
-    [[nodiscard]] bool operator!=(const ComboIterator<N, K> &o) const {
+    [[nodiscard]] bool operator!=(const ComboIterator<T> &o) const {
         return at != o.at;
     }
 
@@ -40,36 +45,41 @@ public:
         return curr;
     }
 
-    const auto *operator->() const {
-        return &curr;
+    const auto &operator->() const {
+        return &this;
     }
 
     auto operator++(int) {
-        auto res = *this;
-        inc();
-        return res;
+        std::prev_permutation(bits.begin(), bits.end());
+        set_curr();
+        ++at;
+        return *this;
     }
 
     auto operator++() &{
-        inc();
-        return *this;
+        auto res = *this;
+        (*this)++;
+        return res;
     }
 };
 
-size_t choose(size_t n, size_t k) {
-    if (k == 0) return 1;
-    return n * choose(n - 1, k - 1) / k;
-}
-
-template<size_t N, size_t K>
+template<class T>
 class Combos {
 private:
+    const std::vector<T> options;
+    int k;
+    int size;
+
 public:
-    auto begin() const {
-        return ComboIterator<N, K>();
+    Combos(const std::vector<T> &options, int k)
+        : options(options), k(k), size(choose(options.size(), k)) {
     }
 
-    auto end() const {
-        return ComboIterator<N, K>(choose(N, K));
+    ComboIterator<T> begin() const {
+        return ComboIterator<T>(options, k);
+    }
+
+    ComboIterator<T> end() const {
+        return ComboIterator<T>(options, k, size);
     }
 };

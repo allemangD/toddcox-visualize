@@ -12,3 +12,6 @@ add_executable(vis src/main.cpp)
 target_include_directories(vis PRIVATE include)
 target_link_libraries(vis PRIVATE tc glad glm glfw)
 add_dependencies(vis shaders)
+
+add_executable(ctest src/combotest.cpp)
+target_include_directories(ctest PRIVATE include)

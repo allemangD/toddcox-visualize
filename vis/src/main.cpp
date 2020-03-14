@@ -60,12 +60,6 @@ struct Drawable {
     }
 };
 
-float factor(unsigned index, unsigned size) {
-    auto num = (float) index;
-    auto den = size > 1 ? (float) size - 1 : 1;
-    return num / den;
-}
-
 Matrices build(GLFWwindow *window, float st) {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
@@ -98,13 +92,6 @@ auto hull(const tc::Group &group, T all_sg_gens) {
         }
     }
     return parts;
-}
-
-template<unsigned N>
-auto full_hull(const tc::Group &group) {
-    auto g_gens = gens(group);
-    const Combos<int> &combos = Combos(g_gens, N - 1);
-    return hull<N, Combos<int>>(group, combos);
 }
 
 class Shaders {
@@ -168,16 +155,15 @@ void run(GLFWwindow *window) {
 
     auto group = tc::schlafli({5, 3, 3, 2});
 
-//    auto wire_data = full_hull<2>(group);
-
-    //    slice_parts.erase(slice_parts.end() - 1, slice_parts.end());
     auto slice_faces = hull<4>(group, (std::vector<std::vector<int>>) {
         {0, 1, 2},
     });
+
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
     std::default_random_engine rand(seed);
     std::shuffle(slice_faces.begin(), slice_faces.end(), rand);
     slice_faces.erase(slice_faces.begin(), slice_faces.begin() + slice_faces.size() / 2);
+
     auto slice_face_data = merge<4>(slice_faces);
     auto slice_edges = hull<4>(group, (std::vector<std::vector<int>>) {
         {0, 1, 3},
@@ -189,9 +175,6 @@ void run(GLFWwindow *window) {
         {1, 3, 4},
     });
     auto slice_edge_data = merge<4>(slice_edges);
-
-//    Drawable<2> wires(GL_LINES);
-//    wires.ibo.put(wire_data);
 
     Drawable<4> edges(GL_POINTS);
     edges.ibo.put(slice_edge_data);
@@ -230,11 +213,6 @@ void run(GLFWwindow *window) {
             faces.draw_deferred();
         });
 
-//        proj_pipe.bound([&]() {
-//            glProgramUniform4f(sh.solid, 2, 0.3, 0.3, 0.3, 0.4);
-//            wires.draw_direct();
-//        });
-
         glfwSwapInterval(2);
         glfwSwapBuffers(window);
 
@@ -243,7 +221,6 @@ void run(GLFWwindow *window) {
 }
 
 int main(int argc, char *argv[]) {
-    //region init window
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return EXIT_FAILURE;
@@ -265,7 +242,6 @@ int main(int argc, char *argv[]) {
     glfwSwapInterval(1);
     glClear(GL_COLOR_BUFFER_BIT);
     glfwSwapBuffers(window);
-    //endregion
 
     std::cout << utilInfo();
 
