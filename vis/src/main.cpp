@@ -68,7 +68,8 @@ auto hull(const tc::Group &group, T begin, T end) {
     return parts;
 }
 
-std::vector<vec4> points(const tc::Group &group, const std::vector<float> &coords) {
+template<class C>
+std::vector<vec4> points(const tc::Group &group, const C &coords) {
     auto cosets = group.solve();
     auto mirrors = mirror<5>(group);
 
@@ -118,14 +119,14 @@ struct Slice {
 
     Slice(Slice &&) noexcept = default;
 
-    void draw() {
+    void draw() const {
         vao.bound([&]() {
             glDrawArrays(GL_POINTS, 0, ibo.count() * N);
         });
     }
 
-    template<class T>
-    static Slice<N> build(const tc::Group &g, const std::vector<float> &coords, vec4 color, T begin, T end) {
+    template<class T, class C>
+    static Slice<N> build(const tc::Group &g, const C &coords, vec4 color, T begin, T end) {
         Slice<N> res(GL_POINTS, color);
 
         res.vbo.put(points(g, coords));
@@ -158,18 +159,25 @@ void run(GLFWwindow *window) {
     auto group = tc::schlafli({5, 3, 3, 2});
 
     const auto combos = Combos<int>({0, 1, 2, 3, 4}, 3);
+    const auto last = Combos<int>({0,2,3,4},3);
 
-    auto white = Slice<4>::build(
-        group,
-        {0.3f, 0.1f, 0.1f, 0.1f, 0.05f},
-        {0.9f, 0.9f, 0.9f, 1.0f},
-        combos.begin(), combos.end());
-
-    auto black = Slice<4>::build(
-        group,
-        {1.0f, 0.1f, 0.1f, 0.1f, 0.5f},
-        {0.3f, 0.3f, 0.3f, 1.0f},
-        combos.begin()++, combos.end());
+    auto slices = {
+        Slice<4>::build(
+            group,
+            (vec5) {0.5, 0.05, 0.05, 0.05, 0.025},
+            {0.9f, 0.9f, 0.9f, 1.0f},
+            combos.begin(), combos.end()),
+        Slice<4>::build(
+            group,
+            (vec5) {0.5, 0.05, 0.05, 0.05, 0.025} * 2.0,
+            {0.3f, 0.3f, 0.3f, 1.0f},
+            combos.begin()++, combos.end()),
+        Slice<4>::build(
+            group,
+            (vec5) {0.5, 0.05, 0.05, 0.05, 0.2} * 1.2,
+            {0.3f, 0.3f, 0.3f, 1.0f},
+            last.begin(), last.end()),
+    };
 
     auto ubo = cgl::Buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
@@ -188,13 +196,11 @@ void run(GLFWwindow *window) {
         glLineWidth(1.5);
 
         slice_pipe.bound([&]() {
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, white.vbo);
-            glProgramUniform4fv(sh.solid, 2, 1, &white.color.front());
-            white.draw();
-
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, black.vbo);
-            glProgramUniform4fv(sh.solid, 2, 1, &black.color.front());
-            black.draw();
+            for (const auto &slice : slices) {
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, slice.vbo);
+                glProgramUniform4fv(sh.solid, 2, 1, &slice.color.front());
+                slice.draw();
+            }
         });
 
         glfwSwapInterval(2);

@@ -161,15 +161,15 @@ V gram_schmidt_last(std::vector<V> vecs) {
     return normalized(vecs[vecs.size() - 1]);
 }
 
-template<class V>
-V barycentric(const std::vector<V> &basis, const std::vector<float> &coords) {
+template<class V, class C>
+V barycentric(const std::vector<V> &basis, const C &coords) {
     V res{};
 
     int N = std::min(basis.size(), coords.size());
     for (int i = 0; i < N; ++i) {
         res += basis[i] * coords[i];
     }
-    return normalized(res);
+    return res;
 }
 
 template<class V>
