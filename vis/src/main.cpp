@@ -156,27 +156,21 @@ void run(GLFWwindow *window) {
         .stage(sh.slice)
         .stage(sh.solid);
 
-    auto group = tc::schlafli({5, 3, 3, 2});
+    auto group = tc::schlafli({3, 4, 3, 2});
 
     const auto combos = Combos<int>({0, 1, 2, 3, 4}, 3);
-    const auto last = Combos<int>({0,2,3,4},3);
 
     auto slices = {
         Slice<4>::build(
             group,
-            (vec5) {0.5, 0.05, 0.05, 0.05, 0.025},
+            (vec5) {1.0, 0.1, 0.1, 0.1, 0.025} * 0.8,
             {0.9f, 0.9f, 0.9f, 1.0f},
             combos.begin(), combos.end()),
         Slice<4>::build(
             group,
-            (vec5) {0.5, 0.05, 0.05, 0.05, 0.025} * 2.0,
+            (vec5) {1.0, 0.1, 0.1, 0.1, 0.025},
             {0.3f, 0.3f, 0.3f, 1.0f},
             combos.begin()++, combos.end()),
-        Slice<4>::build(
-            group,
-            (vec5) {0.5, 0.05, 0.05, 0.05, 0.2} * 1.2,
-            {0.3f, 0.3f, 0.3f, 1.0f},
-            last.begin(), last.end()),
     };
 
     auto ubo = cgl::Buffer<Matrices>();
