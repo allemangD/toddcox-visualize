@@ -61,6 +61,19 @@ public:
         (*this)++;
         return res;
     }
+
+    auto operator--(int) {
+        std::next_permutation(bits.begin(), bits.end());
+        set_curr();
+        --at;
+        return *this;
+    }
+
+    auto operator--() &{
+        auto res = *this;
+        (*this)--;
+        return res;
+    }
 };
 
 template<class T>

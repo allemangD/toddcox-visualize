@@ -156,19 +156,21 @@ void run(GLFWwindow *window) {
         .stage(sh.slice)
         .stage(sh.solid);
 
-    auto group = tc::schlafli({3, 4, 3, 2});
+    auto group = tc::schlafli({5, 3, 3, 2});
 
     const auto combos = Combos<int>({0, 1, 2, 3, 4}, 3);
+
+    const auto coord = (vec5) {1.0, 0.1, 0.1, 0.1, 0.025};
 
     auto slices = {
         Slice<4>::build(
             group,
-            (vec5) {1.0, 0.1, 0.1, 0.1, 0.025} * 0.8,
-            {0.9f, 0.9f, 0.9f, 1.0f},
+            coord * 0.3,
+            {0.9f, 0.3f, 0.3f, 1.0f},
             combos.begin(), combos.end()),
         Slice<4>::build(
             group,
-            (vec5) {1.0, 0.1, 0.1, 0.1, 0.025},
+            coord,
             {0.3f, 0.3f, 0.3f, 1.0f},
             combos.begin()++, combos.end()),
     };
