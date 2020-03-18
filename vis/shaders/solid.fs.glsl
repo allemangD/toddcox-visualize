@@ -1,6 +1,6 @@
 #version 430
 
-layout(location=2) uniform vec4 col;
+layout(location=2) uniform vec3 col;
 
 layout(location=0) in vec3 pos;
 layout(location=2) in vec3 normal;
@@ -12,6 +12,6 @@ void main() {
     float bright = abs(dot(normal, normalize(vec3(-0.6, 1, 2))));
     bright = .6 + .3 * bright * depth;
 
-    color = col;
+    color = vec4(col, 1);
     color.xyz *= bright;
 }

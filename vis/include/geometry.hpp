@@ -43,7 +43,7 @@ struct Primitive {
 /**
  * Produce a list of all generators for the group context. The range [0..group.ngens).
  */
-std::vector<int> gens(const tc::Group &context) {
+std::vector<int> generators(const tc::Group &context) {
     std::vector<int> g_gens(context.ngens);
     std::iota(g_gens.begin(), g_gens.end(), 0);
     return g_gens;
@@ -194,9 +194,9 @@ std::vector<std::vector<Primitive<N>>> each_tile(
     const auto table = solve(context, g_gens, {});
     const auto path = solve(context, g_gens, sg_gens).path;
 
-    auto _gens = gens(context);
+    auto _gens = generators(context);
 
-    auto res = path.walk<std::vector<Primitive<N>>, int>(base, gens(context), [&](auto from, auto gen) {
+    auto res = path.walk<std::vector<Primitive<N>>, int>(base, generators(context), [&](auto from, auto gen) {
         return apply(from, table, gen);
     });
 

@@ -1,15 +1,14 @@
-#include <combo_iterator.hpp>
 #include <iostream>
+#include <yaml-cpp/yaml.h>
+#include <string>
 
 int main() {
-    auto cs = Combos<int>({7, 2, 3}, 2);
+    auto cfg = YAML::LoadFile("presets/default.yaml");
 
-    auto beg = cs.begin();
-    auto end = cs.end();
-
-    while (beg != end) {
-        const auto &c = *(++beg);
-        for (const auto &e : c) std::cout << e << " ";
+    for (const auto &group : cfg["groups"]) {
+//        std::cout << group["symbol"] << std::endl;
+        auto s = group["symbol"].as<std::vector<int>>();
+        for (const auto e : s) std::cout << e << " ";
         std::cout << std::endl;
     }
 }

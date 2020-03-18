@@ -17,6 +17,7 @@
 #include <random>
 
 #include <chrono>
+#include <yaml-cpp/yaml.h>
 
 #ifdef _WIN32
 extern "C" {
@@ -54,11 +55,19 @@ Matrices build(GLFWwindow *window, float st) {
 }
 
 template<unsigned N, class T>
-auto hull(const tc::Group &group, T begin, T end) {
+auto hull(const tc::Group &group, T all_sg_gens, const std::vector<std::vector<int>> &exclude) {
     std::vector<std::vector<Primitive<N>>> parts;
-    auto g_gens = gens(group);
-    while (begin != end) {
-        const auto &sg_gens = *(++begin);
+    auto g_gens = generators(group);
+    for (const std::vector<int> &sg_gens : all_sg_gens) {
+        bool excluded = false;
+        for (const auto &test : exclude) {
+            if (sg_gens == test) {
+                excluded = true;
+                break;
+            }
+        }
+        if (excluded) continue;
+
         const auto &base = triangulate<N>(group, sg_gens);
         const auto &tiles = each_tile(base, group, g_gens, sg_gens);
         for (const auto &tile : tiles) {
@@ -108,12 +117,12 @@ public:
 template<unsigned N>
 struct Slice {
     GLenum mode;
-    vec4 color;
+    vec3 color;
     cgl::VertexArray vao;
     cgl::Buffer<vec4> vbo;
     cgl::Buffer<Primitive<N>> ibo;
 
-    Slice(GLenum mode, vec4 color) : mode(mode), color(color), vao(), ibo(), vbo() {}
+    Slice(GLenum mode, vec3 color) : mode(mode), color(color), vao(), ibo(), vbo() {}
 
     Slice(Slice &) = delete;
 
@@ -126,11 +135,12 @@ struct Slice {
     }
 
     template<class T, class C>
-    static Slice<N> build(const tc::Group &g, const C &coords, vec4 color, T begin, T end) {
+    static Slice<N> build(const tc::Group &g, const C &coords, vec3 color, T all_sg_gens,
+        const std::vector<std::vector<int>> &exclude) {
         Slice<N> res(GL_POINTS, color);
 
         res.vbo.put(points(g, coords));
-        res.ibo.put(merge<N>(hull<N>(g, begin, end)));
+        res.ibo.put(merge<N>(hull<N>(g, all_sg_gens, exclude)));
         res.vao.ipointer(0, res.ibo, 4, GL_UNSIGNED_INT);
 
         return res;
@@ -156,24 +166,39 @@ void run(GLFWwindow *window) {
         .stage(sh.slice)
         .stage(sh.solid);
 
-    auto group = tc::schlafli({5, 3, 3, 2});
+    auto scene = YAML::LoadFile("presets/default.yaml");
 
-    const auto combos = Combos<int>({0, 1, 2, 3, 4}, 3);
+    auto slices = std::vector<Slice<4>>();
 
-    const auto coord = (vec5) {1.0, 0.1, 0.1, 0.1, 0.025};
+    for (const auto &group_info : scene["groups"]) {
+        auto symbol = group_info["symbol"].as<std::vector<int>>();
+        auto group = tc::schlafli(symbol);
+        auto gens = generators(group);
 
-    auto slices = {
-        Slice<4>::build(
-            group,
-            coord * 0.3,
-            {0.9f, 0.3f, 0.3f, 1.0f},
-            combos.begin(), combos.end()),
-        Slice<4>::build(
-            group,
-            coord,
-            {0.3f, 0.3f, 0.3f, 1.0f},
-            combos.begin()++, combos.end()),
-    };
+        if (group_info["slices"].IsDefined()) {
+            for (const auto &slice_info : group_info["slices"]) {
+                auto root = slice_info["root"].as<vec5>();
+                auto color = slice_info["color"].as<vec3>();
+                auto exclude = std::vector<std::vector<int>>();
+
+                if (slice_info["exclude"].IsDefined()) {
+                    exclude = slice_info["exclude"].as<std::vector<std::vector<int>>>();
+                }
+
+                if (slice_info["subgroups"].IsDefined()) {
+                    auto subgroups = slice_info["subgroups"].as<std::vector<std::vector<int>>>();
+                    slices.push_back(Slice<4>::build(
+                        group, root, color, subgroups, exclude
+                    ));
+                } else {
+                    auto combos = Combos<int>(gens, 3);
+                    slices.push_back(Slice<4>::build(
+                        group, root, color, combos, exclude
+                    ));
+                }
+            }
+        }
+    }
 
     auto ubo = cgl::Buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
@@ -194,7 +219,7 @@ void run(GLFWwindow *window) {
         slice_pipe.bound([&]() {
             for (const auto &slice : slices) {
                 glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, slice.vbo);
-                glProgramUniform4fv(sh.solid, 2, 1, &slice.color.front());
+                glProgramUniform3fv(sh.solid, 2, 1, &slice.color.front());
                 slice.draw();
             }
         });

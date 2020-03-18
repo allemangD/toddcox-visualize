@@ -5,6 +5,7 @@
     <sourceRoots>
       <file path="$PROJECT_DIR$/examples" />
       <file path="$PROJECT_DIR$/vis/include" />
+      <file path="$PROJECT_DIR$/vis/presets" />
       <file path="$PROJECT_DIR$/vis/shaders" />
       <file path="$PROJECT_DIR$/vis/src" />
     </sourceRoots>
