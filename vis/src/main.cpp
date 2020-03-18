@@ -324,8 +324,6 @@ int main(int argc, char *argv[]) {
     glClear(GL_COLOR_BUFFER_BIT);
     glfwSwapBuffers(window);
 
-    std::cout << utilInfo();
-
     std::string config_file = "presets/default.yaml";
     if (argc > 1) config_file = std::string(argv[1]);
 
