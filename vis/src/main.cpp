@@ -180,7 +180,7 @@ struct Wire {
     }
 };
 
-void run(GLFWwindow *window) {
+void run(const std::string &config_file, GLFWwindow *window) {
     glEnable(GL_DEPTH_TEST);
 
     glEnable(GL_BLEND);
@@ -199,7 +199,7 @@ void run(GLFWwindow *window) {
         .stage(sh.slice)
         .stage(sh.solid);
 
-    auto scene = YAML::LoadFile("presets/default.yaml");
+    auto scene = YAML::LoadFile(config_file);
 
     auto slices = std::vector<Slice<4>>();
     auto wires = std::vector<Wire>();
@@ -326,7 +326,10 @@ int main(int argc, char *argv[]) {
 
     std::cout << utilInfo();
 
-    run(window);
+    std::string config_file = "presets/default.yaml";
+    if (argc > 1) config_file = std::string(argv[1]);
+
+    run(config_file, window);
 
     glfwTerminate();
     return EXIT_SUCCESS;
