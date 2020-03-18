@@ -147,6 +147,39 @@ struct Slice {
     }
 };
 
+struct Wire {
+    bool curve;
+    vec3 color;
+    cgl::VertexArray vao;
+    cgl::Buffer<vec4> vbo;
+    cgl::Buffer<Primitive<2>> ibo;
+
+    Wire(bool curve, vec3 color) : curve(curve), color(color), vao(), ibo(), vbo() {}
+
+    Wire(Wire &) = delete;
+
+    Wire(Wire &&) noexcept = default;
+
+    void draw() const {
+        vao.bound([&]() {
+            ibo.bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
+                glDrawElements(GL_LINES, ibo.count() * 2, GL_UNSIGNED_INT, nullptr);
+            });
+        });
+    }
+
+    template<class T, class C>
+    static Wire build(const tc::Group &g, const C &coords, bool curve, vec3 color, T all_sg_gens,
+        const std::vector<std::vector<int>> &exclude) {
+        Wire res(curve, color);
+
+        res.vbo.put(points(g, coords));
+        res.ibo.put(merge<2>(hull<2>(g, all_sg_gens, exclude)));
+
+        return res;
+    }
+};
+
 void run(GLFWwindow *window) {
     glEnable(GL_DEPTH_TEST);
 
@@ -155,8 +188,8 @@ void run(GLFWwindow *window) {
 
     Shaders sh;
 
-    auto proj_pipe = cgl::pipeline();
-    proj_pipe
+    auto wire_pipe = cgl::pipeline();
+    wire_pipe
         .stage(sh.direct_stereo)
         .stage(sh.solid);
 
@@ -169,6 +202,7 @@ void run(GLFWwindow *window) {
     auto scene = YAML::LoadFile("presets/default.yaml");
 
     auto slices = std::vector<Slice<4>>();
+    auto wires = std::vector<Wire>();
 
     for (const auto &group_info : scene["groups"]) {
         auto symbol = group_info["symbol"].as<std::vector<int>>();
@@ -198,6 +232,31 @@ void run(GLFWwindow *window) {
                 }
             }
         }
+
+        if (group_info["wires"].IsDefined()) {
+            for (const auto &wire_info : group_info["wires"]) {
+                auto root = wire_info["root"].as<vec5>();
+                auto color = wire_info["color"].as<vec3>();
+                auto exclude = std::vector<std::vector<int>>();
+                auto curve = wire_info["curve"].IsDefined() && wire_info["curve"].as<bool>();
+
+                if (wire_info["exclude"].IsDefined()) {
+                    exclude = wire_info["exclude"].as<std::vector<std::vector<int>>>();
+                }
+
+                if (wire_info["subgroups"].IsDefined()) {
+                    auto subgroups = wire_info["subgroups"].as<std::vector<std::vector<int>>>();
+                    wires.push_back(Wire::build(
+                        group, root, curve, color, subgroups, exclude
+                    ));
+                } else {
+                    auto combos = Combos<int>(gens, 1);
+                    wires.push_back(Wire::build(
+                        group, root, curve, color, combos, exclude
+                    ));
+                }
+            }
+        }
     }
 
     auto ubo = cgl::Buffer<Matrices>();
@@ -221,6 +280,17 @@ void run(GLFWwindow *window) {
                 glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, slice.vbo);
                 glProgramUniform3fv(sh.solid, 2, 1, &slice.color.front());
                 slice.draw();
+            }
+        });
+
+        wire_pipe.bound([&]() {
+            for (const auto &wire : wires) {
+                if (wire.curve) wire_pipe.stage(sh.curve_stereo);
+                else wire_pipe.unstage(GL_GEOMETRY_SHADER_BIT);
+
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, wire.vbo);
+                glProgramUniform3fv(sh.solid, 2, 1, &wire.color.front());
+                wire.draw();
             }
         });
 

@@ -11,7 +11,7 @@
 
 #include <util.hpp>
 
-namespace cgl{
+namespace cgl {
     class pipeline {
     protected:
         GLuint id{};
@@ -47,6 +47,11 @@ namespace cgl{
             char buffer[len];
             glGetProgramPipelineInfoLog(id, len, nullptr, buffer);
             return std::string(buffer);
+        }
+
+        pipeline &unstage(GLenum stage_bits) {
+            glUseProgramStages(id, stage_bits, 0);
+            return *this;
         }
 
         pipeline &stage(const ShaderProgram<GL_VERTEX_SHADER> &pgm) {

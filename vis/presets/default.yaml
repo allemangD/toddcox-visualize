@@ -7,3 +7,7 @@ groups:
         color: [0.3, 0.3, 0.3]
         exclude:
           - [0, 1, 2]
+    wires:
+      - root: [0.50, 0.05, 0.05, 0.05, 0.01]
+        color: [0.9, 0.9, 0.9]
+        curve: true
