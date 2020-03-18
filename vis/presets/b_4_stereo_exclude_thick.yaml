@@ -1,0 +1,8 @@
+dimension: 5
+groups:
+  - symbol: [4, 3, 3, 2]
+    slices:
+      - root: [0.90, 0.09, 0.09, 0.09, 0.09]
+        color: [0.9, 0.9, 0.9]
+        exclude:
+          - [0, 1, 2]

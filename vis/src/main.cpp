@@ -34,7 +34,16 @@ struct Matrices {
     }
 };
 
-Matrices build(GLFWwindow *window, float st) {
+struct State {
+    float time;
+    float time_delta;
+
+    float st;
+
+    int dimension;
+};
+
+Matrices build(GLFWwindow *window, State &state) {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
 
@@ -43,13 +52,27 @@ Matrices build(GLFWwindow *window, float st) {
     auto pwidth = aspect * pheight;
     glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
 
+    if (!glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
+        state.st += state.time_delta / 8;
+    }
+
     auto view = glm::identity<glm::mat4>();
-    view *= utilRotate(0, 1, st * .40f);
-    view *= utilRotate(0, 2, st * .20f);
-    view *= utilRotate(0, 3, st * 1.30f);
-    view *= utilRotate(1, 2, st * .50f);
-    view *= utilRotate(1, 3, st * .25f);
-    view *= utilRotate(2, 3, st * 1.42f);
+    if (state.dimension < 4) {
+        view *= utilRotate(2, 3, M_PI_2f32);
+    }
+
+    if (state.dimension > 1) {
+        view *= utilRotate(0, 1, state.st * .40f);
+    }
+    if (state.dimension > 2) {
+        view *= utilRotate(0, 2, state.st * .20f);
+        view *= utilRotate(1, 2, state.st * .50f);
+    }
+    if (state.dimension > 3) {
+        view *= utilRotate(0, 3, state.st * 1.30f);
+        view *= utilRotate(1, 3, state.st * .25f);
+        view *= utilRotate(2, 3, state.st * 1.42f);
+    }
 
     return Matrices(proj, view);
 }
@@ -149,12 +172,13 @@ struct Slice {
 
 struct Wire {
     bool curve;
+    bool ortho;
     vec3 color;
     cgl::VertexArray vao;
     cgl::Buffer<vec4> vbo;
     cgl::Buffer<Primitive<2>> ibo;
 
-    Wire(bool curve, vec3 color) : curve(curve), color(color), vao(), ibo(), vbo() {}
+    Wire(bool curve, bool ortho, vec3 color) : curve(curve), ortho(ortho), color(color), vao(), ibo(), vbo() {}
 
     Wire(Wire &) = delete;
 
@@ -169,9 +193,9 @@ struct Wire {
     }
 
     template<class T, class C>
-    static Wire build(const tc::Group &g, const C &coords, bool curve, vec3 color, T all_sg_gens,
+    static Wire build(const tc::Group &g, const C &coords, bool curve, bool ortho, vec3 color, T all_sg_gens,
         const std::vector<std::vector<int>> &exclude) {
-        Wire res(curve, color);
+        Wire res(curve, ortho, color);
 
         res.vbo.put(points(g, coords));
         res.ibo.put(merge<2>(hull<2>(g, all_sg_gens, exclude)));
@@ -200,6 +224,11 @@ void run(const std::string &config_file, GLFWwindow *window) {
         .stage(sh.solid);
 
     auto scene = YAML::LoadFile(config_file);
+
+    State state;
+    glfwSetWindowUserPointer(window, &state);
+
+    state.dimension = scene["dimension"].as<int>();
 
     auto slices = std::vector<Slice<4>>();
     auto wires = std::vector<Wire>();
@@ -239,6 +268,7 @@ void run(const std::string &config_file, GLFWwindow *window) {
                 auto color = wire_info["color"].as<vec3>();
                 auto exclude = std::vector<std::vector<int>>();
                 auto curve = wire_info["curve"].IsDefined() && wire_info["curve"].as<bool>();
+                auto ortho = wire_info["ortho"].IsDefined() && wire_info["ortho"].as<bool>();
 
                 if (wire_info["exclude"].IsDefined()) {
                     exclude = wire_info["exclude"].as<std::vector<std::vector<int>>>();
@@ -247,12 +277,12 @@ void run(const std::string &config_file, GLFWwindow *window) {
                 if (wire_info["subgroups"].IsDefined()) {
                     auto subgroups = wire_info["subgroups"].as<std::vector<std::vector<int>>>();
                     wires.push_back(Wire::build(
-                        group, root, curve, color, subgroups, exclude
+                        group, root, curve, ortho, color, subgroups, exclude
                     ));
                 } else {
                     auto combos = Combos<int>(gens, 1);
                     wires.push_back(Wire::build(
-                        group, root, curve, color, combos, exclude
+                        group, root, curve, ortho, color, combos, exclude
                     ));
                 }
             }
@@ -263,34 +293,40 @@ void run(const std::string &config_file, GLFWwindow *window) {
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
 
     while (!glfwWindowShouldClose(window)) {
+        auto time = (float) glfwGetTime();
+        state.time_delta = state.time - time;
+        state.time = time;
+
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
         glViewport(0, 0, width, height);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        auto st = (float) glfwGetTime() / 8;
-        Matrices mats = build(window, st);
+        Matrices mats = build(window, state);
         ubo.put(mats);
 
         glLineWidth(1.5);
-
-        slice_pipe.bound([&]() {
-            for (const auto &slice : slices) {
-                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, slice.vbo);
-                glProgramUniform3fv(sh.solid, 2, 1, &slice.color.front());
-                slice.draw();
-            }
-        });
 
         wire_pipe.bound([&]() {
             for (const auto &wire : wires) {
                 if (wire.curve) wire_pipe.stage(sh.curve_stereo);
                 else wire_pipe.unstage(GL_GEOMETRY_SHADER_BIT);
 
+                if (wire.ortho) wire_pipe.stage(sh.direct_ortho);
+                else wire_pipe.stage(sh.direct_stereo);
+
                 glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, wire.vbo);
                 glProgramUniform3fv(sh.solid, 2, 1, &wire.color.front());
                 wire.draw();
+            }
+        });
+
+        slice_pipe.bound([&]() {
+            for (const auto &slice : slices) {
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, slice.vbo);
+                glProgramUniform3fv(sh.solid, 2, 1, &slice.color.front());
+                slice.draw();
             }
         });
 
