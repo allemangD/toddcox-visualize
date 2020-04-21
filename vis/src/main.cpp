@@ -343,6 +343,10 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    glfwWindowHint(GLFW_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_VERSION_MAJOR, 5);
+//    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
     auto window = glfwCreateWindow(
         1920, 1080,
         "Coset Visualization",
@@ -359,6 +363,8 @@ int main(int argc, char *argv[]) {
     glfwSwapInterval(1);
     glClear(GL_COLOR_BUFFER_BIT);
     glfwSwapBuffers(window);
+
+    std::cout << utilInfo();
 
     std::string config_file = "presets/default.yaml";
     if (argc > 1) config_file = std::string(argv[1]);
