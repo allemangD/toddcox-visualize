@@ -225,7 +225,7 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
     auto scene = YAML::LoadFile(config_file);
 
-    State state;
+    State state{};
     glfwSetWindowUserPointer(window, &state);
 
     state.dimension = scene["dimension"].as<int>();
