@@ -12,8 +12,6 @@ add_custom_command(
         COMMENT "copied preses"
 )
 
-find_package(yaml-cpp REQUIRED)
-
 add_library(vis-util INTERFACE)
 target_include_directories(vis-util INTERFACE include)
 

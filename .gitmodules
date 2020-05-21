@@ -7,3 +7,6 @@
 [submodule "vendor/toddcox"]
 	path = vendor/toddcox
 	url = https://github.com/JCRaymond/toddcox-faster.git
+[submodule "vendor/yaml-cpp"]
+	path = vendor/yaml-cpp
+	url = git://github.com/jbeder/yaml-cpp.git
