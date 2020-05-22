@@ -19,8 +19,3 @@ add_executable(vis src/main.cpp)
 target_include_directories(vis PRIVATE include)
 target_link_libraries(vis PRIVATE tc glad glm glfw yaml-cpp)
 add_dependencies(vis shaders presets)
-
-add_executable(ctest src/combotest.cpp)
-target_link_libraries(ctest PRIVATE yaml-cpp)
-target_include_directories(ctest PRIVATE include)
-add_dependencies(ctest presets)
