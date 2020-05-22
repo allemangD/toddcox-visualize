@@ -147,8 +147,28 @@ struct Prop {
 };
 
 template<unsigned N>
+struct Bundle : public std::vector<Prop<N>> {
+};
+
+template<unsigned N>
 struct Renderer {
-    virtual void draw(const Prop<N> &) const = 0;
+    virtual void bound(const std::function<void()> &action) const = 0;
+
+    virtual void _draw(const Prop<N> &) const = 0;
+
+    void draw(const Prop<N> &prop) const {
+        bound([&]() {
+            _draw(prop);
+        });
+    }
+
+    void draw(const Bundle<N> &bundle) const {
+        bound([&]() {
+            for (const Prop<N> &prop : bundle) {
+                _draw(prop);
+            }
+        });
+    }
 };
 
 template<unsigned N>
@@ -196,14 +216,16 @@ struct SliceRenderer : public Renderer<N> {
 
     SliceRenderer(SliceRenderer &&) noexcept = default;
 
-    void draw(const Prop<N> &prop) const override {
-        pipe.bound([&]() {
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, prop.vbo);
-//            glProgramUniform3fv(solid, 2, 1, &prop.color.front());
-            glProgramUniform3f(solid, 2, 1.f, 1.f, 1.f);
-            prop.vao.bound([&]() {
-                glDrawArrays(GL_POINTS, 0, prop.ibo.count() * N);
-            });
+    void bound(const std::function<void()> &action) const override {
+        pipe.bound(action);
+    }
+
+    void _draw(const Prop<N> &prop) const override {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, prop.vbo);
+//        glProgramUniform3fv(solid, 2, 1, &prop.color.front());
+        glProgramUniform3f(solid, 2, 1.f, 1.f, 1.f);
+        prop.vao.bound([&]() {
+            glDrawArrays(GL_POINTS, 0, prop.ibo.count() * N);
         });
     }
 };
@@ -268,7 +290,8 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
     state.dimension = scene["dimension"].as<int>();
 
-    auto slices = std::vector<Slice<4>>();
+    auto slices = Bundle<4>();
+//    auto slices = std::vector<Slice<4>>();
 //    auto wires = std::vector<Wire>();
 
     for (const auto &group_info : scene["groups"]) {
@@ -370,9 +393,7 @@ void run(const std::string &config_file, GLFWwindow *window) {
 //            }
 //        });
 
-        for (const auto &slice : slices) {
-            sRen.draw(slice);
-        }
+        sRen.draw(slices);
 
         glfwSwapInterval(2);
         glfwSwapBuffers(window);
