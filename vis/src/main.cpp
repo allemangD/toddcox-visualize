@@ -30,7 +30,7 @@ struct Matrices {
     glm::mat4 view;
 
     Matrices(const glm::mat4 &proj, const glm::mat4 &view)
-        : proj(proj), view(view) {
+            : proj(proj), view(view) {
     }
 };
 
@@ -130,11 +130,11 @@ struct SliceProp : public Prop<N> {
 
     template<class T, class C>
     static SliceProp<N> build(
-        const tc::Group &g,
-        const C &coords,
-        vec3 color,
-        T all_sg_gens,
-        const std::vector<std::vector<int>> &exclude
+            const tc::Group &g,
+            const C &coords,
+            vec3 color,
+            T all_sg_gens,
+            const std::vector<std::vector<int>> &exclude
     ) {
         SliceProp<N> res(color);
 
@@ -149,11 +149,11 @@ struct SliceProp : public Prop<N> {
 template<unsigned N>
 struct SliceRenderer : public Renderer<N> {
     cgl::pgm::vert defer = cgl::pgm::vert::file(
-        "shaders/slice/deferred.vs.glsl");
+            "shaders/slice/deferred.vs.glsl");
     cgl::pgm::geom slice = cgl::pgm::geom::file(
-        "shaders/slice/slice.gm.glsl");
+            "shaders/slice/slice.gm.glsl");
     cgl::pgm::frag solid = cgl::pgm::frag::file(
-        "shaders/solid.fs.glsl");
+            "shaders/solid.fs.glsl");
 
     cgl::pipeline pipe;
 
@@ -207,52 +207,6 @@ struct DirectRenderer : public Renderer<N> {
     }
 };
 
-//struct WireframeRenderer : public DirectRenderer<2> {
-//    WireframeRenderer() : DirectRenderer<2>() {
-//        cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
-//            "shaders/direct-ortho.vs.glsl");
-//        cgl::pgm::frag solid = cgl::pgm::frag::file(
-//            "shaders/solid.fs.glsl");
-//
-//        glProgramUniform3f(solid, 2, .3f, .3f, .3f);
-//
-//        this->pipe.stage(direct_stereo);
-//        this->pipe.stage(solid);
-//    }
-//};
-//
-//struct WireframeStereoRenderer : public WireframeRenderer {
-//    WireframeStereoRenderer() : WireframeRenderer() {
-//        cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
-//            "shaders/direct-stereo.vs.glsl");
-//        cgl::pgm::frag solid = cgl::pgm::frag::file(
-//            "shaders/solid.fs.glsl");
-//
-//        glProgramUniform3f(solid, 2, .3f, .3f, .4f);
-//
-//        this->pipe.stage(direct_stereo);
-//        this->pipe.stage(solid);
-//    }
-//};
-//
-//struct WireframeStereoCurveRenderer : public WireframeStereoRenderer {
-//    WireframeStereoCurveRenderer() : WireframeStereoRenderer() {
-//        cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
-//            "shaders/direct-stereo.vs.glsl");
-//        cgl::pgm::geom curve = cgl::pgm::geom::file(
-//            "shaders/curve-stereo.gm.glsl"
-//        );
-//        cgl::pgm::frag solid = cgl::pgm::frag::file(
-//            "shaders/solid.fs.glsl");
-//
-//        glProgramUniform3f(solid, 2, .4f, .3f, .3f);
-//
-//        this->pipe.stage(direct_stereo);
-//        this->pipe.stage(curve);
-//        this->pipe.stage(solid);
-//    }
-//};
-
 struct WireframeProp : public Prop<2> {
     vec3 color;
 
@@ -264,12 +218,12 @@ struct WireframeProp : public Prop<2> {
 
     template<class T, class C>
     static WireframeProp build(const tc::Group &g,
-        const C &coords,
-        bool curve,
-        bool ortho,
-        vec3 color,
-        T all_sg_gens,
-        const std::vector<std::vector<int>> &exclude
+                               const C &coords,
+                               bool curve,
+                               bool ortho,
+                               vec3 color,
+                               T all_sg_gens,
+                               const std::vector<std::vector<int>> &exclude
     ) {
         WireframeProp res(color);
 
@@ -320,6 +274,8 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
     state.dimension = scene["dimension"].as<int>();
 
+    const float NORM_SCALE = 0.8;  // to keep things from crossing above w=1 after being projected down from 5d -> 4d.
+
     for (const auto &group_info : scene["groups"]) {
         auto symbol = group_info["symbol"].as<std::vector<int>>();
         auto group = tc::schlafli(symbol);
@@ -335,15 +291,17 @@ void run(const std::string &config_file, GLFWwindow *window) {
                     exclude = slice_info["exclude"].as<std::vector<std::vector<int>>>();
                 }
 
+                root = root * NORM_SCALE;
+
                 if (slice_info["subgroups"].IsDefined()) {
                     auto subgroups = slice_info["subgroups"].as<std::vector<std::vector<int>>>();
                     sRen.props.push_back(SliceProp<4>::build(
-                        group, root, color, subgroups, exclude
+                            group, root, color, subgroups, exclude
                     ));
                 } else {
                     auto combos = Combos<int>(gens, 3);
                     sRen.props.push_back(SliceProp<4>::build(
-                        group, root, color, combos, exclude
+                            group, root, color, combos, exclude
                     ));
                 }
             }
@@ -361,24 +319,26 @@ void run(const std::string &config_file, GLFWwindow *window) {
                     exclude = wire_info["exclude"].as<std::vector<std::vector<int>>>();
                 }
 
+                root = root * NORM_SCALE;
+
                 if (wire_info["subgroups"].IsDefined()) {
                     auto subgroups = wire_info["subgroups"].as<std::vector<std::vector<int>>>();
 
                     if (ortho && curve) {
                         wocRen.props.push_back(WireframeProp::build(
-                            group, root, curve, ortho, color, subgroups, exclude
+                                group, root, curve, ortho, color, subgroups, exclude
                         ));
                     } else if (ortho) {
                         woRen.props.push_back(WireframeProp::build(
-                            group, root, curve, ortho, color, subgroups, exclude
+                                group, root, curve, ortho, color, subgroups, exclude
                         ));
                     } else if (curve) {
                         wscRen.props.push_back(WireframeProp::build(
-                            group, root, curve, ortho, color, subgroups, exclude
+                                group, root, curve, ortho, color, subgroups, exclude
                         ));
                     } else {
                         wsRen.props.push_back(WireframeProp::build(
-                            group, root, curve, ortho, color, subgroups, exclude
+                                group, root, curve, ortho, color, subgroups, exclude
                         ));
                     }
                 } else {
@@ -386,19 +346,19 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
                     if (ortho && curve) {
                         wocRen.props.push_back(WireframeProp::build(
-                            group, root, curve, ortho, color, combos, exclude
+                                group, root, curve, ortho, color, combos, exclude
                         ));
                     } else if (ortho) {
                         woRen.props.push_back(WireframeProp::build(
-                            group, root, curve, ortho, color, combos, exclude
+                                group, root, curve, ortho, color, combos, exclude
                         ));
                     } else if (curve) {
                         wscRen.props.push_back(WireframeProp::build(
-                            group, root, curve, ortho, color, combos, exclude
+                                group, root, curve, ortho, color, combos, exclude
                         ));
                     } else {
                         wsRen.props.push_back(WireframeProp::build(
-                            group, root, curve, ortho, color, combos, exclude
+                                group, root, curve, ortho, color, combos, exclude
                         ));
                     }
                 }
@@ -450,9 +410,9 @@ int main(int argc, char *argv[]) {
 //    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     auto window = glfwCreateWindow(
-        1920, 1080,
-        "Coset Visualization",
-        nullptr, nullptr);
+            1920, 1080,
+            "Coset Visualization",
+            nullptr, nullptr);
 
     if (!window) {
         std::cerr << "Failed to create window" << std::endl;
