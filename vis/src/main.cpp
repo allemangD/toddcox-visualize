@@ -58,7 +58,7 @@ Matrices build(GLFWwindow *window, State &state) {
 
     auto view = glm::identity<glm::mat4>();
     if (state.dimension < 4) {
-        view *= utilRotate(2, 3, M_PI_2f32);
+        view *= utilRotate(2, 3, M_PI_2f32 + 0.01f);
     }
 
     if (state.dimension > 1) {
@@ -77,29 +77,6 @@ Matrices build(GLFWwindow *window, State &state) {
     return Matrices(proj, view);
 }
 
-template<unsigned N, class T>
-auto hull(const tc::Group &group, T all_sg_gens, const std::vector<std::vector<int>> &exclude) {
-    std::vector<std::vector<Primitive<N>>> parts;
-    auto g_gens = generators(group);
-    for (const std::vector<int> &sg_gens : all_sg_gens) {
-        bool excluded = false;
-        for (const auto &test : exclude) {
-            if (sg_gens == test) {
-                excluded = true;
-                break;
-            }
-        }
-        if (excluded) continue;
-
-        const auto &base = triangulate<N>(group, sg_gens);
-        const auto &tiles = each_tile(base, group, g_gens, sg_gens);
-        for (const auto &tile : tiles) {
-            parts.push_back(tile);
-        }
-    }
-    return parts;
-}
-
 template<class C>
 std::vector<vec4> points(const tc::Group &group, const C &coords) {
     auto cosets = group.solve();
@@ -115,28 +92,6 @@ std::vector<vec4> points(const tc::Group &group, const C &coords) {
     return lower;
 }
 
-class Shaders {
-public:
-    cgl::pgm::vert defer = cgl::pgm::vert::file(
-        "shaders/slice/deferred.vs.glsl");
-    cgl::pgm::vert direct_ortho = cgl::pgm::vert::file(
-        "shaders/direct-ortho.vs.glsl");
-    cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
-        "shaders/direct-stereo.vs.glsl");
-
-    cgl::pgm::geom slice = cgl::pgm::geom::file(
-        "shaders/slice/slice.gm.glsl");
-    cgl::pgm::geom curve_stereo = cgl::pgm::geom::file(
-        "shaders/curve-stereo.gm.glsl");
-    cgl::pgm::geom curve_ortho = cgl::pgm::geom::file(
-        "shaders/curve-ortho.gm.glsl");
-
-    cgl::pgm::frag solid = cgl::pgm::frag::file(
-        "shaders/solid.fs.glsl");
-    cgl::pgm::frag diffuse = cgl::pgm::frag::file(
-        "shaders/diffuse.fs.glsl");
-};
-
 template<unsigned N>
 struct Prop {
     cgl::VertexArray vao;
@@ -147,24 +102,16 @@ struct Prop {
 };
 
 template<unsigned N>
-struct Bundle : public std::vector<Prop<N>> {
-};
-
-template<unsigned N>
 struct Renderer {
+    std::vector<Prop<N>> props;
+
     virtual void bound(const std::function<void()> &action) const = 0;
 
     virtual void _draw(const Prop<N> &) const = 0;
 
-    void draw(const Prop<N> &prop) const {
+    void render() const {
         bound([&]() {
-            _draw(prop);
-        });
-    }
-
-    void draw(const Bundle<N> &bundle) const {
-        bound([&]() {
-            for (const Prop<N> &prop : bundle) {
+            for (const auto &prop : props) {
                 _draw(prop);
             }
         });
@@ -172,24 +119,24 @@ struct Renderer {
 };
 
 template<unsigned N>
-struct Slice : public Prop<N> {
+struct SliceProp : public Prop<N> {
     vec3 color;
 
-    Slice(vec3 color) : Prop<N>(), color(color) {}
+    SliceProp(vec3 color) : Prop<N>(), color(color) {}
 
-    Slice(Slice &) = delete;
+    SliceProp(SliceProp &) = delete;
 
-    Slice(Slice &&) noexcept = default;
+    SliceProp(SliceProp &&) noexcept = default;
 
     template<class T, class C>
-    static Slice<N> build(
+    static SliceProp<N> build(
         const tc::Group &g,
         const C &coords,
         vec3 color,
         T all_sg_gens,
         const std::vector<std::vector<int>> &exclude
     ) {
-        Slice<N> res(color);
+        SliceProp<N> res(color);
 
         res.vbo.put(points(g, coords));
         res.ibo.put(merge<N>(hull<N>(g, all_sg_gens, exclude)));
@@ -237,17 +184,9 @@ struct SliceRenderer : public Renderer<N> {
 
 template<unsigned N>
 struct DirectRenderer : public Renderer<N> {
-    cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
-        "shaders/direct-stereo.vs.glsl");
-    cgl::pgm::frag solid = cgl::pgm::frag::file(
-        "shaders/solid.fs.glsl");
-
     cgl::pipeline pipe;
 
-    DirectRenderer() {
-        pipe.stage(direct_stereo);
-        pipe.stage(solid);
-    }
+    DirectRenderer() = default;
 
     DirectRenderer(DirectRenderer &) = delete;
 
@@ -260,7 +199,6 @@ struct DirectRenderer : public Renderer<N> {
     void _draw(const Prop<N> &prop) const override {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, prop.vbo);
 //        glProgramUniform3fv(sh.solid, 2, 1, &wire.color.front());
-        glProgramUniform3f(solid, 2, .3f, .3f, .3f);
         prop.vao.bound([&]() {
             prop.ibo.bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
                 glDrawElements(GL_LINES, prop.ibo.count() * N, GL_UNSIGNED_INT, nullptr);
@@ -269,17 +207,63 @@ struct DirectRenderer : public Renderer<N> {
     }
 };
 
-struct Wire : public Prop<2> {
+//struct WireframeRenderer : public DirectRenderer<2> {
+//    WireframeRenderer() : DirectRenderer<2>() {
+//        cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
+//            "shaders/direct-ortho.vs.glsl");
+//        cgl::pgm::frag solid = cgl::pgm::frag::file(
+//            "shaders/solid.fs.glsl");
+//
+//        glProgramUniform3f(solid, 2, .3f, .3f, .3f);
+//
+//        this->pipe.stage(direct_stereo);
+//        this->pipe.stage(solid);
+//    }
+//};
+//
+//struct WireframeStereoRenderer : public WireframeRenderer {
+//    WireframeStereoRenderer() : WireframeRenderer() {
+//        cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
+//            "shaders/direct-stereo.vs.glsl");
+//        cgl::pgm::frag solid = cgl::pgm::frag::file(
+//            "shaders/solid.fs.glsl");
+//
+//        glProgramUniform3f(solid, 2, .3f, .3f, .4f);
+//
+//        this->pipe.stage(direct_stereo);
+//        this->pipe.stage(solid);
+//    }
+//};
+//
+//struct WireframeStereoCurveRenderer : public WireframeStereoRenderer {
+//    WireframeStereoCurveRenderer() : WireframeStereoRenderer() {
+//        cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
+//            "shaders/direct-stereo.vs.glsl");
+//        cgl::pgm::geom curve = cgl::pgm::geom::file(
+//            "shaders/curve-stereo.gm.glsl"
+//        );
+//        cgl::pgm::frag solid = cgl::pgm::frag::file(
+//            "shaders/solid.fs.glsl");
+//
+//        glProgramUniform3f(solid, 2, .4f, .3f, .3f);
+//
+//        this->pipe.stage(direct_stereo);
+//        this->pipe.stage(curve);
+//        this->pipe.stage(solid);
+//    }
+//};
+
+struct WireframeProp : public Prop<2> {
     vec3 color;
 
-    Wire(vec3 color) : Prop<2>(), color(color) {}
+    WireframeProp(vec3 color) : Prop<2>(), color(color) {}
 
-    Wire(Wire &) = delete;
+    WireframeProp(WireframeProp &) = delete;
 
-    Wire(Wire &&) noexcept = default;
+    WireframeProp(WireframeProp &&) noexcept = default;
 
     template<class T, class C>
-    static Wire build(const tc::Group &g,
+    static WireframeProp build(const tc::Group &g,
         const C &coords,
         bool curve,
         bool ortho,
@@ -287,7 +271,7 @@ struct Wire : public Prop<2> {
         T all_sg_gens,
         const std::vector<std::vector<int>> &exclude
     ) {
-        Wire res(color);
+        WireframeProp res(color);
 
         res.vbo.put(points(g, coords));
         res.ibo.put(merge<2>(hull<2>(g, all_sg_gens, exclude)));
@@ -303,7 +287,31 @@ void run(const std::string &config_file, GLFWwindow *window) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     SliceRenderer<4> sRen{};
-    DirectRenderer<2> wRen{};
+
+    cgl::pgm::vert o = cgl::pgm::vert::file("shaders/direct-ortho.vs.glsl");
+    cgl::pgm::vert s = cgl::pgm::vert::file("shaders/direct-stereo.vs.glsl");
+    cgl::pgm::geom co = cgl::pgm::geom::file("shaders/curve-ortho.gm.glsl");
+    cgl::pgm::geom cs = cgl::pgm::geom::file("shaders/curve-stereo.gm.glsl");
+    cgl::pgm::frag solid = cgl::pgm::frag::file("shaders/solid.fs.glsl");
+    glProgramUniform3f(solid, 2, 1.f, 0.f, 0.f);
+
+    DirectRenderer<2> woRen{};
+    woRen.pipe.stage(o);
+    woRen.pipe.stage(solid);
+
+    DirectRenderer<2> wocRen{};
+    wocRen.pipe.stage(o);
+    wocRen.pipe.stage(co);
+    wocRen.pipe.stage(solid);
+
+    DirectRenderer<2> wsRen{};
+    wsRen.pipe.stage(s);
+    wsRen.pipe.stage(solid);
+
+    DirectRenderer<2> wscRen{};
+    wscRen.pipe.stage(s);
+    wscRen.pipe.stage(cs);
+    wscRen.pipe.stage(solid);
 
     auto scene = YAML::LoadFile(config_file);
 
@@ -311,9 +319,6 @@ void run(const std::string &config_file, GLFWwindow *window) {
     glfwSetWindowUserPointer(window, &state);
 
     state.dimension = scene["dimension"].as<int>();
-
-    auto slices = Bundle<4>();
-    auto wires = Bundle<2>();
 
     for (const auto &group_info : scene["groups"]) {
         auto symbol = group_info["symbol"].as<std::vector<int>>();
@@ -332,12 +337,12 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
                 if (slice_info["subgroups"].IsDefined()) {
                     auto subgroups = slice_info["subgroups"].as<std::vector<std::vector<int>>>();
-                    slices.push_back(Slice<4>::build(
+                    sRen.props.push_back(SliceProp<4>::build(
                         group, root, color, subgroups, exclude
                     ));
                 } else {
                     auto combos = Combos<int>(gens, 3);
-                    slices.push_back(Slice<4>::build(
+                    sRen.props.push_back(SliceProp<4>::build(
                         group, root, color, combos, exclude
                     ));
                 }
@@ -358,14 +363,44 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
                 if (wire_info["subgroups"].IsDefined()) {
                     auto subgroups = wire_info["subgroups"].as<std::vector<std::vector<int>>>();
-                    wires.push_back(Wire::build(
-                        group, root, curve, ortho, color, subgroups, exclude
-                    ));
+
+                    if (ortho && curve) {
+                        wocRen.props.push_back(WireframeProp::build(
+                            group, root, curve, ortho, color, subgroups, exclude
+                        ));
+                    } else if (ortho) {
+                        woRen.props.push_back(WireframeProp::build(
+                            group, root, curve, ortho, color, subgroups, exclude
+                        ));
+                    } else if (curve) {
+                        wscRen.props.push_back(WireframeProp::build(
+                            group, root, curve, ortho, color, subgroups, exclude
+                        ));
+                    } else {
+                        wsRen.props.push_back(WireframeProp::build(
+                            group, root, curve, ortho, color, subgroups, exclude
+                        ));
+                    }
                 } else {
                     auto combos = Combos<int>(gens, 1);
-                    wires.push_back(Wire::build(
-                        group, root, curve, ortho, color, combos, exclude
-                    ));
+
+                    if (ortho && curve) {
+                        wocRen.props.push_back(WireframeProp::build(
+                            group, root, curve, ortho, color, combos, exclude
+                        ));
+                    } else if (ortho) {
+                        woRen.props.push_back(WireframeProp::build(
+                            group, root, curve, ortho, color, combos, exclude
+                        ));
+                    } else if (curve) {
+                        wscRen.props.push_back(WireframeProp::build(
+                            group, root, curve, ortho, color, combos, exclude
+                        ));
+                    } else {
+                        wsRen.props.push_back(WireframeProp::build(
+                            group, root, curve, ortho, color, combos, exclude
+                        ));
+                    }
                 }
             }
         }
@@ -390,8 +425,12 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
         glLineWidth(1.5);
 
-        wRen.draw(wires);
-        sRen.draw(slices);
+        woRen.render();
+        wsRen.render();
+        wocRen.render();
+        wscRen.render();
+
+        sRen.render();
 
         glfwSwapInterval(2);
         glfwSwapBuffers(window);

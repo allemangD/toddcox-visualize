@@ -271,3 +271,26 @@ std::vector<Primitive<1>> triangulate(
     res.emplace_back();
     return res;
 }
+
+template<unsigned N, class T>
+auto hull(const tc::Group &group, T all_sg_gens, const std::vector<std::vector<int>> &exclude) {
+    std::vector<std::vector<Primitive<N>>> parts;
+    auto g_gens = generators(group);
+    for (const std::vector<int> &sg_gens : all_sg_gens) {
+        bool excluded = false;
+        for (const auto &test : exclude) {
+            if (sg_gens == test) {
+                excluded = true;
+                break;
+            }
+        }
+        if (excluded) continue;
+
+        const auto &base = triangulate<N>(group, sg_gens);
+        const auto &tiles = each_tile(base, group, g_gens, sg_gens);
+        for (const auto &tile : tiles) {
+            parts.push_back(tile);
+        }
+    }
+    return parts;
+}
