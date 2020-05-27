@@ -15,6 +15,15 @@ using vec3 = vec<3>;
 using vec4 = vec<4>;
 using vec5 = vec<5>;
 
+template<unsigned N>
+using mat = std::array<std::array<float, N>, N>;
+
+using mat1 = mat<1>;
+using mat2 = mat<2>;
+using mat3 = mat<3>;
+using mat4 = mat<4>;
+using mat5 = mat<5>;
+
 template<class V>
 V operator*(V a, const float &b) {
     for (auto &e : a) e *= b;
@@ -93,6 +102,30 @@ float dot(const V &a, const V &b) {
     return sum;
 }
 
+vec5 mul(vec5 v, mat5 m) {
+    vec5 r{};
+
+    for (int i = 0; i < 5; ++i)
+        for (int j = 0; j < 5; ++j)
+            r[i] += m[i][j] * v[j];
+
+    return r;
+}
+
+mat5 mul(mat5 a, mat5 b) {
+    mat5 r{};
+
+    for (int i = 0; i < 5; ++i) {
+        for (int j = 0; j < 5; ++j) {
+            for (int k = 0; k < 5; ++k) {
+                r[i][j] += a[i][k] * b[k][j];
+            }
+        }
+    }
+
+    return r;
+}
+
 template<unsigned N>
 std::vector<vec<N>> mirror(const tc::Group &group) {
     std::vector<std::vector<float>> mirrors;
@@ -136,6 +169,15 @@ vec<N> stereo(const vec<N + 1> &v) {
     vec<N> r;
     for (int i = 0; i < N; ++i) {
         r[i] = v[i] / (1 - v[N]);
+    }
+    return r;
+}
+
+template<unsigned N>
+vec<N> ortho(const vec<N + 1> &v) {
+    vec<N> r;
+    for (int i = 0; i < N; ++i) {
+        r[i] = v[i];
     }
     return r;
 }
@@ -186,6 +228,24 @@ std::vector<V> plane_intersections(std::vector<V> normals) {
 
 glm::mat4 utilRotate(const int u, const int v, const float theta) {
     auto res = glm::identity<glm::mat4>();
+    res[u][u] = std::cos(theta);
+    res[u][v] = std::sin(theta);
+    res[v][u] = -std::sin(theta);
+    res[v][v] = std::cos(theta);
+    return res;
+}
+
+template<unsigned N>
+mat<N> identity() {
+    mat<N> res{};
+    for (int i = 0; i < N; ++i)
+        res[i][i] = 1;
+    return res;
+}
+
+template<unsigned N>
+mat<N> rot(int u, int v, float theta) {
+    auto res = identity<N>();
     res[u][u] = std::cos(theta);
     res[u][v] = std::sin(theta);
     res[v][u] = -std::sin(theta);

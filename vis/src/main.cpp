@@ -31,6 +31,8 @@ struct Matrices {
     glm::mat4 proj;
     glm::mat4 view;
 
+    Matrices() = default;
+
     Matrices(const glm::mat4 &proj, const glm::mat4 &view)
         : proj(proj), view(view) {
     }
@@ -45,49 +47,49 @@ struct State {
     int dimension;
 };
 
-Matrices build(GLFWwindow *window, State &state) {
+Matrices build(GLFWwindow *window, State &state, float shift = 0.0) {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
 
-    auto aspect = (float) width / (float) height;
+    auto aspect = (float) width / (float) height / 2;
     auto pheight = 1.4f;
     auto pwidth = aspect * pheight;
     glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
+    glm::mat4 skew = glm::mat4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        shift, 0, 1, 0,
+        0, 0, 0, 1
+    );
 
     if (!glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
         state.st += state.time_delta / 8;
     }
 
     auto view = glm::identity<glm::mat4>();
-    if (state.dimension < 4) {
-        view *= utilRotate(2, 3, M_PI_2f32 + 0.01f);
-    }
-
-    if (state.dimension > 1) {
-        view *= utilRotate(0, 1, state.st * .40f);
-    }
-    if (state.dimension > 2) {
-        view *= utilRotate(0, 2, state.st * .20f);
-        view *= utilRotate(1, 2, state.st * .50f);
-    }
-    if (state.dimension > 3) {
-        view *= utilRotate(0, 3, state.st * 1.30f);
-        view *= utilRotate(1, 3, state.st * .25f);
-        view *= utilRotate(2, 3, state.st * 1.42f);
-    }
-
-    return Matrices(proj, view);
+    return Matrices(skew * proj, view);
 }
 
 template<class C>
-std::vector<vec4> points(const tc::Group &group, const C &coords) {
+std::vector<vec4> points(const tc::Group &group, const C &coords, const float time) {
     auto cosets = group.solve();
     auto mirrors = mirror<5>(group);
 
     auto corners = plane_intersections(mirrors);
     auto start = barycentric(corners, coords);
 
-    const auto &higher = cosets.path.walk<vec5, vec5>(start, mirrors, reflect<vec5>);
+    auto higher = cosets.path.walk<vec5, vec5>(start, mirrors, reflect<vec5>);
+
+    auto r = identity<5>();
+    r = mul(r, rot<5>(0, 2, time * .21f));
+    r = mul(r, rot<5>(1, 4, time * .27f));
+
+    r = mul(r, rot<5>(0, 3, time * .17f));
+    r = mul(r, rot<5>(1, 3, time * .25f));
+    r = mul(r, rot<5>(2, 3, time * .12f));
+
+    std::transform(higher.begin(), higher.end(), higher.begin(), [&](vec5 v) { return mul(v, r); });
+
     std::vector<vec4> lower(higher.size());
     std::transform(higher.begin(), higher.end(), lower.begin(), stereo<4>);
     return lower;
@@ -103,7 +105,7 @@ Prop<4, vec4> make_slice(
 ) {
     Prop<N, vec4> res{};
 
-    res.vbo.put(points(g, coords));
+//    res.vbo.put(points(g, coords));
     res.ibo.put(merge<N>(hull<N>(g, all_sg_gens, exclude)));
     res.vao.ipointer(0, res.ibo, 4, GL_UNSIGNED_INT);
 
@@ -116,8 +118,8 @@ void run(const std::string &config_file, GLFWwindow *window) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    std::vector<int> symbol = {5, 3, 3, 2};
-    vec5 root = {.80, .09, .09, 0.09, 0.03};
+    std::vector<int> symbol = {4, 3, 3, 3};
+    vec5 root = {.80, .02, .02, .02, .02};
 
     auto group = tc::schlafli(symbol);
     auto gens = generators(group);
@@ -262,15 +264,25 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        Matrices mats = build(window, state);
-        ubo.put(mats);
-
         glLineWidth(1.5);
 
+        prop.vbo.put(points(group, root, time));
+
+        Matrices mats{};
+
+        float shift = .3f;
+
+        glViewport(0, 0, width / 2, height);
+        mats = build(window, state, shift);
+        ubo.put(mats);
+        ren.draw(prop);
+
+        glViewport(width / 2, 0, width / 2, height);
+        mats = build(window, state, -shift);
+        ubo.put(mats);
         ren.draw(prop);
 
 //region old renderers
