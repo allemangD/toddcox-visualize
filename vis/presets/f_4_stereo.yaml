@@ -1,0 +1,12 @@
+dimension: 4
+groups:
+  - symbol: [3, 4, 3, 2]
+    slices:
+      - root: [1.00, 0.10, 0.10, 0.10, 0.05]
+        color: [1.0, 1.0, 1.0]
+        exclude:
+          - [0, 1, 2]
+    wires:
+      - root: [1.00, 0.10, 0.10, 0.10, 0.05]
+        color: [1.0, 1.0, 1.0]
+        ortho: false
