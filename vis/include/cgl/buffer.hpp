@@ -24,7 +24,7 @@ namespace cgl {
             put(data, usage);
         }
 
-        Buffer(Buffer &) = delete;
+        Buffer(const Buffer &) = delete;
 
         Buffer(Buffer &&o) noexcept {
             id = std::exchange(o.id, 0);

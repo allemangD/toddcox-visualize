@@ -142,7 +142,7 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
         glLineWidth(1.5);
 
-        prop.vbo.put(points(group, root, time));
+        std::get<0>(prop.vbos).put(points(group, root, time));
 
         Matrices mats{};
 
