@@ -8,7 +8,6 @@ add_subdirectory(vendor/toddcox)
 add_subdirectory(vendor/yaml-cpp)
 add_subdirectory(vendor/cgl)
 add_subdirectory(vendor/glfw)
-add_subdirectory(vendor/glm)
 
 add_subdirectory(vis)
 

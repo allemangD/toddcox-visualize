@@ -1,25 +1,24 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#include <chrono>
 #include <cmath>
 #include <iostream>
+#include <random>
 
-#include <glm/gtc/type_ptr.hpp>
+#include <yaml-cpp/yaml.h>
 
 #include <tc/groups.hpp>
-
-#include "util.hpp"
-#include "mirror.hpp"
-#include "geometry.hpp"
 
 #include <cgl/vertexarray.hpp>
 #include <cgl/shaderprogram.hpp>
 #include <cgl/pipeline.hpp>
-#include <random>
 
-#include <chrono>
-#include <yaml-cpp/yaml.h>
-
+#include <util.hpp>
+#include <mirror.hpp>
 #include <rendering.hpp>
+#include <solver.hpp>
+#include <geometry.hpp>
 
 #ifdef _WIN32
 extern "C" {
@@ -28,12 +27,12 @@ __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x000000
 #endif
 
 struct Matrices {
-    glm::mat4 proj;
-    glm::mat4 view;
+    mat4 proj;
+    mat4 view;
 
     Matrices() = default;
 
-    Matrices(const glm::mat4 &proj, const glm::mat4 &view)
+    Matrices(const mat4 &proj, const mat4 &view)
         : proj(proj), view(view) {
     }
 };
@@ -54,13 +53,13 @@ Matrices build(GLFWwindow *window, State &state) {
     auto aspect = (float) width / (float) height;
     auto pheight = 1.4f;
     auto pwidth = aspect * pheight;
-    glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
+    mat4 proj = ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
 
     if (!glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
         state.st += state.time_delta / 8;
     }
 
-    auto view = glm::identity<glm::mat4>();
+    auto view = identity<4>();
     return Matrices(proj, view);
 }
 

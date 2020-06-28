@@ -14,5 +14,5 @@ add_custom_command(
 
 add_executable(vis src/main.cpp)
 target_include_directories(vis PRIVATE include)
-target_link_libraries(vis PRIVATE tc glm glfw yaml-cpp cgl glad)
+target_link_libraries(vis PRIVATE tc glfw yaml-cpp cgl glad)
 add_dependencies(vis shaders presets)

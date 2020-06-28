@@ -226,15 +226,6 @@ std::vector<V> plane_intersections(std::vector<V> normals) {
     return results;
 }
 
-glm::mat4 utilRotate(const int u, const int v, const float theta) {
-    auto res = glm::identity<glm::mat4>();
-    res[u][u] = std::cos(theta);
-    res[u][v] = std::sin(theta);
-    res[v][u] = -std::sin(theta);
-    res[v][v] = std::cos(theta);
-    return res;
-}
-
 template<unsigned N>
 mat<N> identity() {
     mat<N> res{};
@@ -251,4 +242,13 @@ mat<N> rot(int u, int v, float theta) {
     res[v][u] = -std::sin(theta);
     res[v][v] = std::cos(theta);
     return res;
+}
+
+mat4 ortho(float left, float right, float bottom, float top, float front, float back) {
+    return {
+        2 / (right - left), 0, 0, -(right + left) / (right - left),
+        0, 2 / (top - bottom), 0, -(top + bottom) / (top - bottom),
+        0, 0, 2 / (front - back), -(front + back) / (front - back),
+        0, 0, 0, 1,
+    };
 }
