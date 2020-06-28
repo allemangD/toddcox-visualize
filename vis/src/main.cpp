@@ -47,27 +47,21 @@ struct State {
     int dimension;
 };
 
-Matrices build(GLFWwindow *window, State &state, float shift = 0.0) {
+Matrices build(GLFWwindow *window, State &state) {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
 
-    auto aspect = (float) width / (float) height / 2;
+    auto aspect = (float) width / (float) height;
     auto pheight = 1.4f;
     auto pwidth = aspect * pheight;
     glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
-    glm::mat4 skew = glm::mat4(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        shift, 0, 1, 0,
-        0, 0, 0, 1
-    );
 
     if (!glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
         state.st += state.time_delta / 8;
     }
 
     auto view = glm::identity<glm::mat4>();
-    return Matrices(skew * proj, view);
+    return Matrices(proj, view);
 }
 
 template<class C>
@@ -133,127 +127,6 @@ void run(const std::string &config_file, GLFWwindow *window) {
     state.dimension = 4;
     glfwSetWindowUserPointer(window, &state);
 
-//region old renderers
-//    SliceRenderer<4> sRen{};
-//
-//    cgl::pgm::vert o = cgl::pgm::vert::file("shaders/direct-ortho.vs.glsl");
-//    cgl::pgm::vert s = cgl::pgm::vert::file("shaders/direct-stereo.vs.glsl");
-//    cgl::pgm::geom co = cgl::pgm::geom::file("shaders/curve-ortho.gm.glsl");
-//    cgl::pgm::geom cs = cgl::pgm::geom::file("shaders/curve-stereo.gm.glsl");
-//    cgl::pgm::frag solid = cgl::pgm::frag::file("shaders/solid.fs.glsl");
-//    glProgramUniform3f(solid, 2, 1.f, 0.f, 0.f);
-//
-//    DirectRenderer<2> woRen{};
-//    woRen.pipe.stage(o);
-//    woRen.pipe.stage(solid);
-//
-//    DirectRenderer<2> wocRen{};
-//    wocRen.pipe.stage(o);
-//    wocRen.pipe.stage(co);
-//    wocRen.pipe.stage(solid);
-//
-//    DirectRenderer<2> wsRen{};
-//    wsRen.pipe.stage(s);
-//    wsRen.pipe.stage(solid);
-//
-//    DirectRenderer<2> wscRen{};
-//    wscRen.pipe.stage(s);
-//    wscRen.pipe.stage(cs);
-//    wscRen.pipe.stage(solid);
-//endregion
-
-//region old scene
-//    auto scene = YAML::LoadFile(config_file);
-//
-//    state.dimension = scene["dimension"].as<int>();
-//
-//    for (const auto &group_info : scene["groups"]) {
-//        auto symbol = group_info["symbol"].as<std::vector<int>>();
-//        auto group = tc::schlafli(symbol);
-//        auto gens = generators(group);
-//
-//        if (group_info["slices"].IsDefined()) {
-//            for (const auto &slice_info : group_info["slices"]) {
-//                auto root = slice_info["root"].as<vec5>();
-//                auto color = slice_info["color"].as<vec3>();
-//                auto exclude = std::vector<std::vector<int>>();
-//
-//                if (slice_info["exclude"].IsDefined()) {
-//                    exclude = slice_info["exclude"].as<std::vector<std::vector<int>>>();
-//                }
-//
-//                if (slice_info["subgroups"].IsDefined()) {
-//                    auto subgroups = slice_info["subgroups"].as<std::vector<std::vector<int>>>();
-//                    sRen.props.push_back(SliceProp<4>::build(
-//                        group, root, color, subgroups, exclude
-//                    ));
-//                } else {
-//                    auto combos = Combos<int>(gens, 3);
-//                    sRen.props.push_back(SliceProp<4>::build(
-//                        group, root, color, combos, exclude
-//                    ));
-//                }
-//            }
-//        }
-//
-//        if (group_info["wires"].IsDefined()) {
-//            for (const auto &wire_info : group_info["wires"]) {
-//                auto root = wire_info["root"].as<vec5>();
-//                auto color = wire_info["color"].as<vec3>();
-//                auto exclude = std::vector<std::vector<int>>();
-//                auto curve = wire_info["curve"].IsDefined() && wire_info["curve"].as<bool>();
-//                auto ortho = wire_info["ortho"].IsDefined() && wire_info["ortho"].as<bool>();
-//
-//                if (wire_info["exclude"].IsDefined()) {
-//                    exclude = wire_info["exclude"].as<std::vector<std::vector<int>>>();
-//                }
-//
-//                if (wire_info["subgroups"].IsDefined()) {
-//                    auto subgroups = wire_info["subgroups"].as<std::vector<std::vector<int>>>();
-//
-//                    if (ortho && curve) {
-//                        wocRen.props.push_back(WireframeProp::build(
-//                            group, root, curve, ortho, color, subgroups, exclude
-//                        ));
-//                    } else if (ortho) {
-//                        woRen.props.push_back(WireframeProp::build(
-//                            group, root, curve, ortho, color, subgroups, exclude
-//                        ));
-//                    } else if (curve) {
-//                        wscRen.props.push_back(WireframeProp::build(
-//                            group, root, curve, ortho, color, subgroups, exclude
-//                        ));
-//                    } else {
-//                        wsRen.props.push_back(WireframeProp::build(
-//                            group, root, curve, ortho, color, subgroups, exclude
-//                        ));
-//                    }
-//                } else {
-//                    auto combos = Combos<int>(gens, 1);
-//
-//                    if (ortho && curve) {
-//                        wocRen.props.push_back(WireframeProp::build(
-//                            group, root, curve, ortho, color, combos, exclude
-//                        ));
-//                    } else if (ortho) {
-//                        woRen.props.push_back(WireframeProp::build(
-//                            group, root, curve, ortho, color, combos, exclude
-//                        ));
-//                    } else if (curve) {
-//                        wscRen.props.push_back(WireframeProp::build(
-//                            group, root, curve, ortho, color, combos, exclude
-//                        ));
-//                    } else {
-//                        wsRen.props.push_back(WireframeProp::build(
-//                            group, root, curve, ortho, color, combos, exclude
-//                        ));
-//                    }
-//                }
-//            }
-//        }
-//    }
-//endregion
-
     auto ubo = cgl::Buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
 
@@ -273,26 +146,10 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
         Matrices mats{};
 
-        float shift = .3f;
-
-        glViewport(0, 0, width / 2, height);
-        mats = build(window, state, shift);
+        glViewport(0, 0, width, height);
+        mats = build(window, state);
         ubo.put(mats);
         ren.draw(prop);
-
-        glViewport(width / 2, 0, width / 2, height);
-        mats = build(window, state, -shift);
-        ubo.put(mats);
-        ren.draw(prop);
-
-//region old renderers
-//        woRen.render();
-//        wsRen.render();
-//        wocRen.render();
-//        wscRen.render();
-//
-//        sRen.render();
-//endregion
 
         glfwSwapInterval(2);
         glfwSwapBuffers(window);
