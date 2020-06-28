@@ -10,3 +10,6 @@
 [submodule "vendor/yaml-cpp"]
 	path = vendor/yaml-cpp
 	url = git://github.com/jbeder/yaml-cpp.git
+[submodule "vendor/cgl"]
+	path = vendor/cgl
+	url = git://github.com/allemangD/cgl.git
