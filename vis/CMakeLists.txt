@@ -12,10 +12,7 @@ add_custom_command(
         COMMENT "copied preses"
 )
 
-add_library(vis-util INTERFACE)
-target_include_directories(vis-util INTERFACE include)
-
 add_executable(vis src/main.cpp)
 target_include_directories(vis PRIVATE include)
-target_link_libraries(vis PRIVATE tc glad glm glfw yaml-cpp)
+target_link_libraries(vis PRIVATE tc glm glfw yaml-cpp cgl glad)
 add_dependencies(vis shaders presets)
