@@ -16,3 +16,8 @@ add_executable(vis src/main.cpp)
 target_include_directories(vis PRIVATE include)
 target_link_libraries(vis PRIVATE tc glfw yaml-cpp cgl glad)
 add_dependencies(vis shaders presets)
+
+add_executable(vis-gui src/main-gui.cpp)
+target_include_directories(vis-gui PRIVATE include)
+target_link_libraries(vis-gui PRIVATE tc nanogui)
+add_dependencies(vis-gui shaders presets)

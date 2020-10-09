@@ -10,3 +10,7 @@
 [submodule "vendor/cgl"]
 	path = vendor/cgl
 	url = git://github.com/allemangD/cgl.git
+[submodule "vendor/nanogui"]
+	path = vendor/nanogui
+	url = https://github.com/allemangD/nanogui
+	branch = master
