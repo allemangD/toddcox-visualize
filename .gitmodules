@@ -1,6 +1,3 @@
-[submodule "vendor/glfw"]
-	path = vendor/glfw
-	url = https://github.com/glfw/glfw.git
 [submodule "vendor/toddcox"]
 	path = vendor/toddcox
 	url = https://github.com/JCRaymond/toddcox-faster.git
