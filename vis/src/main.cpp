@@ -1,16 +1,3 @@
-/*
-    src/example4.cpp -- C++ version of an example application that shows
-    how to use the OpenGL widget. For a Python implementation, see
-    '../python/example4.py'.
-
-    NanoGUI was developed by Wenzel Jakob <wenzel.jakob@epfl.ch>.
-    The widget drawing code is based on the NanoVG demo application
-    by Mikko Mononen.
-
-    All rights reserved. Use of this source code is governed by a
-    BSD-style license that can be found in the LICENSE.txt file.
-*/
-
 #include <nanogui/opengl.h>
 #include <nanogui/nanogui.h>
 #include <nanogui/glutil.h>
@@ -25,35 +12,7 @@
 #include <util.hpp>
 #include <tc/groups.hpp>
 
-struct Matrices {
-    mat4 proj = mat4::Identity();
-    mat4 view = mat4::Identity();
-
-    Matrices() = default;
-
-    Matrices(mat4 proj, mat4 view) : proj(std::move(proj)), view(std::move(view)) {}
-
-    static Matrices build(const nanogui::Screen &screen) {
-        auto aspect = (float) screen.width() / (float) screen.height();
-        auto pheight = 1.4f;
-        auto pwidth = aspect * pheight;
-        mat4 proj = ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
-
-        auto view = mat4::Identity();
-        return Matrices(proj, view);
-    }
-};
-
-template<class C>
-std::vector<vec4> points(const tc::Group &group, const C &coords, const float time) {
-    auto cosets = group.solve();
-    auto mirrors = mirror<5>(group);
-
-    auto corners = plane_intersections(mirrors);
-    auto start = barycentric(corners, coords);
-
-    auto higher = cosets.path.walk<vec5, vec5>(start, mirrors, reflect<vec5>);
-
+mat5 wander(float time) {
     mat5 r = mat5::Identity();
     r *= rot<5>(0, 2, time * .21f);
 //    r *= rot<5>(1, 4, time * .27f);
@@ -62,37 +21,18 @@ std::vector<vec4> points(const tc::Group &group, const C &coords, const float ti
     r *= rot<5>(1, 3, time * .25f);
     r *= rot<5>(2, 3, time * .12f);
 
-    std::transform(higher.begin(), higher.end(), higher.begin(), [&](vec5 v) { return r * v; });
-
-    std::vector<vec4> lower(higher.size());
-    std::transform(higher.begin(), higher.end(), lower.begin(), stereo<4>);
-    return lower;
-}
-
-template<int N, class T, class C>
-Prop<4, vec4> make_slice(
-    const tc::Group &g,
-    const C &coords,
-    vec3 color,
-    T all_sg_gens,
-    const std::vector<std::vector<int>> &exclude
-) {
-    Prop<N, vec4> res{};
-
-//    res.vbo.put(points(g, coords));
-    res.ibo.put(merge<N>(hull<N>(g, all_sg_gens, exclude)));
-    res.vao.ipointer(0, res.ibo, 4, GL_UNSIGNED_INT);
-
-    return res;
+    return r;
 }
 
 class ExampleApplication : public nanogui::Screen {
 public:
     vec5 root;
-    std::unique_ptr<tc::Group> group;
-    std::unique_ptr<Prop<4, vec4>> prop;
+
+//    std::unique_ptr<tc::Group> group;
+    std::unique_ptr<SliceRenderer<4>> ren;
     std::unique_ptr<cgl::Buffer<Matrices>> ubo;
-    std::unique_ptr<SliceRenderer<4, vec4>> ren;
+
+    std::unique_ptr<Slice<4>> slice;
 
     float glfw_time = 0;
     float last_frame = 0;
@@ -123,19 +63,19 @@ public:
 
         std::cout << utilInfo();
 
-        std::vector<int> symbol = {5, 3, 3, 2};
+        std::vector<int> symbol = {3, 4, 3, 2};
         root << .80, .02, .02, .02, .02;
 
-        group = std::make_unique<tc::Group>(tc::schlafli(symbol));
-        auto gens = generators(*group);
-        std::vector<std::vector<int>> exclude = {{0, 1, 2}};
-        auto combos = Combos<int>(gens, 3);
+        auto group = tc::schlafli(symbol);
 
-        prop = std::make_unique<Prop<4, vec4>>(make_slice<4>(*group, root, {}, combos, exclude));
+        auto gens = generators(group);
+        auto combos = Combos<int>(gens, 3);
+        std::vector<std::vector<int>> exclude = {{0, 1, 2}};
+
+        slice = std::make_unique<Slice<4>>(group, combos, exclude);
+        ren = std::make_unique<SliceRenderer<4>>();
 
         ubo = std::make_unique<cgl::Buffer<Matrices>>();
-
-        ren = std::make_unique<SliceRenderer<4, vec4>>();
     }
 
     void drawContents() override {
@@ -154,16 +94,17 @@ public:
         last_frame = glfw_time;
         if (!paused) time += frame_time;
 
-        std::get<0>(prop->vbos).put(points(*group, root, time));
+        auto rotation = wander(time);
+        slice->setPoints(root, rotation);
 
         Matrices mats = Matrices::build(*this);
         glBindBufferBase(GL_UNIFORM_BUFFER, 1, *ubo);
         ubo->put(mats);
-        ren->draw(*prop);
+        ren->draw(*slice);
     }
 };
 
-int main(int /* argc */, char ** /* argv */) {
+int main(int argc, char ** argv) {
     try {
         nanogui::init();
 
