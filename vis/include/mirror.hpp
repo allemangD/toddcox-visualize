@@ -6,17 +6,18 @@
 #include <vector>
 #include <algorithm>
 
-template<unsigned N>
-using vec = std::array<float, N>;
+#include <nanogui/glutil.h>
+
+template<int N>
+using vec = Eigen::Matrix<float, N, 1>;
+template<int N>
+using mat = Eigen::Matrix<float, N, N>;
 
 using vec1 = vec<1>;
 using vec2 = vec<2>;
 using vec3 = vec<3>;
 using vec4 = vec<4>;
 using vec5 = vec<5>;
-
-template<unsigned N>
-using mat = std::array<std::array<float, N>, N>;
 
 using mat1 = mat<1>;
 using mat2 = mat<2>;
@@ -25,105 +26,12 @@ using mat4 = mat<4>;
 using mat5 = mat<5>;
 
 template<class V>
-V operator*(V a, const float &b) {
-    for (auto &e : a) e *= b;
-    return a;
-}
-
-template<class V>
-V operator*(const float &b, V a) {
-    for (auto &e : a) e *= b;
-    return a;
-}
-
-template<class V>
-V operator/(V a, const float &b) {
-    for (auto &e : a) e /= b;
-    return a;
-}
-
-template<class V>
-V operator+(const V &a, V b) {
-    for (int i = 0; i < a.size(); ++i) {
-        a[i] += b[i];
-    }
-    return a;
-}
-
-template<class V>
-V operator-(V a, const V &b) {
-    for (int i = 0; i < a.size(); ++i) {
-        a[i] -= b[i];
-    }
-    return a;
-}
-
-template<class V>
-void operator-=(V &a, const V &b) {
-    for (int i = 0; i < a.size(); ++i) {
-        a[i] -= b[i];
-    }
-}
-
-template<class V>
-void operator+=(V &a, const V &b) {
-    for (int i = 0; i < a.size(); ++i) {
-        a[i] += b[i];
-    }
-}
-
-template<class V>
-float length(const V &a) {
-    float sum = 0;
-    for (const auto &e : a) sum += e * e;
-    return sqrtf(sum);
-}
-
-template<class V>
-V normalized(const V &a) {
-    return a / length(a);
-}
-
-template<class V>
 float dot(int n, const V &a, const V &b) {
     float sum = 0;
     for (int i = 0; i < n; ++i) {
         sum += a[i] * b[i];
     }
     return sum;
-}
-
-template<class V>
-float dot(const V &a, const V &b) {
-    float sum = 0;
-    for (int i = 0; i < a.size(); ++i) {
-        sum += a[i] * b[i];
-    }
-    return sum;
-}
-
-vec5 mul(vec5 v, mat5 m) {
-    vec5 r{};
-
-    for (int i = 0; i < 5; ++i)
-        for (int j = 0; j < 5; ++j)
-            r[i] += m[i][j] * v[j];
-
-    return r;
-}
-
-mat5 mul(mat5 a, mat5 b) {
-    mat5 r{};
-
-    for (int i = 0; i < 5; ++i) {
-        for (int j = 0; j < 5; ++j) {
-            for (int k = 0; k < 5; ++k) {
-                r[i][j] += a[i][k] * b[k][j];
-            }
-        }
-    }
-
-    return r;
 }
 
 template<unsigned N>
@@ -152,7 +60,7 @@ std::vector<vec<N>> mirror(const tc::Group &group) {
 
     std::vector<vec<N>> res;
     for (const auto &v : mirrors) {
-        vec<N> rv{};
+        vec<N> rv = vec<N>::Zero();
 
         // ortho proj
         for (int i = 0; i < std::min(v.size(), (size_t) N); ++i) {
@@ -184,7 +92,7 @@ vec<N> ortho(const vec<N + 1> &v) {
 
 template<class V>
 V project(const V &vec, const V &target) {
-    return dot(vec, target) / dot(target, target) * target;
+    return vec.dot(target) / target.dot(target) * target;
 }
 
 template<class V>
@@ -200,14 +108,14 @@ V gram_schmidt_last(std::vector<V> vecs) {
         }
     }
 
-    return normalized(vecs[vecs.size() - 1]);
+    return vecs[vecs.size() - 1].normalized();
 }
 
 template<class V, class C>
 V barycentric(const std::vector<V> &basis, const C &coords) {
-    V res{};
+    V res = V::Zero();
 
-    int N = std::min(basis.size(), coords.size());
+    int N = std::min((int) basis.size(), (int) coords.rows());
     for (int i = 0; i < N; ++i) {
         res += basis[i] * coords[i];
     }
@@ -227,28 +135,21 @@ std::vector<V> plane_intersections(std::vector<V> normals) {
 }
 
 template<unsigned N>
-mat<N> identity() {
-    mat<N> res{};
-    for (int i = 0; i < N; ++i)
-        res[i][i] = 1;
-    return res;
-}
-
-template<unsigned N>
 mat<N> rot(int u, int v, float theta) {
-    auto res = identity<N>();
-    res[u][u] = std::cos(theta);
-    res[u][v] = std::sin(theta);
-    res[v][u] = -std::sin(theta);
-    res[v][v] = std::cos(theta);
+    mat<N> res = mat<N>::Identity();
+    res(u, u) = std::cos(theta);
+    res(u, v) = std::sin(theta);
+    res(v, u) = -std::sin(theta);
+    res(v, v) = std::cos(theta);
     return res;
 }
 
 mat4 ortho(float left, float right, float bottom, float top, float front, float back) {
-    return {
+    mat<4> res = mat4();
+    res <<
         2 / (right - left), 0, 0, -(right + left) / (right - left),
         0, 2 / (top - bottom), 0, -(top + bottom) / (top - bottom),
         0, 0, 2 / (front - back), -(front + back) / (front - back),
-        0, 0, 0, 1,
-    };
+        0, 0, 0, 1;
+    return res;
 }

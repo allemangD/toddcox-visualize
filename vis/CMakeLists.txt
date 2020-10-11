@@ -12,12 +12,10 @@ add_custom_command(
         COMMENT "copied preses"
 )
 
-add_executable(vis src/main.cpp)
-target_include_directories(vis PRIVATE include)
-target_link_libraries(vis PRIVATE tc glfw yaml-cpp cgl glad)
-add_dependencies(vis shaders presets)
+add_definitions(${NANOGUI_EXTRA_DEFS})
+include_directories(${NANOGUI_EXTRA_INCS})
 
 add_executable(vis-gui src/main-gui.cpp)
 target_include_directories(vis-gui PRIVATE include)
-target_link_libraries(vis-gui PRIVATE tc nanogui)
+target_link_libraries(vis-gui PRIVATE tc nanogui yaml-cpp ${NANOGUI_EXTRA_LIBS})
 add_dependencies(vis-gui shaders presets)

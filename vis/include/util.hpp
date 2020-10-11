@@ -1,12 +1,12 @@
 #pragma once
 
+#include <nanogui/opengl.h>
+
 #include <cerrno>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
-
-#include <glad/glad.h>
 
 std::string utilInfo() {
     std::stringstream ss;
@@ -17,6 +17,10 @@ std::string utilInfo() {
         << "    OpenGL version:  " << glGetString(GL_VERSION) << std::endl
         << "    Shading version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
     return ss.str();
+}
+
+std::string utilGetString(GLenum name) {
+    return reinterpret_cast<char const*>(glGetString(name));
 }
 
 std::string utilReadFile(const std::string &filename) {
