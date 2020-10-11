@@ -26,6 +26,10 @@ struct Primitive {
         inds[N - 1] = root;
     }
 
+    explicit Primitive(const std::vector<unsigned> &values) {
+        std::copy(values.begin(), values.begin() + N, inds.begin());
+    }
+
     ~Primitive() = default;
 
     void apply(const tc::Cosets &table, int gen) {

@@ -39,10 +39,6 @@ struct Matrices {
         auto pwidth = aspect * pheight;
         mat4 proj = ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
 
-//        if (!glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
-//            state.st += state.time_delta / 8;
-//        }
-
         auto view = mat4::Identity();
         return Matrices(proj, view);
     }
@@ -138,7 +134,6 @@ public:
         prop = std::make_unique<Prop<4, vec4>>(make_slice<4>(*group, root, {}, combos, exclude));
 
         ubo = std::make_unique<cgl::Buffer<Matrices>>();
-        glBindBufferBase(GL_UNIFORM_BUFFER, 1, *ubo);
 
         ren = std::make_unique<SliceRenderer<4, vec4>>();
     }
@@ -162,6 +157,7 @@ public:
         std::get<0>(prop->vbos).put(points(*group, root, time));
 
         Matrices mats = Matrices::build(*this);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 1, *ubo);
         ubo->put(mats);
         ren->draw(*prop);
     }
