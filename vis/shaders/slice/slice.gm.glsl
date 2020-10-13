@@ -30,7 +30,7 @@ float unmix(float u, float v) {
 void emit(vec4 v) {
     pos = v;
     col = vCol[0];
-    gl_Position = proj * vec4(v.xyz, 1);
+    gl_Position = proj * view * vec4(v.xyz, 1);
     EmitVertex();
 }
 

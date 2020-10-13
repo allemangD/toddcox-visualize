@@ -27,12 +27,34 @@ using mat3 = mat<3>;
 using mat4 = mat<4>;
 using mat5 = mat<5>;
 
-mat4 ortho(float left, float right, float bottom, float top, float front, float back) {
-    mat<4> res = mat4();
+mat4 orthographic(float left, float right, float bottom, float top, float front, float back) {
+    mat4 res = mat4();
     res <<
         2 / (right - left), 0, 0, -(right + left) / (right - left),
             0, 2 / (top - bottom), 0, -(top + bottom) / (top - bottom),
             0, 0, 2 / (front - back), -(front + back) / (front - back),
             0, 0, 0, 1;
+    return res;
+}
+
+mat4 perspective(float fovy, float aspect, float zNear, float zFar) {
+    float tanHalfFovy(std::tan(fovy / 2));
+
+    mat4 res = mat4::Identity();
+    res(0, 0) = 1 / (aspect * tanHalfFovy);
+    res(1, 1) = 1 / (tanHalfFovy);
+    res(2, 2) = -(zFar + zNear) / (zFar - zNear);
+    res(3, 2) = -1;
+    res(2, 3) = -(2 + zFar * zNear) / (zFar - zNear);
+    return res;
+}
+
+mat4 translation(float x, float y, float z) {
+    mat4 res = mat4();
+    res <<
+        1, 0, 0, x,
+        0, 1, 0, y,
+        0, 0, 1, z,
+        0, 0, 0, 1;
     return res;
 }

@@ -19,9 +19,12 @@ struct Matrices {
         auto aspect = (float) screen.width() / (float) screen.height();
         auto pheight = 1.4f;
         auto pwidth = aspect * pheight;
-        mat4 proj = ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
+//        auto proj = orthographic(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
+//        auto proj = perspective(-pwidth, pwidth, pheight, -pheight, 10.0f, 0.01f);
+        auto proj = perspective(0.4, aspect, 0.1, 10.0);
 
-        auto view = mat4::Identity();
+        auto view = translation(0, 0, -4);
+
         return Matrices(proj, view);
     }
 };
