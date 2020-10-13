@@ -7,6 +7,9 @@
 #include <iostream>
 #include "combo_iterator.hpp"
 
+template<unsigned N>
+using Prims = Eigen::Matrix<unsigned, N, Eigen::Dynamic>;
+
 template<int N>
 using vec = Eigen::Matrix<float, N, 1>;
 template<int N>
@@ -33,35 +36,3 @@ mat4 ortho(float left, float right, float bottom, float top, float front, float 
             0, 0, 0, 1;
     return res;
 }
-
-/**
- * An primitive stage N indices.
- * @tparam N
- */
-template<unsigned N>
-struct Primitive {
-    static_assert(N > 0, "Primitives must contain at least one point. Primitive<0> or lower is impossible.");
-
-    std::array<unsigned, N> inds;
-
-    Primitive() = default;
-
-    Primitive(const Primitive<N> &) = default;
-
-    Primitive(const Primitive<N - 1> &sub, unsigned root) {
-        std::copy(sub.inds.begin(), sub.inds.end(), inds.begin());
-        inds[N - 1] = root;
-    }
-
-    explicit Primitive(const std::vector<unsigned> &values) {
-        std::copy(values.begin(), values.begin() + N, inds.begin());
-    }
-
-    ~Primitive() = default;
-
-    void apply(const tc::Cosets &table, int gen) {
-        for (auto &ind : inds) {
-            ind = table.get(ind, gen);
-        }
-    }
-};

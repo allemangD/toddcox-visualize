@@ -38,17 +38,18 @@ private:
     const tc::Group group;
 
 public:
-    cgl::Buffer<Primitive<N>> ibo;
+    cgl::Buffer<unsigned> ibo;
     cgl::Buffer<vec4> vbo;
     cgl::VertexArray vao;
 
     template<class T>
     Slice(const tc::Group &g, T all_sg_gens, const std::vector<std::vector<int>> &exclude) : group(g) {
-        ibo.put(merge<N>(hull<N>(g, all_sg_gens, exclude)));
+        const Prims<N> &data = merge<N>(hull<N>(g, all_sg_gens, exclude));
+        ibo.put(data.data(), data.size());
         vao.ipointer(0, ibo, 4, GL_UNSIGNED_INT);
     }
 
-    void setPoints(const vec5 &root, mat5 transform = mat5::Identity()) {
+    void setPoints(const vec5 &root, const mat5 &transform = mat5::Identity()) {
         auto cosets = group.solve();
         auto mirrors = mirror<5>(group);
 

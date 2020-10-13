@@ -14,12 +14,15 @@
 
 mat5 wander(float time) {
     mat5 r = mat5::Identity();
-    r *= rot<5>(0, 2, time * .21f);
-//    r *= rot<5>(1, 4, time * .27f);
+    r *= rot<5>(0, 2, time * .15f);
+    r *= rot<5>(1, 2, time * .13f);
+    r *= rot<5>(0, 1, time * .20f);
 
     r *= rot<5>(0, 3, time * .17f);
     r *= rot<5>(1, 3, time * .25f);
     r *= rot<5>(2, 3, time * .12f);
+
+//    r *= rot<5>(1, 4, time * .27f);
 
     return r;
 }
