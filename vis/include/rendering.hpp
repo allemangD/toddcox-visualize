@@ -44,8 +44,8 @@ public:
 
     template<class T>
     Slice(const tc::Group &g, T all_sg_gens, const std::vector<std::vector<int>> &exclude) : group(g) {
-        const Prims<N> &data = merge<N>(hull<N>(g, all_sg_gens, exclude));
-        ibo.put(data.data(), data.size());
+        const auto &data = merge<N>(hull<N>(g, all_sg_gens, exclude));
+        ibo.put(data);
         vao.ipointer(0, ibo, 4, GL_UNSIGNED_INT);
     }
 

@@ -53,12 +53,18 @@ namespace cgl {
             glNamedBufferData(id, sizeof(T), &data, usage);
         }
 
-        void put(const std::vector<T> &data, GLenum usage = GL_STATIC_DRAW) {
-            put(&data[0], data.size(), usage);
-        }
-
         void put(const T *data, const size_t &size, GLenum usage = GL_STATIC_DRAW) {
             glNamedBufferData(id, sizeof(T) * size, data, usage);
+        }
+
+        template<class E>
+        void put(const E &data, GLenum usage = GL_STATIC_DRAW) {
+            put(data.data(), data.size(), usage);
+        }
+
+        template<>
+        void put<std::vector<T>>(const std::vector<T> &data, GLenum usage = GL_STATIC_DRAW) {
+            put(data.data, data.size(), usage);
         }
 
         void bound(GLenum target, const std::function<void()> &action) const {
