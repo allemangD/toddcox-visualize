@@ -62,11 +62,6 @@ namespace cgl {
             put(data.data(), data.size(), usage);
         }
 
-        template<>
-        void put<std::vector<T>>(const std::vector<T> &data, GLenum usage = GL_STATIC_DRAW) {
-            put(data.data, data.size(), usage);
-        }
-
         void bound(GLenum target, const std::function<void()> &action) const {
             glBindBuffer(target, id);
             action();
