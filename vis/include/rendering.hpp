@@ -45,9 +45,14 @@ public:
     cgl::Buffer<vec4> vbo;
     cgl::VertexArray vao;
 
-    template<class T>
-    Slice(const tc::Group &g, T all_sg_gens, const std::vector<std::vector<int>> &exclude) : group(g) {
-        auto mesh = merge(hull<N>(g, exclude));
+    explicit Slice(const tc::Group &g) : group(g) {
+        auto gens = generators(group);
+        auto combos = Combos<int>(gens, 3);
+        std::vector<std::vector<int>> exclude = {{0, 1, 2}};
+
+        auto all_sg_gens = combos;
+
+        auto mesh = Mesh<N>::hull(g, generators(g), all_sg_gens);
         ibo.put(mesh);
 
         vao.ipointer(0, ibo, 4, GL_UNSIGNED_INT);

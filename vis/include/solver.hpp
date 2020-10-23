@@ -70,29 +70,6 @@ namespace {
     }
 }
 
-//template<unsigned N, class T>
-//auto hull(const tc::Group &group, T all_sg_gens, const std::vector<std::vector<int>> &exclude) {
-//    std::vector<Prims<N>> parts;
-//    auto g_gens = generators(group);
-//    for (const std::vector<int> &sg_gens : all_sg_gens) {
-//        bool excluded = false;
-//        for (const auto &test : exclude) {
-//            if (sg_gens == test) {
-//                excluded = true;
-//                break;
-//            }
-//        }
-//        if (excluded) continue;
-//
-//        const auto &base = triangulate<N>(group, sg_gens);
-//        const auto &tiles = tile<N>(base, group, g_gens, sg_gens);
-//        for (const auto &tile : tiles) {
-//            parts.push_back(tile);
-//        }
-//    }
-//    return parts;
-//}
-
 template<unsigned N>
 class Mesh {
 public:
@@ -102,7 +79,10 @@ public:
 
     Mesh(const tc::Group &g_, std::vector<int> ctx_, size_t cols);
 
-    Mesh(const tc::Group &g_, std::vector<int> ctx_);
+    static Mesh<N> fill(const tc::Group &g, std::vector<int> ctx);
+
+    template<class SC>
+    static Mesh<N> hull(const tc::Group &g, std::vector<int> ctx, const SC &sub_ctxs);
 
     Mesh<N> recontext(std::vector<int> ctx_);
 
@@ -200,17 +180,16 @@ Mesh<N>::Mesh(const tc::Group &g_, std::vector<int> ctx_, size_t cols)
 }
 
 template<unsigned N>
-Mesh<N>::Mesh(const tc::Group &g_, std::vector<int> ctx_)
-    : g(&g_), ctx(std::move(ctx_)) {
-    if (ctx.size() + 1 != N) // todo make static assert
+Mesh<N> Mesh<N>::fill(const tc::Group &g, std::vector<int> ctx) {
+    if (ctx.size() + 1 != N)
         throw std::logic_error("ctx size must be one less than N");
 
-    const auto &combos = Combos(ctx, ctx.size() - 1);
+    const auto &combos = Combos(ctx, (int)ctx.size() - 1);
 
     std::vector<Mesh<N>> meshes;
 
-    for (const auto &sctx : combos) {
-        Mesh<N - 1> base(*g, sctx);
+    for (const auto &sub_ctx : combos) {
+        auto base = Mesh<N - 1>::fill(g, sub_ctx);
         auto parts = base.tile(ctx);
         parts.erase(parts.begin(), parts.begin() + 1);
 
@@ -221,34 +200,26 @@ Mesh<N>::Mesh(const tc::Group &g_, std::vector<int> ctx_)
         meshes.push_back(fanned);
     }
 
-    prims = merge(meshes).prims;
+    return merge(meshes);
 }
 
 template<>
-Mesh<1>::Mesh(const tc::Group &g_, std::vector<int> ctx_) : g(&g_), ctx(std::move(ctx_)) {
+Mesh<1> Mesh<1>::fill(const tc::Group &g, std::vector<int> ctx) {
     if (not ctx.empty())
         throw std::logic_error("ctx must be empty for a trivial Mesh.");
 
-    prims.setZero(1, 1);
+    return Mesh<1>(g, ctx, 1);
 }
 
 template<unsigned N>
-auto hull(const tc::Group &g, const std::vector<std::vector<int>> &exclude) {
+template<class SC>
+Mesh<N> Mesh<N>::hull(const tc::Group &g, const std::vector<int> ctx, const SC &sub_ctxs) {
     std::vector<Mesh<N>> parts;
 
-    auto ctx = generators(g);
-    auto sub_ctxs = Combos(ctx, N - 1);
-
     for (const auto &sub_ctx : sub_ctxs) {
-        bool excluded = std::any_of(
-            exclude.begin(), exclude.end(),
-            [&](auto e) { return e == sub_ctx; }
-        );
-        if (excluded) continue;
-
-        auto sub_parts = Mesh<N>(g, sub_ctx).tile(ctx);
-        parts.insert(parts.end(), sub_parts.begin(), sub_parts.end());
+        auto face = Mesh<N>::fill(g, sub_ctx).tile(ctx);
+        parts.insert(parts.end(), face.begin(), face.end());
     }
 
-    return parts;
+    return merge(parts);
 }

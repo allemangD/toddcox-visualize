@@ -18,9 +18,9 @@ mat5 wander(float time) {
     r *= rot<5>(1, 2, time * .13f);
     r *= rot<5>(0, 1, time * .20f);
 
-//    r *= rot<5>(0, 3, time * .17f);
-//    r *= rot<5>(1, 3, time * .25f);
-//    r *= rot<5>(2, 3, time * .12f);
+    r *= rot<5>(0, 3, time * .17f);
+    r *= rot<5>(1, 3, time * .25f);
+    r *= rot<5>(2, 3, time * .12f);
 
 //    r *= rot<5>(1, 4, time * .27f);
 
@@ -66,16 +66,12 @@ public:
 
         std::cout << utilInfo();
 
-        std::vector<int> symbol = {5, 3, 2, 2};
+        std::vector<int> symbol = {3, 4, 3, 2};
         root << .80, .02, .02, .02, .02;
 
         auto group = tc::schlafli(symbol);
 
-        auto gens = generators(group);
-        auto combos = Combos<int>(gens, 3);
-        std::vector<std::vector<int>> exclude = {{0, 1, 2}};
-
-        slice = std::make_unique<Slice<4>>(group, combos, exclude);
+        slice = std::make_unique<Slice<4>>(group);
         ren = std::make_unique<SliceRenderer<4>>();
 
         ubo = std::make_unique<cgl::Buffer<Matrices>>();
