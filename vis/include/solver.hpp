@@ -86,7 +86,9 @@ public:
 
     Mesh<N> recontext(std::vector<int> ctx_);
 
-    std::vector<Mesh<N>> tile(const std::vector<int> &ctx_);
+    Mesh<N> tile(const std::vector<int> &ctx_);
+
+    std::vector<Mesh<N>> each_tile(const std::vector<int> &ctx_);
 
     Mesh<N + 1> fan(unsigned root);
 
@@ -146,7 +148,12 @@ Mesh<N> Mesh<N>::recontext(std::vector<int> ctx_) {
 }
 
 template<unsigned N>
-std::vector<Mesh<N>> Mesh<N>::tile(const std::vector<int> &ctx_) {
+Mesh<N> Mesh<N>::tile(const std::vector<int> &ctx_) {
+    return merge(each_tile(ctx_));
+}
+
+template<unsigned N>
+std::vector<Mesh<N>> Mesh<N>::each_tile(const std::vector<int> &ctx_) {
     auto base = recontext(ctx_);
 
     auto table = solve(*g, base.ctx, {});
@@ -191,7 +198,7 @@ Mesh<N> Mesh<N>::fill(const tc::Group &g, std::vector<int> ctx) {
 
     for (const auto &sub_ctx : combos) {
         auto base = Mesh<N - 1>::fill(g, sub_ctx);
-        auto parts = base.tile(ctx);
+        auto parts = base.each_tile(ctx);
         parts.erase(parts.begin(), parts.begin() + 1);
 
         if (parts.empty()) continue;
@@ -218,7 +225,7 @@ Mesh<N> Mesh<N>::hull(const tc::Group &g, const std::vector<int> ctx, const SC &
     std::vector<Mesh<N>> parts;
 
     for (const auto &sub_ctx : sub_ctxs) {
-        auto face = Mesh<N>::fill(g, sub_ctx).tile(ctx);
+        auto face = Mesh<N>::fill(g, sub_ctx).each_tile(ctx);
         parts.insert(parts.end(), face.begin(), face.end());
     }
 
