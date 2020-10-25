@@ -29,13 +29,10 @@ mat5 wander(float time) {
 
 class ExampleApplication : public nanogui::Screen {
 public:
-    vec5 root;
-
-//    std::unique_ptr<tc::Group> group;
     std::unique_ptr<SliceRenderer<4>> ren;
     std::unique_ptr<cgl::Buffer<Matrices>> ubo;
 
-    std::unique_ptr<Slice<4>> slice;
+    std::vector<Slice<4>> slices;
 
     float glfw_time = 0;
     float last_frame = 0;
@@ -66,12 +63,41 @@ public:
 
         std::cout << utilInfo();
 
-        std::vector<int> symbol = {3, 4, 3, 2};
-        root << .80, .02, .02, .02, .02;
+        {
+            std::vector<int> symbol = {3, 4, 3, 2};
+            auto group = tc::schlafli(symbol);
+            auto ctx = generators(group);
+            auto selected_ctxs = difference(
+                combinations(ctx, 3),
+                {
+                    {0, 1, 2},
+                }
+            );
+            auto mesh = Mesh<4>::hull(group, ctx, selected_ctxs);
 
-        auto group = tc::schlafli(symbol);
+            auto &slice = slices.emplace_back(group);
+            slice.setMesh(mesh);
+            slice.root << .80, .02, .02, .02, .02;
+        }
 
-        slice = std::make_unique<Slice<4>>(group);
+        {
+            std::vector<int> symbol = {3, 4, 3, 2};
+            auto group = tc::schlafli(symbol);
+            auto ctx = generators(group);
+            auto selected_ctxs = difference(
+                combinations(ctx, 3),
+                {
+                    {0, 1, 2},
+                }
+            );
+            auto mesh = Mesh<4>::hull(group, ctx, selected_ctxs);
+
+            auto &slice = slices.emplace_back(group);
+            slice.setMesh(mesh);
+            slice.root << .50, .02, .02, .02, .02;
+            slice.color << 0.1, 0.1, 0.9;
+        }
+
         ren = std::make_unique<SliceRenderer<4>>();
 
         ubo = std::make_unique<cgl::Buffer<Matrices>>();
@@ -94,12 +120,17 @@ public:
         if (!paused) time += frame_time;
 
         auto rotation = wander(time);
-        slice->setPoints(root, rotation);
+        for (auto &slice : slices) {
+            slice.transform = rotation;
+            slice.setPoints();
+        }
 
         Matrices mats = Matrices::build(*this);
         glBindBufferBase(GL_UNIFORM_BUFFER, 1, *ubo);
         ubo->put(mats);
-        ren->draw(*slice);
+        for (const auto &slice : slices) {
+            ren->draw(slice);
+        }
     }
 };
 

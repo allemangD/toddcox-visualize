@@ -46,20 +46,20 @@ public:
     cgl::Buffer<vec4> vbo;
     cgl::VertexArray vao;
 
+    vec5 root = vec5::Ones().normalized();
+    mat5 transform = mat5::Identity();
+
+    vec3 color = vec3::Ones();
+
     explicit Slice(const tc::Group &g) : group(g) {
-        auto ctx = generators(group);
-        auto all_ctxs = combinations(ctx, N - 1);
-        auto selected_ctxs = difference(all_ctxs, {
-            {0, 2, 4},
-        });
-
-        auto mesh = Mesh<N>::hull(group, ctx, selected_ctxs);
-        ibo.put(mesh);
-
         vao.ipointer(0, ibo, 4, GL_UNSIGNED_INT);
     }
 
-    void setPoints(const vec5 &root, const mat5 &transform = mat5::Identity()) {
+    void setMesh(const Mesh<N> &mesh) {
+        ibo.put(mesh);
+    }
+
+    void setPoints() {
         auto cosets = group.solve();
         auto mirrors = mirror<5>(group);
 
@@ -104,7 +104,7 @@ public:
     void draw(const Slice<N> &prop) const {
         glBindProgramPipeline(pipe);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, prop.vbo);
-        glProgramUniform3f(solid, 2, 1.f, 1.f, 1.f);
+        glProgramUniform3fv(solid, 2, 1, prop.color.data());
         glBindVertexArray(prop.vao);
         glDrawArrays(GL_POINTS, 0, prop.ibo.count() * N);
     }
