@@ -9,7 +9,7 @@
 #include <geometry.hpp>
 #include <utility>
 
-#include "combo_iterator.hpp"
+#include <combinations.hpp>
 
 /**
  * Produce a list of all generators for the group context. The range [0..group.ngens).
@@ -184,7 +184,8 @@ Mesh<N> Mesh<N>::fill(const tc::Group &g, std::vector<int> ctx) {
     if (ctx.size() + 1 != N)
         throw std::logic_error("ctx size must be one less than N");
 
-    const auto &combos = Combos(ctx, (int)ctx.size() - 1);
+//    const auto &combos = Combos(ctx, (int)ctx.size() - 1);
+    const auto &combos = combinations(ctx, (int) ctx.size() - 1);
 
     std::vector<Mesh<N>> meshes;
 

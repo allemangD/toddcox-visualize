@@ -5,7 +5,6 @@
 #include <optional>
 #include <numeric>
 #include <iostream>
-#include "combo_iterator.hpp"
 
 template<unsigned N>
 using Prims = Eigen::Matrix<unsigned, N, Eigen::Dynamic>;

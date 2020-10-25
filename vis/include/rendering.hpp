@@ -5,7 +5,8 @@
 #include <cgl/pipeline.hpp>
 
 #include <geometry.hpp>
-#include "mirror.hpp"
+#include <mirror.hpp>
+#include <combinations.hpp>
 
 struct Matrices {
     mat4 proj = mat4::Identity();
@@ -46,13 +47,13 @@ public:
     cgl::VertexArray vao;
 
     explicit Slice(const tc::Group &g) : group(g) {
-        auto gens = generators(group);
-        auto combos = Combos<int>(gens, 3);
-        std::vector<std::vector<int>> exclude = {{0, 1, 2}};
+        auto ctx = generators(group);
+        auto all_ctxs = combinations(ctx, N - 1);
+        auto selected_ctxs = difference(all_ctxs, {
+            {0, 2, 4},
+        });
 
-        auto all_sg_gens = combos;
-
-        auto mesh = Mesh<N>::hull(g, generators(g), all_sg_gens);
+        auto mesh = Mesh<N>::hull(group, ctx, selected_ctxs);
         ibo.put(mesh);
 
         vao.ipointer(0, ibo, 4, GL_UNSIGNED_INT);
