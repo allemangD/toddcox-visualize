@@ -31,14 +31,23 @@ std::set<V> combinations(const V &options, size_t count) {
 }
 
 template<class V>
-std::set<V> difference(const std::set<V> &a, const std::set<V> &b) {
+std::set<V> set_difference(const std::set<V> &a, const std::set<V> &b) {
     std::set<V> result;
-
     std::set_difference(
         a.begin(), a.end(),
         b.begin(), b.end(),
         std::inserter(result, result.end())
     );
+    return result;
+}
 
+template<class V>
+std::set<V> set_union(const std::set<V> &a, const std::set<V> &b) {
+    std::set<V> result;
+    std::set_union(
+        a.begin(), a.end(),
+        b.begin(), b.end(),
+        std::inserter(result, result.end())
+        );
     return result;
 }

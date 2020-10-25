@@ -67,7 +67,7 @@ public:
             std::vector<int> symbol = {3, 4, 3, 2};
             auto group = tc::schlafli(symbol);
             auto ctx = generators(group);
-            auto selected_ctxs = difference(
+            auto selected_ctxs = set_difference(
                 combinations(ctx, 3),
                 {
                     {0, 1, 2},
@@ -84,20 +84,20 @@ public:
             std::vector<int> symbol = {3, 4, 3, 2};
             auto group = tc::schlafli(symbol);
             auto ctx = generators(group);
-            auto selected_ctxs = difference(
-                combinations(ctx, 3),
-                {
-                    {0, 1, 2},
-                }
+
+            auto selected_ctxs = set_union(
+                combinations(std::vector<int>{0, 2, 3, 4}, 3),
+                combinations(std::vector<int>{1, 2, 3, 4}, 3)
             );
+
             auto mesh = Mesh<4>::hull(group, ctx, selected_ctxs);
 
             auto &slice = slices.emplace_back(group);
             slice.setMesh(mesh);
-            slice.root << .50, .02, .02, .02, .02;
-            slice.color << 0.1, 0.1, 0.9;
+            slice.root << .80, .02, .02, .03, .04;
+            slice.color << 0.9, 0.1, 0.1;
         }
-
+        
         ren = std::make_unique<SliceRenderer<4>>();
 
         ubo = std::make_unique<cgl::Buffer<Matrices>>();
