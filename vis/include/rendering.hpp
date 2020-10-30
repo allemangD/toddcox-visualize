@@ -47,6 +47,7 @@ public:
     cgl::VertexArray vao;
 
     vec5 root = vec5::Ones().normalized();
+    vec5 center = vec5::Zero();
     mat5 transform = mat5::Identity();
 
     vec3 color = vec3::Ones();
@@ -70,7 +71,7 @@ public:
 
         std::transform(
                 higher.begin(), higher.end(), higher.begin(),
-                [&](const vec5& v) { return transform * v; }
+                [&](const vec5& v) { return center + transform * v; }
         );
 
         std::vector<vec4> lower(higher.size());
