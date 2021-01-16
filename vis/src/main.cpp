@@ -50,10 +50,10 @@ public:
         4, 5) {
         using namespace nanogui;
 
-        auto *window = new Window(this, "Sample Window");
-        window->setPosition(Vector2i(15, 15));
-        window->setFixedWidth(250);
-        window->setLayout(new BoxLayout(Orientation::Vertical));
+//        auto *window = new Window(this, "Sample Window");
+//        window->setPosition(Vector2i(15, 15));
+//        window->setFixedWidth(250);
+//        window->setLayout(new BoxLayout(Orientation::Vertical));
 
 //        auto pause = new ToolButton(window, ENTYPO_ICON_CONTROLLER_PAUS);
 //        pause->setFlags(Button::ToggleButton);
