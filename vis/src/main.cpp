@@ -50,14 +50,14 @@ public:
         4, 5) {
         using namespace nanogui;
 
-        Window *window = new Window(this, "Sample Window");
+        auto *window = new Window(this, "Sample Window");
         window->setPosition(Vector2i(15, 15));
         window->setFixedWidth(250);
         window->setLayout(new BoxLayout(Orientation::Vertical));
 
-        auto pause = new ToolButton(window, ENTYPO_ICON_CONTROLLER_PAUS);
-        pause->setFlags(Button::ToggleButton);
-        pause->setChangeCallback([&](bool value) { this->paused = value; });
+//        auto pause = new ToolButton(window, ENTYPO_ICON_CONTROLLER_PAUS);
+//        pause->setFlags(Button::ToggleButton);
+//        pause->setChangeCallback([&](bool value) { this->paused = value; });
 
         performLayout();
 
@@ -73,31 +73,13 @@ public:
                     {0, 1, 2},
                 }
             );
-            auto mesh = Mesh<4>::hull(group, ctx, selected_ctxs);
+            auto mesh = fill_each_tile_merge<4>(group, selected_ctxs);
 
             auto &slice = slices.emplace_back(group);
             slice.setMesh(mesh);
             slice.root << .80, .02, .02, .02, .02;
         }
 
-        {
-            std::vector<int> symbol = {3, 4, 3, 2};
-            auto group = tc::schlafli(symbol);
-            auto ctx = generators(group);
-
-            auto selected_ctxs = set_union(
-                combinations(std::vector<int>{0, 2, 3, 4}, 3),
-                combinations(std::vector<int>{1, 2, 3, 4}, 3)
-            );
-
-            auto mesh = Mesh<4>::hull(group, ctx, selected_ctxs);
-
-            auto &slice = slices.emplace_back(group);
-            slice.setMesh(mesh);
-            slice.root << .80, .02, .02, .03, .04;
-            slice.color << 0.9, 0.1, 0.1;
-        }
-        
         ren = std::make_unique<SliceRenderer<4>>();
 
         ubo = std::make_unique<cgl::Buffer<Matrices>>();
@@ -134,7 +116,7 @@ public:
     }
 };
 
-int main(int argc, char ** argv) {
+int main(int argc, char **argv) {
     try {
         nanogui::init();
 

@@ -79,10 +79,10 @@ public:
 
     Mesh(const tc::Group &g_, std::vector<int> ctx_, size_t cols);
 
-    static Mesh<N> fill(const tc::Group &g, std::vector<int> ctx);
+    static Mesh<N> fill(const tc::Group &g, const std::vector<int> &ctx);
 
-    template<class SC>
-    static Mesh<N> hull(const tc::Group &g, std::vector<int> ctx, const SC &sub_ctxs);
+//    template<class SC>
+//    static Mesh<N> hull(const tc::Group &g, const std::vector<int> &ctx, const SC &sub_ctxs);
 
     Mesh<N> recontext(std::vector<int> ctx_);
 
@@ -187,7 +187,7 @@ Mesh<N>::Mesh(const tc::Group &g_, std::vector<int> ctx_, size_t cols)
 }
 
 template<unsigned N>
-Mesh<N> Mesh<N>::fill(const tc::Group &g, std::vector<int> ctx) {
+Mesh<N> Mesh<N>::fill(const tc::Group &g, const std::vector<int> &ctx) {
     if (ctx.size() + 1 != N)
         throw std::logic_error("ctx size must be one less than N");
 
@@ -212,22 +212,45 @@ Mesh<N> Mesh<N>::fill(const tc::Group &g, std::vector<int> ctx) {
 }
 
 template<>
-Mesh<1> Mesh<1>::fill(const tc::Group &g, std::vector<int> ctx) {
+Mesh<1> Mesh<1>::fill(const tc::Group &g, const std::vector<int> &ctx) {
     if (not ctx.empty())
         throw std::logic_error("ctx must be empty for a trivial Mesh.");
 
     return Mesh<1>(g, ctx, 1);
 }
 
-template<unsigned N>
-template<class SC>
-Mesh<N> Mesh<N>::hull(const tc::Group &g, const std::vector<int> ctx, const SC &sub_ctxs) {
+template<unsigned N, class C, class SC>
+Mesh<N> fill_each_tile_merge(const tc::Group &g, const C &ctx, const SC &sub_ctxs) {
     std::vector<Mesh<N>> parts;
 
     for (const auto &sub_ctx : sub_ctxs) {
-        auto face = Mesh<N>::fill(g, sub_ctx).each_tile(ctx);
-        parts.insert(parts.end(), face.begin(), face.end());
+        auto root = Mesh<N>::fill(g, sub_ctx);
+        auto faces = root.each_tile(ctx);
+        parts.insert(parts.end(), faces.begin(), faces.end());
     }
 
     return merge(parts);
+}
+
+template<unsigned N, class SC>
+Mesh<N> fill_each_tile_merge(const tc::Group &g, const SC &sub_ctxs) {
+    return fill_each_tile_merge<N>(g, generators(g), sub_ctxs);
+}
+
+template<unsigned N, class C, class SC>
+Mesh<N> fill_each_recontext_merge(const tc::Group &g, const C &ctx, const SC &sub_ctxs) {
+    std::vector<Mesh<N>> parts;
+
+    for (const auto &sub_ctx : sub_ctxs) {
+        auto root = Mesh<N>::fill(g, sub_ctx);
+        auto face = root.recontext(ctx);
+        parts.insert(parts.end(), face);
+    }
+
+    return merge(parts);
+}
+
+template<unsigned N, class SC>
+Mesh<N> fill_each_recontext_merge(const tc::Group &g, const SC &sub_ctxs) {
+    return fill_each_recontext_merge<N>(g, generators(g), sub_ctxs);
 }
