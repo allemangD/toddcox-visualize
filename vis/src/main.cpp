@@ -188,7 +188,12 @@ template<unsigned N>
 struct DirectRenderer : public Renderer<N> {
     cgl::pipeline pipe;
 
-    DirectRenderer() = default;
+    cgl::pgm::frag solid = cgl::pgm::frag::file(
+        "shaders/solid.fs.glsl");
+
+    DirectRenderer() {
+        pipe.stage(solid);
+    };
 
     DirectRenderer(DirectRenderer &) = delete;
 
@@ -200,7 +205,7 @@ struct DirectRenderer : public Renderer<N> {
 
     void _draw(const Prop<N> &prop) const override {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, prop.vbo);
-//        glProgramUniform3fv(sh.solid, 2, 1, &wire.color.front());
+        glProgramUniform3fv(solid, 2, 1, &prop.color.front());
         prop.vao.bound([&]() {
             prop.ibo.bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
                 glDrawElements(GL_LINES, prop.ibo.count() * N, GL_UNSIGNED_INT, nullptr);
@@ -209,56 +214,11 @@ struct DirectRenderer : public Renderer<N> {
     }
 };
 
-//struct WireframeRenderer : public DirectRenderer<2> {
-//    WireframeRenderer() : DirectRenderer<2>() {
-//        cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
-//            "shaders/direct-ortho.vs.glsl");
-//        cgl::pgm::frag solid = cgl::pgm::frag::file(
-//            "shaders/solid.fs.glsl");
-//
-//        glProgramUniform3f(solid, 2, .3f, .3f, .3f);
-//
-//        this->pipe.stage(direct_stereo);
-//        this->pipe.stage(solid);
-//    }
-//};
-//
-//struct WireframeStereoRenderer : public WireframeRenderer {
-//    WireframeStereoRenderer() : WireframeRenderer() {
-//        cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
-//            "shaders/direct-stereo.vs.glsl");
-//        cgl::pgm::frag solid = cgl::pgm::frag::file(
-//            "shaders/solid.fs.glsl");
-//
-//        glProgramUniform3f(solid, 2, .3f, .3f, .4f);
-//
-//        this->pipe.stage(direct_stereo);
-//        this->pipe.stage(solid);
-//    }
-//};
-//
-//struct WireframeStereoCurveRenderer : public WireframeStereoRenderer {
-//    WireframeStereoCurveRenderer() : WireframeStereoRenderer() {
-//        cgl::pgm::vert direct_stereo = cgl::pgm::vert::file(
-//            "shaders/direct-stereo.vs.glsl");
-//        cgl::pgm::geom curve = cgl::pgm::geom::file(
-//            "shaders/curve-stereo.gm.glsl"
-//        );
-//        cgl::pgm::frag solid = cgl::pgm::frag::file(
-//            "shaders/solid.fs.glsl");
-//
-//        glProgramUniform3f(solid, 2, .4f, .3f, .3f);
-//
-//        this->pipe.stage(direct_stereo);
-//        this->pipe.stage(curve);
-//        this->pipe.stage(solid);
-//    }
-//};
-
 struct WireframeProp : public Prop<2> {
-    vec3 color;
 
-    WireframeProp(vec3 color) : Prop<2>(), color(color) {}
+    WireframeProp(vec3 color) : Prop<2>(){
+        this->color = color;
+    }
 
     WireframeProp(WireframeProp &) = delete;
 
@@ -294,26 +254,20 @@ void run(const std::string &config_file, GLFWwindow *window) {
     cgl::pgm::vert s = cgl::pgm::vert::file("shaders/direct-stereo.vs.glsl");
     cgl::pgm::geom co = cgl::pgm::geom::file("shaders/curve-ortho.gm.glsl");
     cgl::pgm::geom cs = cgl::pgm::geom::file("shaders/curve-stereo.gm.glsl");
-    cgl::pgm::frag solid = cgl::pgm::frag::file("shaders/solid.fs.glsl");
-    glProgramUniform3f(solid, 2, 1.f, 0.f, 0.f);
 
     DirectRenderer<2> woRen{};
     woRen.pipe.stage(o);
-    woRen.pipe.stage(solid);
 
     DirectRenderer<2> wocRen{};
     wocRen.pipe.stage(o);
     wocRen.pipe.stage(co);
-    wocRen.pipe.stage(solid);
 
     DirectRenderer<2> wsRen{};
     wsRen.pipe.stage(s);
-    wsRen.pipe.stage(solid);
 
     DirectRenderer<2> wscRen{};
     wscRen.pipe.stage(s);
     wscRen.pipe.stage(cs);
-    wscRen.pipe.stage(solid);
 
     auto scene = YAML::LoadFile(config_file);
 
