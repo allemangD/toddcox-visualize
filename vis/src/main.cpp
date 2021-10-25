@@ -98,6 +98,8 @@ struct Prop {
     cgl::Buffer<vec4> vbo;
     cgl::Buffer<Primitive<N>> ibo;
 
+    vec3 color;
+
     Prop() : vao(), vbo(), ibo() {}
 };
 
@@ -120,9 +122,9 @@ struct Renderer {
 
 template<unsigned N>
 struct SliceProp : public Prop<N> {
-    vec3 color;
-
-    SliceProp(vec3 color) : Prop<N>(), color(color) {}
+    SliceProp(vec3 color) : Prop<N>() {
+        this->color = color;
+    }
 
     SliceProp(SliceProp &) = delete;
 
@@ -173,8 +175,8 @@ struct SliceRenderer : public Renderer<N> {
 
     void _draw(const Prop<N> &prop) const override {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, prop.vbo);
-//        glProgramUniform3fv(solid, 2, 1, &prop.color.front());
-        glProgramUniform3f(solid, 2, 1.f, 1.f, 1.f);
+        glProgramUniform3fv(solid, 2, 1, &prop.color.front());
+//        glProgramUniform3f(solid, 2, 1.f, 1.f, 1.f);
         prop.vao.bound([&]() {
             glDrawArrays(GL_POINTS, 0, prop.ibo.count() * N);
         });
