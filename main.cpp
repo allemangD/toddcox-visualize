@@ -5,6 +5,8 @@
 #include <backends/imgui_impl_opengl3.h>
 #include <iostream>
 
+#include "gldebug.hpp"
+
 void show_overlay() {
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_None
         | ImGuiWindowFlags_NoDecoration
