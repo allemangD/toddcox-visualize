@@ -4,10 +4,19 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <iostream>
+#include <fstream>
 
 #include "gldebug.hpp"
 
-void show_overlay(float* clear_color) {
+#include "meshlib.hpp"
+#include "meshlib_json.hpp"
+
+struct State {
+    float bg[4] = {0.45f, 0.55f, 0.60f, 1.00f};
+    float fg[4] = {0.19f, 0.86f, 0.33f, 1.00f};
+};
+
+void show_overlay(State &state) {
     static std::string gl_vendor = (const char *) glGetString(GL_VENDOR);
     static std::string gl_renderer = (const char *) glGetString(GL_RENDERER);
     static std::string gl_version = (const char *) glGetString(GL_VERSION);
@@ -48,7 +57,7 @@ void show_overlay(float* clear_color) {
     ImGui::Separator();
 
     ImGui::ColorEdit3("Background", state.bg, ImGuiColorEditFlags_Float);
-    ImGui::SliderFloat("Alpha", &state.fg[3], 0.0f, 1.0f, "%.2f");
+    ImGui::ColorEdit3("Foreground", state.fg, ImGuiColorEditFlags_Float);
 
     ImGui::End();
 }
@@ -66,17 +75,10 @@ void set_style() {
 int run(GLFWwindow *window, ImGuiContext *context) {
     State state;
 
-    float points[]{
-        +0.5f, +0.5f, 0.0f, 1.0f,
-        +0.5f, -0.5f, 0.0f, 1.0f,
-        -0.5f, +0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.0f, 1.0f,
-    };
+    auto mesh = ml::CubeMesh(0.5f);
+//    auto mesh = ml::read("circle.pak");
 
-    unsigned int inds[]{
-        0, 1, 2,
-        1, 2, 3,
-    };
+    auto dynamic = (ml::DynamicMesh) mesh;
 
     GLuint vao;
     glCreateVertexArrays(1, &vao);
@@ -84,21 +86,55 @@ int run(GLFWwindow *window, ImGuiContext *context) {
     GLuint vbo;
     glCreateBuffers(1, &vbo);
 
-    glNamedBufferData(vbo, sizeof(points), (void *) points, GL_STATIC_DRAW);
+    constexpr size_t point_scalar_size = sizeof(ml::DynamicMesh::PointsType::Scalar);
+    constexpr size_t cell_scalar_size = sizeof(ml::DynamicMesh::CellsType::Scalar);
+
+    glNamedBufferData(
+        vbo,
+        (GLsizeiptr) (point_scalar_size * dynamic.points().size()),
+        dynamic.points().data(),
+        GL_STATIC_DRAW
+    );
     glEnableVertexArrayAttrib(vao, 0);
-    glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(float) * 4);
-    glVertexArrayAttribFormat(vao, 0, 4, GL_FLOAT, GL_FALSE, 0);
+    glVertexArrayVertexBuffer(vao, 0,
+        vbo, 0,
+        (GLsizeiptr) (point_scalar_size * dynamic.points().rows())
+    );
+    glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
 
     GLuint ibo;
     glCreateBuffers(1, &ibo);
     glGetError();
-    glNamedBufferData(ibo, sizeof(inds), (void *) inds, GL_STATIC_DRAW);
+    glNamedBufferData(
+        ibo,
+        (GLsizeiptr) (cell_scalar_size * dynamic.cells().size()),
+        dynamic.cells().data(),
+        GL_STATIC_DRAW
+    );
     glVertexArrayElementBuffer(vao, ibo);
 
     const char *vs_src = "#version 440\n"
-                         "layout(location=0) in vec4 pos;"
+                         "layout(location=1) uniform float time;"
+                         "layout(location=2) uniform mat4 proj;"
+                         "layout(location=0) in vec3 pos;"
                          "void main() {"
-                         "  gl_Position = pos;"
+                         "  float c2 = cos(time * 0.2);"
+                         "  float s2 = sin(time * 0.2);"
+                         "  float c3 = cos(time * 0.3);"
+                         "  float s3 = sin(time * 0.3);"
+                         "  mat4 r1 = mat4("
+                         "     c2,  -s2, 0.0, 0.0,"
+                         "     s2,   c2, 0.0, 0.0,"
+                         "    0.0,  0.0, 1.0, 0.0,"
+                         "    0.0,  0.0, 0.0, 1.0"
+                         "  );"
+                         "  mat4 r2 = mat4("
+                         "     c3,  0.0, -s3, 0.0,"
+                         "    0.0,  1.0, 0.0, 0.0,"
+                         "     s3,  0.0,  c3, 0.0,"
+                         "    0.0,  0.0, 0.0, 1.0"
+                         ");"
+                         "  gl_Position = proj * r2 * r1 * vec4(pos, 1.0);"
                          "}";
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vs, 1, &vs_src, nullptr);
@@ -108,7 +144,10 @@ int run(GLFWwindow *window, ImGuiContext *context) {
                          "layout(location=0) uniform vec4 ucol;"
                          "layout(location=0) out vec4 col;"
                          "void main() {"
+                         "  float d = 1.0 - gl_FragCoord.z;"
+                         "  d = (d - 0.5) / 0.7 + 0.5;"
                          "  col = ucol;"
+                         "  col.xyz *= d;"
                          "}";
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fs, 1, &fs_src, nullptr);
@@ -118,6 +157,10 @@ int run(GLFWwindow *window, ImGuiContext *context) {
     glAttachShader(pgm, vs);
     glAttachShader(pgm, fs);
     glLinkProgram(pgm);
+
+    glEnable(GL_DEPTH_TEST);
+
+    Eigen::Projective3f proj;
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -132,12 +175,17 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         glfwGetFramebufferSize(window, &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
         glClearColor(state.bg[0], state.bg[1], state.bg[2], state.bg[3]);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        auto aspect = (float) display_h / (float) display_w;
+        proj = Eigen::AlignedScaling3f(aspect, 1.0, -1.0);
 
         glUseProgram(pgm);
         glBindVertexArray(vao);
         glUniform4fv(0, 1, state.fg);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        glUniform1f(1, (GLfloat) glfwGetTime());
+        glUniformMatrix4fv(2, 1, false, proj.data());
+        glDrawElements(GL_TRIANGLES, (GLsizei) dynamic.cells().size(), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
         glUseProgram(0);
 
