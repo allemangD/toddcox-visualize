@@ -113,50 +113,49 @@ int run(GLFWwindow *window, ImGuiContext *context) {
     );
     glVertexArrayElementBuffer(vao, ibo);
 
-    const char *vs_src = "#version 440\n"
-                         "layout(location=1) uniform float time;"
-                         "layout(location=2) uniform mat4 proj;"
-                         "layout(location=0) in vec3 pos;"
-                         "void main() {"
-                         "  float c2 = cos(time * 0.2);"
-                         "  float s2 = sin(time * 0.2);"
-                         "  float c3 = cos(time * 0.3);"
-                         "  float s3 = sin(time * 0.3);"
-                         "  mat4 r1 = mat4("
-                         "     c2,  -s2, 0.0, 0.0,"
-                         "     s2,   c2, 0.0, 0.0,"
-                         "    0.0,  0.0, 1.0, 0.0,"
-                         "    0.0,  0.0, 0.0, 1.0"
-                         "  );"
-                         "  mat4 r2 = mat4("
-                         "     c3,  0.0, -s3, 0.0,"
-                         "    0.0,  1.0, 0.0, 0.0,"
-                         "     s3,  0.0,  c3, 0.0,"
-                         "    0.0,  0.0, 0.0, 1.0"
-                         ");"
-                         "  gl_Position = proj * r2 * r1 * vec4(pos, 1.0);"
-                         "}";
+    std::ifstream vs_file("res/shaders/main.vert.glsl");
+    std::string vs_src(
+        (std::istreambuf_iterator<char>(vs_file)),
+        std::istreambuf_iterator<char>()
+    );
+    vs_file.close();
+    const char *vs_str = vs_src.c_str();
+
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, &vs_src, nullptr);
+    glShaderSource(vs, 1, &vs_str, nullptr);
     glCompileShader(vs);
 
-    const char *fs_src = "#version 440\n"
-                         "layout(location=0) uniform vec4 ucol;"
-                         "layout(location=0) out vec4 col;"
-                         "void main() {"
-                         "  float d = 1.0 - gl_FragCoord.z;"
-                         "  d = (d - 0.5) / 0.7 + 0.5;"
-                         "  col = ucol;"
-                         "  col.xyz *= d;"
-                         "}";
+    std::ifstream fs_file("res/shaders/main.frag.glsl");
+    std::string fs_src(
+        (std::istreambuf_iterator<char>(fs_file)),
+        std::istreambuf_iterator<char>()
+    );
+    fs_file.close();
+    const char *fs_str = fs_src.c_str();
+
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, &fs_src, nullptr);
+    glShaderSource(fs, 1, &fs_str, nullptr);
     glCompileShader(fs);
 
     GLuint pgm = glCreateProgram();
     glAttachShader(pgm, vs);
     glAttachShader(pgm, fs);
     glLinkProgram(pgm);
+
+    GLint link_status;
+    glGetProgramiv(pgm, GL_LINK_STATUS, &link_status);
+    if (!link_status) {
+        std::cerr << "Program link failed." << std::endl;
+        GLint vs_comp_status, fs_comp_status;
+        glGetShaderiv(vs, GL_COMPILE_STATUS, &vs_comp_status);
+        glGetShaderiv(fs, GL_COMPILE_STATUS, &fs_comp_status);
+        std::cerr << "vs compiled: " << std::boolalpha << (bool) vs_comp_status << std::endl;
+        std::cerr << "fs compiled: " << std::boolalpha << (bool) fs_comp_status << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glEnable(GL_DEPTH_TEST);
 
