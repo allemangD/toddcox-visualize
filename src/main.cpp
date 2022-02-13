@@ -8,8 +8,8 @@
 
 #include "gldebug.hpp"
 
-#include "meshlib.hpp"
-#include "meshlib_json.hpp"
+#include <ml/meshlib.hpp>
+#include <ml/meshlib_json.hpp>
 
 struct State {
     float bg[4] = {0.45f, 0.55f, 0.60f, 1.00f};

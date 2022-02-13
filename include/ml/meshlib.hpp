@@ -83,15 +83,4 @@ namespace ml {
             return out;
         }
     };
-
-//    class CubeMesh : public MeshBase<Eigen::MatrixXf, Eigen::MatrixXi> {
-//    public:
-//        const Eigen::MatrixBase<PointsType> &points() const override {
-//            return PointsType::Random(3, 8);
-//        }
-//
-//        const Eigen::MatrixBase<CellsType> &cells() const override {
-//            return <#initializer#>;
-//        }
-//    };
 }

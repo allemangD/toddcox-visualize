@@ -11,8 +11,10 @@ include(External/eigen.cmake)
 include(External/glad.cmake)
 include(External/json.cmake)
 
-add_executable(vis main.cpp)
+include_directories(./include)
+
+add_executable(vis src/main.cpp)
 target_link_libraries(vis glfw glad imgui eigen nlohmann_json)
 
-add_executable(serial serialtest.cpp)
+add_executable(serial src/serialtest.cpp)
 target_link_libraries(serial eigen nlohmann_json)

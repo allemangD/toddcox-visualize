@@ -3,8 +3,8 @@
 #include <fstream>
 #include <iostream>
 
-#include "meshlib.hpp"
-#include "meshlib_json.hpp"
+#include <ml/meshlib.hpp>
+#include <ml/meshlib_json.hpp>
 
 class Circle : public ml::MeshBase {
 public:
