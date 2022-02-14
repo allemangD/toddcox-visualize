@@ -19,7 +19,13 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/res ${CMAKE_CURRENT_BINARY_DIR}/res
     COMMENT "Copying Resources")
 
-add_executable(vis src/main.cpp)
+add_executable(vis
+    src/main.cpp
+    src/gl/debug.hpp
+    src/gl/shader.hpp
+    src/gl/buffer.hpp
+    src/gl/vertexarray.hpp
+    src/gl/types.hpp)
 target_link_libraries(vis glfw glad imgui eigen nlohmann_json)
 add_dependencies(vis resources)
 

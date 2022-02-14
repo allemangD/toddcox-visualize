@@ -6,7 +6,10 @@
 #include <iostream>
 #include <fstream>
 
-#include "gldebug.hpp"
+#include "gl/debug.hpp"
+#include "gl/buffer.hpp"
+#include "gl/shader.hpp"
+#include "gl/vertexarray.hpp"
 
 #include <ml/meshlib.hpp>
 #include <ml/meshlib_json.hpp>
@@ -123,145 +126,54 @@ void set_style() {
 int run(GLFWwindow *window, ImGuiContext *context) {
     State state;
 
+    Buffer<GLuint> ind_buf;
+    Buffer<Eigen::Vector3f> vert_buf;
+    Buffer<Eigen::Vector3f> vert2_buf;
+
+    VertexArray<Eigen::Vector3f> vao(vert_buf);
+    glVertexArrayElementBuffer(vao, ind_buf);
+
     auto mesh = ml::CubeMesh(0.25f);
-//    auto mesh = ml::read("circle.pak");
 
-    auto dynamic = (ml::DynamicMesh) mesh;
+    auto ind_data = mesh.cells();
+    auto ind_flat = ind_data.reshaped();
+    auto elements = ind_buf.upload(ind_flat.begin(), ind_flat.end(), GL_STATIC_DRAW);
 
-    GLuint vao;
-    glCreateVertexArrays(1, &vao);
+    // todo add <Dim, Rank> to DynamicMesh
+    // need to do weird piping because dynamicmesh returns dynamic-sized matrix, VertexArray requires a static-sized matrix
+    auto vert_data_dyn = mesh.points();
+    Eigen::Ref<Eigen::Matrix3Xf> vert_data(vert_data_dyn);
+    auto vert_flat = vert_data.colwise();
+    vert_buf.upload(vert_flat.begin(), vert_flat.end(), GL_STATIC_DRAW);
 
-    GLuint vbo;
-    glCreateBuffers(1, &vbo);
+    auto mesh2 = ml::CubeMesh(0.5f);
+    auto vert2_data_dyn = mesh2.points();
+    Eigen::Ref<Eigen::Matrix3Xf> vert2_data(vert2_data_dyn);
+    auto vert2_flat = vert2_data.colwise();
+    vert2_buf.upload(vert2_flat.begin(), vert2_flat.end(), GL_STATIC_DRAW);
 
-    constexpr size_t point_scalar_size = sizeof(ml::DynamicMesh::PointsType::Scalar);
-    constexpr size_t cell_scalar_size = sizeof(ml::DynamicMesh::CellsType::Scalar);
+    auto mesh4d = ml::WireCubeMesh(4, 0.33f);
 
-    glNamedBufferData(
-        vbo,
-        (GLsizeiptr) (point_scalar_size * dynamic.points().size()),
-        dynamic.points().data(),
-        GL_STATIC_DRAW
-    );
-    glEnableVertexArrayAttrib(vao, 0);
-    glVertexArrayVertexBuffer(vao, 0,
-        vbo, 0,
-        (GLsizeiptr) (point_scalar_size * dynamic.points().rows())
-    );
-    glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
+    Buffer<GLuint> ind4d_buf;
+    Buffer<Eigen::Vector4f> vert4d_buf;
+    VertexArray<Eigen::Vector4f> vao4d(vert4d_buf);
+    glVertexArrayElementBuffer(vao4d, ind4d_buf);
 
-    GLuint ibo;
-    glCreateBuffers(1, &ibo);
-    glGetError();
-    glNamedBufferData(
-        ibo,
-        (GLsizeiptr) (cell_scalar_size * dynamic.cells().size()),
-        dynamic.cells().data(),
-        GL_STATIC_DRAW
-    );
-    glVertexArrayElementBuffer(vao, ibo);
+    auto ind4d_data = mesh4d.cells();
+    auto ind4d_flat = ind4d_data.reshaped();
+    auto elements4d = ind4d_buf.upload(ind4d_flat.begin(), ind4d_flat.end(), GL_STATIC_DRAW);
 
-    auto wire_mesh = ml::WireCubeMesh(4, 0.33f);
-    auto wire_dynamic = (ml::DynamicMesh) wire_mesh;
+    auto vert4d_data_dyn = mesh4d.points();
+    Eigen::Ref<Eigen::Matrix4Xf> vert4d_data(vert4d_data_dyn);
+    auto vert4d_flat = vert4d_data.colwise();
+    vert4d_buf.upload(vert4d_flat.begin(), vert4d_flat.end(), GL_STATIC_DRAW);
 
-    GLuint wire_vao;
-    glCreateVertexArrays(1, &wire_vao);
+    VertexShader vs(std::ifstream("res/shaders/main.vert.glsl"));
+    VertexShader vs4d(std::ifstream("res/shaders/4d.vert.glsl"));
+    FragmentShader fs(std::ifstream("res/shaders/main.frag.glsl"));
 
-    GLuint wire_vbo;
-    glCreateBuffers(1, &wire_vbo);
-
-    glNamedBufferData(
-        wire_vbo,
-        (GLsizeiptr) (point_scalar_size * wire_dynamic.points().size()),
-        wire_dynamic.points().data(),
-        GL_STATIC_DRAW
-    );
-    glEnableVertexArrayAttrib(wire_vao, 0);
-    glVertexArrayVertexBuffer(wire_vao, 0,
-                              wire_vbo, 0,
-                              (GLsizeiptr) (point_scalar_size * wire_dynamic.points().rows())
-    );
-    glVertexArrayAttribFormat(wire_vao, 0, 4, GL_FLOAT, GL_FALSE, 0);
-
-    GLuint wire_ibo;
-    glCreateBuffers(1, &wire_ibo);
-    glGetError();
-    glNamedBufferData(
-        wire_ibo,
-        (GLsizeiptr) (cell_scalar_size * wire_dynamic.cells().size()),
-        wire_dynamic.cells().data(),
-        GL_STATIC_DRAW
-    );
-    glVertexArrayElementBuffer(wire_vao, wire_ibo);
-
-    std::ifstream vs_file("res/shaders/main.vert.glsl");
-    std::string vs_src(
-        (std::istreambuf_iterator<char>(vs_file)),
-        std::istreambuf_iterator<char>()
-    );
-    vs_file.close();
-    const char *vs_str = vs_src.c_str();
-
-    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vs, 1, &vs_str, nullptr);
-    glCompileShader(vs);
-
-    std::ifstream wire_vs_file("res/shaders/4d.vert.glsl");
-    std::string wire_vs_src(
-        (std::istreambuf_iterator<char>(wire_vs_file)),
-        std::istreambuf_iterator<char>()
-    );
-    wire_vs_file.close();
-    const char *wire_vs_str = wire_vs_src.c_str();
-
-    GLuint wire_vs = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(wire_vs, 1, &wire_vs_str, nullptr);
-    glCompileShader(wire_vs);
-
-    std::ifstream fs_file("res/shaders/main.frag.glsl");
-    std::string fs_src(
-        (std::istreambuf_iterator<char>(fs_file)),
-        std::istreambuf_iterator<char>()
-    );
-    fs_file.close();
-    const char *fs_str = fs_src.c_str();
-
-    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fs, 1, &fs_str, nullptr);
-    glCompileShader(fs);
-
-    GLuint pgm = glCreateProgram();
-    glAttachShader(pgm, vs);
-    glAttachShader(pgm, fs);
-    glLinkProgram(pgm);
-
-    GLuint wire_pgm = glCreateProgram();
-    glAttachShader(wire_pgm, wire_vs);
-    glAttachShader(wire_pgm, fs);
-    glLinkProgram(wire_pgm);
-
-    GLint link_status;
-    glGetProgramiv(pgm, GL_LINK_STATUS, &link_status);
-    if (!link_status) {
-        std::cerr << "Program link failed." << std::endl;
-        GLint vs_comp_status, fs_comp_status;
-        glGetShaderiv(vs, GL_COMPILE_STATUS, &vs_comp_status);
-        glGetShaderiv(fs, GL_COMPILE_STATUS, &fs_comp_status);
-        std::cerr << "vs compiled: " << std::boolalpha << (bool) vs_comp_status << std::endl;
-        std::cerr << "fs compiled: " << std::boolalpha << (bool) fs_comp_status << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    glGetProgramiv(wire_pgm, GL_LINK_STATUS, &link_status);
-    if (!link_status) {
-        std::cerr << "Wire program link failed." << std::endl;
-        GLint vs_comp_status, fs_comp_status;
-        glGetShaderiv(vs, GL_COMPILE_STATUS, &vs_comp_status);
-        glGetShaderiv(fs, GL_COMPILE_STATUS, &fs_comp_status);
-        std::cerr << "vs compiled: " << std::boolalpha << (bool) vs_comp_status << std::endl;
-        std::cerr << "fs compiled: " << std::boolalpha << (bool) fs_comp_status << std::endl;
-        return EXIT_FAILURE;
-    }
+    Program pgm(vs, fs);
+    Program pgm4d(vs4d, fs);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -291,12 +203,12 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         glUniform1f(1, (GLfloat) glfwGetTime());
         glUniformMatrix4fv(2, 1, false, proj.data());
         glUniformMatrix4fv(3, 1, false, state.rot.data());
-        glDrawElements(GL_TRIANGLES, (GLsizei) dynamic.cells().size(), GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, elements, GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
         glUseProgram(0);
 
-        glUseProgram(wire_pgm);
-        glBindVertexArray(wire_vao);
+        glUseProgram(pgm4d);
+        glBindVertexArray(vao4d);
         glUniform4fv(0, 1, state.wf.data());
         glUniform1f(1, (GLfloat) glfwGetTime());
         glUniformMatrix4fv(2, 1, false, proj.data());
@@ -320,22 +232,13 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         }
 
         glUniform4fv(0, 1, state.wf.data());
-        glDrawElements(GL_LINES, (GLsizei) wire_dynamic.cells().size(), GL_UNSIGNED_INT, nullptr);
-
+        glDrawElements(GL_LINES, elements4d, GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
         glUseProgram(0);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
     }
-
-    glDeleteBuffers(1, &vbo);
-    glDeleteBuffers(1, &ibo);
-    glDeleteVertexArrays(1, &vao);
-
-    glDeleteBuffers(1, &wire_vbo);
-    glDeleteBuffers(1, &wire_ibo);
-    glDeleteVertexArrays(1, &wire_vao);
 
     return EXIT_SUCCESS;
 }
