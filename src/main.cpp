@@ -12,11 +12,18 @@
 #include <ml/meshlib_json.hpp>
 
 struct State {
-    Eigen::Vector4f bg{0.45f, 0.55f, 0.60f, 1.00f};
+    Eigen::Vector4f bg{0.07f, 0.09f, 0.10f, 1.00f};
     Eigen::Vector4f fg{0.71f, 0.53f, 0.94f, 1.00f};
     Eigen::Vector4f wf{0.95f, 0.95f, 0.95f, 1.00f};
 
+    Eigen::Vector4f R{1.00f, 0.00f, 0.00f, 1.00f};
+    Eigen::Vector4f G{0.00f, 1.00f, 0.00f, 1.00f};
+    Eigen::Vector4f B{0.00f, 0.00f, 1.00f, 1.00f};
+    Eigen::Vector4f Y{1.20f, 1.20f, 0.00f, 1.00f};
+
     Eigen::Matrix4f rot = Eigen::Matrix4f::Identity();
+
+    bool color_axes = false;
 };
 
 Eigen::Matrix4f rotor(int u, int v, float rad) {
@@ -25,6 +32,11 @@ Eigen::Matrix4f rotor(int u, int v, float rad) {
     res(u, v) = res(v, u) = sinf(rad);
     res(u, v) *= -1;
     return res;
+}
+
+template<typename T_>
+T_ mix(const T_ &a, const T_ &b, const typename T_::Scalar &x) {
+    return a * (1 - x) + b * x;
 }
 
 void show_overlay(State &state) {
@@ -70,6 +82,8 @@ void show_overlay(State &state) {
     ImGui::ColorEdit3("Background", state.bg.data(), ImGuiColorEditFlags_Float);
     ImGui::ColorEdit3("Foreground", state.fg.data(), ImGuiColorEditFlags_Float);
     ImGui::ColorEdit3("Wireframe", state.wf.data(), ImGuiColorEditFlags_Float);
+
+    ImGui::Checkbox("Show RGBY axis colors", &state.color_axes);
 
     if (io.MouseDown[0] && !io.WantCaptureMouse) {
         Eigen::Matrix4f rot = Eigen::Matrix4f::Identity();
@@ -283,11 +297,31 @@ int run(GLFWwindow *window, ImGuiContext *context) {
 
         glUseProgram(wire_pgm);
         glBindVertexArray(wire_vao);
-        glUniform4fv(0, 1, state.fg);
+        glUniform4fv(0, 1, state.wf.data());
         glUniform1f(1, (GLfloat) glfwGetTime());
         glUniformMatrix4fv(2, 1, false, proj.data());
         glUniformMatrix4fv(3, 1, false, state.rot.data());
+
+        if (state.color_axes) {
+            auto factor = 0.7f;
+            auto x = mix(state.wf, state.R, factor);
+            auto y = mix(state.wf, state.G, factor);
+            auto z = mix(state.wf, state.B, factor);
+            auto w = mix(state.wf, state.Y, factor);
+
+            glUniform4fv(0, 1, x.data());
+            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 0), 0);
+            glUniform4fv(0, 1, y.data());
+            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 2), 0);
+            glUniform4fv(0, 1, z.data());
+            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 8), 0);
+            glUniform4fv(0, 1, w.data());
+            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 24), 0);
+        }
+
+        glUniform4fv(0, 1, state.wf.data());
         glDrawElements(GL_LINES, (GLsizei) wire_dynamic.cells().size(), GL_UNSIGNED_INT, nullptr);
+
         glBindVertexArray(0);
         glUseProgram(0);
 
