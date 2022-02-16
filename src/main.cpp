@@ -12,9 +12,20 @@
 #include <ml/meshlib_json.hpp>
 
 struct State {
-    float bg[4] = {0.45f, 0.55f, 0.60f, 1.00f};
-    float fg[4] = {0.19f, 0.86f, 0.33f, 1.00f};
+    Eigen::Vector4f bg{0.45f, 0.55f, 0.60f, 1.00f};
+    Eigen::Vector4f fg{0.71f, 0.53f, 0.94f, 1.00f};
+    Eigen::Vector4f wf{0.95f, 0.95f, 0.95f, 1.00f};
+
+    Eigen::Matrix4f rot = Eigen::Matrix4f::Identity();
 };
+
+Eigen::Matrix4f rotor(int u, int v, float rad) {
+    Eigen::Matrix4f res = Eigen::Matrix4f::Identity();
+    res(u, u) = res(v, v) = cosf(rad);
+    res(u, v) = res(v, u) = sinf(rad);
+    res(u, v) *= -1;
+    return res;
+}
 
 void show_overlay(State &state) {
     static std::string gl_vendor = (const char *) glGetString(GL_VENDOR);
@@ -24,11 +35,11 @@ void show_overlay(State &state) {
 
     ImGuiWindowFlags window_flags =
         ImGuiWindowFlags_AlwaysAutoResize |
-            ImGuiWindowFlags_NoSavedSettings |
-            ImGuiWindowFlags_NoFocusOnAppearing |
-            ImGuiWindowFlags_NoNav |
-            ImGuiWindowFlags_NoBringToFrontOnFocus |
-            ImGuiWindowFlags_NoMove;
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoFocusOnAppearing |
+        ImGuiWindowFlags_NoNav |
+        ImGuiWindowFlags_NoBringToFrontOnFocus |
+        ImGuiWindowFlags_NoMove;
 
     ImGuiStyle &style = ImGui::GetStyle();
     const auto PAD = style.DisplaySafeAreaPadding;
@@ -56,8 +67,31 @@ void show_overlay(State &state) {
 
     ImGui::Separator();
 
-    ImGui::ColorEdit3("Background", state.bg, ImGuiColorEditFlags_Float);
-    ImGui::ColorEdit3("Foreground", state.fg, ImGuiColorEditFlags_Float);
+    ImGui::ColorEdit3("Background", state.bg.data(), ImGuiColorEditFlags_Float);
+    ImGui::ColorEdit3("Foreground", state.fg.data(), ImGuiColorEditFlags_Float);
+    ImGui::ColorEdit3("Wireframe", state.wf.data(), ImGuiColorEditFlags_Float);
+
+    if (io.MouseDown[0] && !io.WantCaptureMouse) {
+        Eigen::Matrix4f rot = Eigen::Matrix4f::Identity();
+        Eigen::Vector2f del{io.MouseDelta.x, io.MouseDelta.y};
+        del /= 200.0f;
+
+        if (io.KeyShift) {
+            del /= 5.0f;
+        }
+
+        if (io.KeyCtrl) {
+            Eigen::Matrix4f rx = rotor(0, 3, -del.x());
+            Eigen::Matrix4f ry = rotor(1, 3, del.y());
+            rot = rx * ry;
+        } else {
+            Eigen::Matrix4f rx = rotor(0, 2, -del.x());
+            Eigen::Matrix4f ry = rotor(1, 2, del.y());
+            rot = rx * ry;
+        }
+
+        state.rot = rot * state.rot;
+    }
 
     ImGui::End();
 }
@@ -239,9 +273,10 @@ int run(GLFWwindow *window, ImGuiContext *context) {
 
         glUseProgram(pgm);
         glBindVertexArray(vao);
-        glUniform4fv(0, 1, state.fg);
+        glUniform4fv(0, 1, state.fg.data());
         glUniform1f(1, (GLfloat) glfwGetTime());
         glUniformMatrix4fv(2, 1, false, proj.data());
+        glUniformMatrix4fv(3, 1, false, state.rot.data());
         glDrawElements(GL_TRIANGLES, (GLsizei) dynamic.cells().size(), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
         glUseProgram(0);
@@ -251,6 +286,7 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         glUniform4fv(0, 1, state.fg);
         glUniform1f(1, (GLfloat) glfwGetTime());
         glUniformMatrix4fv(2, 1, false, proj.data());
+        glUniformMatrix4fv(3, 1, false, state.rot.data());
         glDrawElements(GL_LINES, (GLsizei) wire_dynamic.cells().size(), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
         glUseProgram(0);
