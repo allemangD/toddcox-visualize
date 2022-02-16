@@ -75,7 +75,7 @@ void set_style() {
 int run(GLFWwindow *window, ImGuiContext *context) {
     State state;
 
-    auto mesh = ml::CubeMesh(0.5f);
+    auto mesh = ml::CubeMesh(0.25f);
 //    auto mesh = ml::read("circle.pak");
 
     auto dynamic = (ml::DynamicMesh) mesh;
@@ -113,6 +113,39 @@ int run(GLFWwindow *window, ImGuiContext *context) {
     );
     glVertexArrayElementBuffer(vao, ibo);
 
+    auto wire_mesh = ml::WireCubeMesh(4, 0.33f);
+    auto wire_dynamic = (ml::DynamicMesh) wire_mesh;
+
+    GLuint wire_vao;
+    glCreateVertexArrays(1, &wire_vao);
+
+    GLuint wire_vbo;
+    glCreateBuffers(1, &wire_vbo);
+
+    glNamedBufferData(
+        wire_vbo,
+        (GLsizeiptr) (point_scalar_size * wire_dynamic.points().size()),
+        wire_dynamic.points().data(),
+        GL_STATIC_DRAW
+    );
+    glEnableVertexArrayAttrib(wire_vao, 0);
+    glVertexArrayVertexBuffer(wire_vao, 0,
+                              wire_vbo, 0,
+                              (GLsizeiptr) (point_scalar_size * wire_dynamic.points().rows())
+    );
+    glVertexArrayAttribFormat(wire_vao, 0, 4, GL_FLOAT, GL_FALSE, 0);
+
+    GLuint wire_ibo;
+    glCreateBuffers(1, &wire_ibo);
+    glGetError();
+    glNamedBufferData(
+        wire_ibo,
+        (GLsizeiptr) (cell_scalar_size * wire_dynamic.cells().size()),
+        wire_dynamic.cells().data(),
+        GL_STATIC_DRAW
+    );
+    glVertexArrayElementBuffer(wire_vao, wire_ibo);
+
     std::ifstream vs_file("res/shaders/main.vert.glsl");
     std::string vs_src(
         (std::istreambuf_iterator<char>(vs_file)),
@@ -124,6 +157,18 @@ int run(GLFWwindow *window, ImGuiContext *context) {
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vs, 1, &vs_str, nullptr);
     glCompileShader(vs);
+
+    std::ifstream wire_vs_file("res/shaders/4d.vert.glsl");
+    std::string wire_vs_src(
+        (std::istreambuf_iterator<char>(wire_vs_file)),
+        std::istreambuf_iterator<char>()
+    );
+    wire_vs_file.close();
+    const char *wire_vs_str = wire_vs_src.c_str();
+
+    GLuint wire_vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(wire_vs, 1, &wire_vs_str, nullptr);
+    glCompileShader(wire_vs);
 
     std::ifstream fs_file("res/shaders/main.frag.glsl");
     std::string fs_src(
@@ -142,6 +187,11 @@ int run(GLFWwindow *window, ImGuiContext *context) {
     glAttachShader(pgm, fs);
     glLinkProgram(pgm);
 
+    GLuint wire_pgm = glCreateProgram();
+    glAttachShader(wire_pgm, wire_vs);
+    glAttachShader(wire_pgm, fs);
+    glLinkProgram(wire_pgm);
+
     GLint link_status;
     glGetProgramiv(pgm, GL_LINK_STATUS, &link_status);
     if (!link_status) {
@@ -154,8 +204,16 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         return EXIT_FAILURE;
     }
 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glGetProgramiv(wire_pgm, GL_LINK_STATUS, &link_status);
+    if (!link_status) {
+        std::cerr << "Wire program link failed." << std::endl;
+        GLint vs_comp_status, fs_comp_status;
+        glGetShaderiv(vs, GL_COMPILE_STATUS, &vs_comp_status);
+        glGetShaderiv(fs, GL_COMPILE_STATUS, &fs_comp_status);
+        std::cerr << "vs compiled: " << std::boolalpha << (bool) vs_comp_status << std::endl;
+        std::cerr << "fs compiled: " << std::boolalpha << (bool) fs_comp_status << std::endl;
+        return EXIT_FAILURE;
+    }
 
     glEnable(GL_DEPTH_TEST);
 
@@ -188,6 +246,15 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         glBindVertexArray(0);
         glUseProgram(0);
 
+        glUseProgram(wire_pgm);
+        glBindVertexArray(wire_vao);
+        glUniform4fv(0, 1, state.fg);
+        glUniform1f(1, (GLfloat) glfwGetTime());
+        glUniformMatrix4fv(2, 1, false, proj.data());
+        glDrawElements(GL_LINES, (GLsizei) wire_dynamic.cells().size(), GL_UNSIGNED_INT, nullptr);
+        glBindVertexArray(0);
+        glUseProgram(0);
+
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
     }
@@ -195,6 +262,10 @@ int run(GLFWwindow *window, ImGuiContext *context) {
     glDeleteBuffers(1, &vbo);
     glDeleteBuffers(1, &ibo);
     glDeleteVertexArrays(1, &vao);
+
+    glDeleteBuffers(1, &wire_vbo);
+    glDeleteBuffers(1, &wire_ibo);
+    glDeleteVertexArrays(1, &wire_vao);
 
     return EXIT_SUCCESS;
 }

@@ -1,6 +1,7 @@
 #version 440
 
 layout(location=0) uniform vec4 ucol;
+
 layout(location=0) out vec4 col;
 
 void main() {
