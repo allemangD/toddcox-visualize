@@ -24,49 +24,45 @@ namespace Eigen {
     }
 
     template<class Derived>
-    void from_json(const nlohmann::json &j, Derived &mat) {
+    void from_json(const nlohmann::json &j, Derived &d) {
         using Scalar = typename Derived::Scalar;
 
-        auto rows = j["rows"].get<Eigen::Index>();
-        auto cols = j["cols"].get<Eigen::Index>();
+        auto rows = j["rows"].get<Index>();
+        auto cols = j["cols"].get<Index>();
         auto vals = j["vals"].get<std::vector<Scalar>>();
 
-        mat = Eigen::Map<Derived>(vals.data(), rows, cols);
+        d = Map<Derived>(vals.data(), rows, cols);
     }
 }
 
+namespace nlohmann {
+    template<typename PT_, typename CT_>
+    struct adl_serializer<ml::Mesh<PT_, CT_>> {
+        static void to_json(json &j, const ml::Mesh<PT_, CT_> &m) {
+            j = {
+                {"points", m.points},
+                {"cells",  m.cells},
+            };
+        }
+
+        static ml::Mesh<PT_, CT_> from_json(const json &j) {
+            return ml::Mesh<PT_, CT_>(
+                j["points"].get<PT_>(),
+                j["cells"].get<CT_>()
+            );
+        }
+    };
+}
+
 namespace ml {
-    static void to_json(nlohmann::json &json, const ml::MeshBase &mesh) {
-        json = {
-            {"points", mesh.points()},
-            {"cells",  mesh.cells()},
-        };
-    }
-
-    static void from_json(const nlohmann::json &j, ml::DynamicMesh &mesh) {
-        mesh = {
-            j["points"].get<DynamicMesh::PointsType>(),
-            j["cells"].get<DynamicMesh::CellsType>(),
-        };
-    }
-
-    void write(const ml::MeshBase &mesh, std::ostream &out) {
+    template<typename PT_, typename CT_>
+    void write(const ml::Mesh<PT_, CT_> &mesh, std::ostream &&out) {
         nlohmann::json json = mesh;
         nlohmann::json::to_msgpack(json, out);
     }
 
-    void write(const ml::MeshBase &mesh, const std::string &path) {
-        std::ofstream file(path, std::ios::out | std::ios::binary);
-        write(mesh, file);
-    }
-
-    ml::DynamicMesh read(std::istream &in) {
-        nlohmann::json json = nlohmann::json::from_msgpack(in);
-        return json.get<ml::DynamicMesh>();
-    }
-
-    ml::DynamicMesh read(const std::string &path) {
-        std::ifstream file(path, std::ios::in | std::ios::binary);
-        return read(file);
+    template<typename M_>
+    M_ read(std::istream &&in) {
+        return nlohmann::json::from_msgpack(in).get<M_>();
     }
 }

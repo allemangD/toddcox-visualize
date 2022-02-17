@@ -41,6 +41,11 @@ public:
         return count;
     }
 
+    template<typename T>
+    GLuint upload(const T& data, GLenum mode = GL_STATIC_DRAW) {
+        return upload(data.begin(), data.end(), mode);
+    }
+
     ~Buffer() {
         // delete silently ignores 0.
         glDeleteBuffers(1, &id);

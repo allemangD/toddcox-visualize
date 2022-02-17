@@ -128,45 +128,23 @@ int run(GLFWwindow *window, ImGuiContext *context) {
 
     Buffer<GLuint> ind_buf;
     Buffer<Eigen::Vector3f> vert_buf;
-    Buffer<Eigen::Vector3f> vert2_buf;
+
+    Buffer<GLuint> ind4d_buf;
+    Buffer<Eigen::Vector4f> vert4d_buf;
 
     VertexArray<Eigen::Vector3f> vao(vert_buf);
     glVertexArrayElementBuffer(vao, ind_buf);
 
-    auto mesh = ml::CubeMesh(0.25f);
-
-    auto ind_data = mesh.cells();
-    auto ind_flat = ind_data.reshaped();
-    auto elements = ind_buf.upload(ind_flat.begin(), ind_flat.end(), GL_STATIC_DRAW);
-
-    // todo add <Dim, Rank> to DynamicMesh
-    // need to do weird piping because dynamicmesh returns dynamic-sized matrix, VertexArray requires a static-sized matrix
-    auto vert_data_dyn = mesh.points();
-    Eigen::Ref<Eigen::Matrix3Xf> vert_data(vert_data_dyn);
-    auto vert_flat = vert_data.colwise();
-    vert_buf.upload(vert_flat.begin(), vert_flat.end(), GL_STATIC_DRAW);
-
-    auto mesh2 = ml::CubeMesh(0.5f);
-    auto vert2_data_dyn = mesh2.points();
-    Eigen::Ref<Eigen::Matrix3Xf> vert2_data(vert2_data_dyn);
-    auto vert2_flat = vert2_data.colwise();
-    vert2_buf.upload(vert2_flat.begin(), vert2_flat.end(), GL_STATIC_DRAW);
-
-    auto mesh4d = ml::WireCubeMesh(4, 0.33f);
-
-    Buffer<GLuint> ind4d_buf;
-    Buffer<Eigen::Vector4f> vert4d_buf;
     VertexArray<Eigen::Vector4f> vao4d(vert4d_buf);
     glVertexArrayElementBuffer(vao4d, ind4d_buf);
 
-    auto ind4d_data = mesh4d.cells();
-    auto ind4d_flat = ind4d_data.reshaped();
-    auto elements4d = ind4d_buf.upload(ind4d_flat.begin(), ind4d_flat.end(), GL_STATIC_DRAW);
+    auto mesh = ml::make_cube(0.22f);
+    auto elements = (GLint) ind_buf.upload(mesh.cells.reshaped());
+    vert_buf.upload(mesh.points.colwise());
 
-    auto vert4d_data_dyn = mesh4d.points();
-    Eigen::Ref<Eigen::Matrix4Xf> vert4d_data(vert4d_data_dyn);
-    auto vert4d_flat = vert4d_data.colwise();
-    vert4d_buf.upload(vert4d_flat.begin(), vert4d_flat.end(), GL_STATIC_DRAW);
+    auto mesh4d = ml::make_cube_wire<4>(0.33f);
+    auto elements4d = (GLint) ind4d_buf.upload(mesh4d.cells.reshaped());
+    vert4d_buf.upload(mesh4d.points.colwise());
 
     VertexShader vs(std::ifstream("res/shaders/main.vert.glsl"));
     VertexShader vs4d(std::ifstream("res/shaders/4d.vert.glsl"));

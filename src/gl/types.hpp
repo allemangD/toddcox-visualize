@@ -4,7 +4,7 @@
 
 #include <Eigen/Eigen>
 
-template<class T_>
+template<typename T_>
 struct Buffer;
 
 template<class ...Fmt_>
@@ -66,18 +66,23 @@ struct AutoFormat {
 };
 
 template<>
-struct AutoFormat<double> {
-    using Fmt = LFormat<double, GL_DOUBLE, 1>;
+struct AutoFormat<GLdouble> {
+    using Fmt = LFormat<GLdouble, GL_DOUBLE, 1>;
 };
 
 template<>
-struct AutoFormat<float> {
-    using Fmt = Format<float, GL_FLOAT, 1>;
+struct AutoFormat<GLfloat> {
+    using Fmt = Format<GLfloat, GL_FLOAT, 1>;
 };
 
 template<>
-struct AutoFormat<int> {
-    using Fmt = IFormat<int, GL_INT, 1>;
+struct AutoFormat<GLint> {
+    using Fmt = IFormat<GLint, GL_INT, 1>;
+};
+
+template<>
+struct AutoFormat<GLuint> {
+    using Fmt = IFormat<GLuint, GL_UNSIGNED_INT, 1>;
 };
 
 template<typename Scalar, int Dim>
