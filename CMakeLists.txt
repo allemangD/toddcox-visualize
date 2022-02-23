@@ -11,7 +11,9 @@ include(External/eigen.cmake)
 include(External/glad.cmake)
 include(External/json.cmake)
 
-include_directories(./include)
+include_directories(include)
+
+add_subdirectory(tc)
 
 add_custom_target(resources DEPENDS resources_output)
 add_custom_command(
@@ -31,3 +33,6 @@ add_dependencies(vis resources)
 
 add_executable(serial src/serialtest.cpp)
 target_link_libraries(serial eigen nlohmann_json)
+
+add_executable(tctest src/tctest.cpp)
+target_link_libraries(tctest PUBLIC eigen tc)
