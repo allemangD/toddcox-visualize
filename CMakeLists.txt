@@ -35,4 +35,7 @@ add_executable(serial src/serialtest.cpp)
 target_link_libraries(serial eigen nlohmann_json)
 
 add_executable(tctest src/tctest.cpp)
-target_link_libraries(tctest PUBLIC eigen tc)
+target_link_libraries(tctest eigen tc)
+
+add_executable(combotest src/combotest.cpp)
+target_link_libraries(combotest eigen tc)
