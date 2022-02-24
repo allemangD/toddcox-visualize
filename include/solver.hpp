@@ -14,6 +14,8 @@
  * Produce a list of all generators for the group context. The range [0..group.ngens).
  */
 std::vector<int> generators(const tc::Group &context) {
+    // todo if tc::Group has 'global' generators, then this will be a member of tc::Group.
+    //  std::iota would populate a 'default' list of names, if names are not provided.
     std::vector<int> g_gens(context.ngens);
     std::iota(g_gens.begin(), g_gens.end(), 0);
     return g_gens;
@@ -26,6 +28,7 @@ std::vector<int> recontext_gens(
     const tc::Group &context,
     std::vector<int> g_gens,
     std::vector<int> sg_gens) {
+    // todo ideally tc::Group will deal in 'global' generators so this stell will be unecessary.
 
     std::sort(g_gens.begin(), g_gens.end());
 
@@ -52,6 +55,7 @@ tc::Cosets solve(
     const std::vector<int> &g_gens,
     const std::vector<int> &sg_gens
 ) {
+    // todo this should also be handled with 'global' generators.
     const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
     return context.subgroup(g_gens).solve(proper_sg_gens);
 }
@@ -78,6 +82,7 @@ Prims<N> recontext(
     const std::vector<int> &g_gens,
     const std::vector<int> &sg_gens
 ) {
+    // todo this will be simpler with 'global' gens, but it's still not free...
     const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
     const auto table = solve(context, g_gens, {});
     const auto path = solve(context, sg_gens, {}).path;
@@ -100,6 +105,7 @@ Prims<N> recontext(
  */
 template<unsigned N>
 Prims<N> merge(const std::vector<Prims<N>> &meshes) {
+    // todo (?) might be possible with NullaryExpr
     size_t cols = 0;
     for (const auto &mesh: meshes) {
         cols += mesh.cols();
@@ -124,6 +130,8 @@ std::vector<Prims<N>> tile(
     const std::vector<int> &g_gens,
     const std::vector<int> &sg_gens
 ) {
+    // todo convert to nullaryexpr.
+    //  some stuff will be easier with global generators, but not all.
     Prims<N> base = recontext<N>(prims, context, g_gens, sg_gens);
     const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
 
@@ -149,6 +157,7 @@ std::vector<Prims<N>> tile(
 template<unsigned N>
 [[nodiscard]]
 Prims<N + 1> fan(Prims<N> prims, int root) {
+    // todo convert to nullaryexpr.
     Prims<N + 1> res(N + 1, prims.cols());
 
     res.topRows(1) = Prims<1>::Constant(1, prims.cols(), root);
@@ -165,6 +174,8 @@ Prims<N> triangulate(
     const tc::Group &context,
     const std::vector<int> &g_gens
 ) {
+    // todo (?) might be possible with nullaryexpr
+    //  not so sure, though.
     if (g_gens.size() + 1 != N) // todo make static assert
         throw std::logic_error("g_gens size must be one less than N");
 

@@ -20,6 +20,8 @@ Eigen::Matrix<float, N, Eigen::Dynamic> make_points(
     const tc::Group &group,
     const Eigen::Vector<float, N> &root
 ) {
+    // todo clean up mirror / plane_intersections / barycentric
+    // ideally barycentric will work in rotors, so that stellations etc. will be possible
     auto mirrors = mirror<N>(group);
     auto corners = plane_intersections(mirrors);
     auto start = barycentric(corners, root);
@@ -42,6 +44,7 @@ Eigen::Matrix<unsigned, N, Eigen::Dynamic> make_cells(
     auto gens = generators(group);
     auto combos = combinations(gens, N - 1);
 
+    // todo clean up merge(hull(...))
     Eigen::Matrix<unsigned, N, Eigen::Dynamic> cells = merge<N>(hull<N>(group, combos, exclude));
 
     return cells;
