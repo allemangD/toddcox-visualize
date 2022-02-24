@@ -41,4 +41,4 @@ add_executable(combotest src/combotest.cpp)
 target_link_libraries(combotest eigen tc)
 
 add_executable(geometrytest src/geometrytest.cpp)
-target_link_libraries(geometrytest eigen tc)
+target_link_libraries(geometrytest eigen tc nlohmann_json)

@@ -127,31 +127,36 @@ int run(GLFWwindow *window, ImGuiContext *context) {
     State state;
 
     Buffer<GLuint> ind_buf;
-    Buffer<Eigen::Vector3f> vert_buf;
+    Buffer<Eigen::Vector4f> vert_buf;
 
-    Buffer<GLuint> ind4d_buf;
-    Buffer<Eigen::Vector4f> vert4d_buf;
+//    Buffer<GLuint> ind4d_buf;
+//    Buffer<Eigen::Vector4f> vert4d_buf;
 
-    VertexArray<Eigen::Vector3f> vao(vert_buf);
+    VertexArray<Eigen::Vector4f> vao(vert_buf);
     glVertexArrayElementBuffer(vao, ind_buf);
 
-    VertexArray<Eigen::Vector4f> vao4d(vert4d_buf);
-    glVertexArrayElementBuffer(vao4d, ind4d_buf);
+//    VertexArray<Eigen::Vector4f> vao4d(vert4d_buf);
+//    glVertexArrayElementBuffer(vao4d, ind4d_buf);
 
-    auto mesh = ml::make_cube(0.22f);
+    using PointsType = Eigen::Matrix<float, 4, Eigen::Dynamic>;
+    using CellsType = Eigen::Matrix<unsigned, 3, Eigen::Dynamic>;
+    using Mesh = ml::Mesh<PointsType, CellsType>;
+
+    auto mesh = ml::read<Mesh>(std::ifstream("dodeca.pak"));
+//    auto mesh = ml::make_cube(0.22f);
     auto elements = (GLint) ind_buf.upload(mesh.cells.reshaped());
     vert_buf.upload(mesh.points.colwise());
 
-    auto mesh4d = ml::make_cube_wire<4>(0.33f);
-    auto elements4d = (GLint) ind4d_buf.upload(mesh4d.cells.reshaped());
-    vert4d_buf.upload(mesh4d.points.colwise());
+//    auto mesh4d = ml::make_cube_wire<4>(0.33f);
+//    auto elements4d = (GLint) ind4d_buf.upload(mesh4d.cells.reshaped());
+//    vert4d_buf.upload(mesh4d.points.colwise());
 
-    VertexShader vs(std::ifstream("res/shaders/main.vert.glsl"));
+//    VertexShader vs(std::ifstream("res/shaders/main.vert.glsl"));
     VertexShader vs4d(std::ifstream("res/shaders/4d.vert.glsl"));
     FragmentShader fs(std::ifstream("res/shaders/main.frag.glsl"));
 
-    Program pgm(vs, fs);
-    Program pgm4d(vs4d, fs);
+    Program pgm(vs4d, fs);
+//    Program pgm4d(vs4d, fs);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -173,7 +178,7 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         auto aspect = (float) display_h / (float) display_w;
-        proj = Eigen::AlignedScaling3f(aspect, 1.0, -1.0);
+        proj = Eigen::AlignedScaling3f(aspect, 1.0, -0.6);
 
         glUseProgram(pgm);
         glBindVertexArray(vao);
@@ -185,34 +190,34 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         glBindVertexArray(0);
         glUseProgram(0);
 
-        glUseProgram(pgm4d);
-        glBindVertexArray(vao4d);
-        glUniform4fv(0, 1, state.wf.data());
-        glUniform1f(1, (GLfloat) glfwGetTime());
-        glUniformMatrix4fv(2, 1, false, proj.data());
-        glUniformMatrix4fv(3, 1, false, state.rot.data());
-
-        if (state.color_axes) {
-            auto factor = 0.7f;
-            auto x = mix(state.wf, state.R, factor);
-            auto y = mix(state.wf, state.G, factor);
-            auto z = mix(state.wf, state.B, factor);
-            auto w = mix(state.wf, state.Y, factor);
-
-            glUniform4fv(0, 1, x.data());
-            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 0), 0);
-            glUniform4fv(0, 1, y.data());
-            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 2), 0);
-            glUniform4fv(0, 1, z.data());
-            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 8), 0);
-            glUniform4fv(0, 1, w.data());
-            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 24), 0);
-        }
-
-        glUniform4fv(0, 1, state.wf.data());
-        glDrawElements(GL_LINES, elements4d, GL_UNSIGNED_INT, nullptr);
-        glBindVertexArray(0);
-        glUseProgram(0);
+//        glUseProgram(pgm4d);
+//        glBindVertexArray(vao4d);
+//        glUniform4fv(0, 1, state.wf.data());
+//        glUniform1f(1, (GLfloat) glfwGetTime());
+//        glUniformMatrix4fv(2, 1, false, proj.data());
+//        glUniformMatrix4fv(3, 1, false, state.rot.data());
+//
+//        if (state.color_axes) {
+//            auto factor = 0.7f;
+//            auto x = mix(state.wf, state.R, factor);
+//            auto y = mix(state.wf, state.G, factor);
+//            auto z = mix(state.wf, state.B, factor);
+//            auto w = mix(state.wf, state.Y, factor);
+//
+//            glUniform4fv(0, 1, x.data());
+//            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 0), 0);
+//            glUniform4fv(0, 1, y.data());
+//            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 2), 0);
+//            glUniform4fv(0, 1, z.data());
+//            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 8), 0);
+//            glUniform4fv(0, 1, w.data());
+//            glDrawElementsBaseVertex(GL_LINES, 2, GL_UNSIGNED_INT, (void *) (sizeof(GLuint) * 24), 0);
+//        }
+//
+//        glUniform4fv(0, 1, state.wf.data());
+//        glDrawElements(GL_LINES, elements4d, GL_UNSIGNED_INT, nullptr);
+//        glBindVertexArray(0);
+//        glUseProgram(0);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
