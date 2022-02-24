@@ -39,3 +39,6 @@ target_link_libraries(tctest eigen tc)
 
 add_executable(combotest src/combotest.cpp)
 target_link_libraries(combotest eigen tc)
+
+add_executable(geometrytest src/geometrytest.cpp)
+target_link_libraries(geometrytest eigen tc)
