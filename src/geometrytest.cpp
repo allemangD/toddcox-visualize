@@ -9,53 +9,62 @@
 #include <fstream>
 #include <iostream>
 
-int main() {
-    std::vector<int> symbol = {5, 3, 3};
-    vec4 root{0.80, 0.02, 0.02, 0.02};
+template<int N>
+using ProjectiveNf = Eigen::Transform<float, N, Eigen::Projective>;
 
+template<int N>
+using VectorNf = Eigen::Vector<float, N>;
 
-    auto group = tc::schlafli(symbol);
-    auto gens = generators(group);
-    auto combos = combinations(gens, 2);
-
-    const auto &inds = merge<3>(hull<3>(group, combos, {
-        {0, 1},
-    }));
-
-    auto cosets = group.solve();
-    auto mirrors = mirror<4>(group);
+template<int N>
+Eigen::Matrix<float, N, Eigen::Dynamic> make_points(
+    const tc::Group &group,
+    const Eigen::Vector<float, N> &root
+) {
+    auto mirrors = mirror<N>(group);
     auto corners = plane_intersections(mirrors);
     auto start = barycentric(corners, root);
 
-    using Projective = Eigen::Transform<float, 4, Eigen::Projective>;
-    Projective transform = Projective::Identity();
+    auto cosets = group.solve();
 
-    auto higher = cosets.path.walk<vec4, vec4>(start, mirrors, reflect<vec4>);
-    std::transform(
-        higher.begin(), higher.end(), higher.begin(),
-        [&](const vec4 &v) {
-            return (transform * v.homogeneous()).hnormalized();
-        }
-    );
+    auto verts = cosets.path.walk<VectorNf<N>, VectorNf<N>>(start, mirrors, reflect<vec4>);
 
-//    std::vector<vec4> lower(higher.size());
-//    std::transform(higher.begin(), higher.end(), lower.begin(), stereo<4>);
-//    const auto &verts = lower;
-
-    const auto &verts = higher;
-
-    using PT = Eigen::Matrix<float, 4, Eigen::Dynamic>;
-    using CT = Eigen::Matrix<unsigned, 3, Eigen::Dynamic>;
-
-    PT points(4, verts.size());
+    Eigen::Matrix<float, N, Eigen::Dynamic> points(root.size(), verts.size());
     std::copy(verts.begin(), verts.end(), points.colwise().begin());
 
-    CT cells = inds;
+    return points;
+}
+
+template<int N>
+Eigen::Matrix<unsigned, N, Eigen::Dynamic> make_cells(
+    const tc::Group &group,
+    const std::vector<std::vector<int>> &exclude = {}
+) {
+    auto gens = generators(group);
+    auto combos = combinations(gens, N - 1);
+
+    Eigen::Matrix<unsigned, N, Eigen::Dynamic> cells = merge<N>(hull<N>(group, combos, exclude));
+
+    return cells;
+}
+
+int main() {
+    std::vector<int> symbol = {5, 3, 3};
+    auto group = tc::schlafli(symbol);
+
+    vec4 root{0.80, 0.02, 0.02, 0.02};
+
+    auto points = make_points(group, root);
+    auto cells = make_cells<3>(group, {{0, 1}});
+
+    ml::Mesh mesh(points, cells);
+
+//    auto transform = ProjectiveNf<vec4::RowsAtCompileTime>::Identity();
+//    transform.translation() << 0, 0.5, 0, 0;
+//    points = (transform * points.colwise().homogeneous()).colwise().hnormalized();
 
     std::cout << points.rows() << " " << points.cols() << std::endl;
     std::cout << cells.rows() << " " << cells.cols() << std::endl;
 
-    ml::Mesh mesh(points, cells);
     ml::write(mesh, std::ofstream("dodeca.pak", std::ios::out | std::ios::binary));
 
     return EXIT_SUCCESS;
