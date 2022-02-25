@@ -1,7 +1,7 @@
-#include <geometry.hpp>
 #include <tc/groups.hpp>
-#include <solver.hpp>
-#include <mirror.hpp>
+#include <geo/geometry.hpp>
+#include <geo/solver.hpp>
+#include <geo/mirror.hpp>
 
 #include <ml/meshlib.hpp>
 #include <ml/meshlib_json.hpp>

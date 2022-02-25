@@ -6,7 +6,7 @@
 #include <vector>
 #include <algorithm>
 
-#include <geometry.hpp>
+#include <geo/geometry.hpp>
 
 template<class V>
 float dot(int n, const V &a, const V &b) {

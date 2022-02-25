@@ -6,7 +6,7 @@
 #include <numeric>
 #include <iostream>
 
-#include <geometry.hpp>
+#include <geo/geometry.hpp>
 
 #include "combo.hpp"
 
