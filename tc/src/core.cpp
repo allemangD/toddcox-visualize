@@ -8,25 +8,26 @@ namespace tc {
     }
 
     struct Row {
-        std::vector<int> gnrs;
-        std::vector<int *> lst_ptrs;
-
-        Row(int num_tables)
-            : gnrs(num_tables, 0), lst_ptrs(num_tables, nullptr) {
-        }
+        int gnr = 0;
+        int *lst_ptr = nullptr;
     };
 
     struct Tables {
         std::vector<Rel> rels;
-        std::vector<Row> rows;
-        int num_tables;
+        std::vector<std::vector<Row>> cols;
 
         explicit Tables(const std::vector<Rel> &rels)
-            : num_tables(rels.size()), rels(rels) {
+            : rels(rels), cols(rels.size()) {
+        }
+
+        [[nodiscard]] size_t size() const {
+            return rels.size();
         }
 
         void add_row() {
-            rows.emplace_back(num_tables);
+            for (auto &col: cols) {
+                col.emplace_back();
+            }
         }
     };
 
@@ -56,16 +57,16 @@ namespace tc {
 
         int null_lst_ptr;
         rel_tables.add_row();
-        Row &row = rel_tables.rows[0];
-        for (int table_idx = 0; table_idx < rel_tables.num_tables; table_idx++) {
-            Rel &ti = rel_tables.rels[table_idx];
+        for (int table_idx = 0; table_idx < rel_tables.size(); ++table_idx) {
+            Rel &rel = rel_tables.rels[table_idx];
+            Row &row = rel_tables.cols[table_idx][0];
 
-            if (cosets.get(ti.gens[0]) + cosets.get(ti.gens[1]) == -2) {
-                row.lst_ptrs[table_idx] = new int;
-                row.gnrs[table_idx] = 0;
+            if (cosets.get(rel.gens[0]) + cosets.get(rel.gens[1]) == -2) {
+                row.lst_ptr = new int;
+                row.gnr = 0;
             } else {
-                row.lst_ptrs[table_idx] = &null_lst_ptr;
-                row.gnrs[table_idx] = -1;
+                row.lst_ptr = &null_lst_ptr;
+                row.gnr = -1;
             }
         }
 
@@ -92,7 +93,6 @@ namespace tc {
 
 //            rel_tables.del_rows_to(coset);
 
-            Row &target_row = rel_tables.rows[target];
             while (!facts.empty()) {
                 fact_idx = facts.back();
                 facts.pop_back();
@@ -106,30 +106,38 @@ namespace tc {
                 gen = fact_idx % ngens;
 
                 if (target == coset)
-                    for (int table_idx: gen_map[gen])
-                        if (target_row.lst_ptrs[table_idx] == nullptr)
-                            target_row.gnrs[table_idx] = -1;
+                    for (int table_idx: gen_map[gen]) {
+                        auto &col = rel_tables.cols[table_idx];
+                        auto &row = col[target];
 
-                Row &coset_row = rel_tables.rows[coset];
+                        if (row.lst_ptr == nullptr) {
+                            row.gnr = -1;
+                        }
+                    }
+
                 for (int table_idx: gen_map[gen]) {
-                    if (target_row.lst_ptrs[table_idx] == nullptr) {
+                    auto &col = rel_tables.cols[table_idx];
+                    auto &trow = col[target];
+                    auto &crow = col[coset];
+
+                    if (trow.lst_ptr == nullptr) {
                         Rel &ti = rel_tables.rels[table_idx];
-                        target_row.lst_ptrs[table_idx] = coset_row.lst_ptrs[table_idx];
-                        target_row.gnrs[table_idx] = coset_row.gnrs[table_idx] + 1;
+                        trow.lst_ptr = crow.lst_ptr;
+                        trow.gnr = crow.gnr + 1;
 
-                        if (coset_row.gnrs[table_idx] < 0)
-                            target_row.gnrs[table_idx] -= 2;
+                        if (crow.gnr < 0)
+                            trow.gnr -= 2;
 
-                        if (target_row.gnrs[table_idx] == ti.mult) {
-                            lst = *(target_row.lst_ptrs[table_idx]);
-                            delete target_row.lst_ptrs[table_idx];
+                        if (trow.gnr == ti.mult) {
+                            lst = *(trow.lst_ptr);
+                            delete trow.lst_ptr;
                             gen_ = ti.gens[(int) (ti.gens[0] == gen)];
                             facts.push_back(lst * ngens + gen_);
-                        } else if (target_row.gnrs[table_idx] == -ti.mult) {
+                        } else if (trow.gnr == -ti.mult) {
                             gen_ = ti.gens[ti.gens[0] == gen];
                             facts.push_back(target * ngens + gen_);
-                        } else if (target_row.gnrs[table_idx] == ti.mult - 1) {
-                            *(target_row.lst_ptrs[table_idx]) = target;
+                        } else if (trow.gnr == ti.mult - 1) {
+                            *(trow.lst_ptr) = target;
                         }
                     }
                 }
@@ -137,16 +145,19 @@ namespace tc {
                 std::sort(facts.begin(), facts.end(), std::greater<>());
             }
 
-            for (int table_idx = 0; table_idx < rel_tables.num_tables; table_idx++) {
-                Rel &ti = rel_tables.rels[table_idx];
-                if (target_row.lst_ptrs[table_idx] == nullptr) {
-                    if ((cosets.get(target, ti.gens[0]) != target) and
-                        (cosets.get(target, ti.gens[1]) != target)) {
-                        target_row.lst_ptrs[table_idx] = new int;  // todo slow; memory leak.
-                        target_row.gnrs[table_idx] = 0;
+            for (int table_idx = 0; table_idx < rel_tables.size(); table_idx++) {
+                auto &rel = rel_tables.rels[table_idx];
+                auto &col = rel_tables.cols[table_idx];
+                auto &trow = col[target];
+
+                if (trow.lst_ptr == nullptr) {
+                    if ((cosets.get(target, rel.gens[0]) != target) and
+                        (cosets.get(target, rel.gens[1]) != target)) {
+                        trow.lst_ptr = new int;  // todo slow; memory leak.
+                        trow.gnr = 0;
                     } else {
-                        target_row.lst_ptrs[table_idx] = &null_lst_ptr;
-                        target_row.gnrs[table_idx] = -1;
+                        trow.lst_ptr = &null_lst_ptr;
+                        trow.gnr = -1;
                     }
                 }
             }
