@@ -1,4 +1,5 @@
 add_library(tc
+    include/tc/pair_map.hpp
     include/tc/core.hpp
     include/tc/cosets.hpp
     include/tc/group.hpp
@@ -9,3 +10,5 @@ add_library(tc
     src/solve.cpp)
 
 target_include_directories(tc PUBLIC include)
+
+add_subdirectory(test)
