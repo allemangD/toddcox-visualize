@@ -2,6 +2,7 @@ FetchContent_Declare(
     eigen
     GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
     GIT_TAG 3.4
+    GIT_PROGRESS TRUE
 )
 set(EIGEN_BUILD_DOC OFF CACHE INTERNAL "")
 set(BUILD_TESTING OFF CACHE INTERNAL "")

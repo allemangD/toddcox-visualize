@@ -2,6 +2,7 @@ FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui
     GIT_TAG v1.86
+    GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(imgui)
 
