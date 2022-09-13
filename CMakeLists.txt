@@ -13,6 +13,7 @@ include(External/json.cmake)
 
 include_directories(include)
 
+enable_testing()
 add_subdirectory(tc)
 
 add_custom_target(resources DEPENDS resources_output)
@@ -31,14 +32,11 @@ add_executable(vis
 target_link_libraries(vis glfw glad imgui eigen nlohmann_json)
 add_dependencies(vis resources)
 
-add_executable(serial src/serialtest.cpp)
-target_link_libraries(serial eigen nlohmann_json)
+#add_executable(serial src/serialtest.cpp)
+#target_link_libraries(serial eigen nlohmann_json)
 
-add_executable(tctest src/tctest.cpp)
-target_link_libraries(tctest eigen tc)
+#add_executable(combotest src/combotest.cpp)
+#target_link_libraries(combotest eigen tc)
 
-add_executable(combotest src/combotest.cpp)
-target_link_libraries(combotest eigen tc)
-
-add_executable(geometrytest src/geometrytest.cpp)
-target_link_libraries(geometrytest eigen tc nlohmann_json)
+#add_executable(geometrytest src/geometrytest.cpp)
+#target_link_libraries(geometrytest eigen tc nlohmann_json)
