@@ -2,23 +2,20 @@
 
 #include <sstream>
 
+#include <tc/pair_map.hpp>
+
 namespace tc {
     struct Group;
     struct SubGroup;
 
     struct Group {
         int ngens;
-        std::vector<std::vector<int>> _mults;
+        tc::pair_map<int> _mults;
 
         Group(const Group &) = default;
 
         explicit Group(int ngens, const std::vector<Rel> &rels = {})
-            : ngens(ngens) {
-            _mults.resize(ngens);
-
-            for (auto &mult: _mults) {
-                mult.resize(ngens, 2);
-            }
+            : ngens(ngens), _mults(ngens, 2) {
 
             for (const auto &rel: rels) {
                 set(rel);
@@ -26,12 +23,11 @@ namespace tc {
         }
 
         void set(const Rel &r) {
-            _mults[r.gens[0]][r.gens[1]] = r.mult;
-            _mults[r.gens[1]][r.gens[0]] = r.mult;
+            _mults(r.gens[0], r.gens[1]) = r.mult;
         }
 
         [[nodiscard]] int get(int a, int b) const {
-            return _mults[a][b];
+            return _mults(a, b);
         }
 
         [[nodiscard]] std::vector<Rel> rels() const {
