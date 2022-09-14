@@ -41,8 +41,6 @@ namespace tc {
         }
 
         [[nodiscard]] SubGroup subgroup(const std::vector<int> &gens) const;
-
-        [[nodiscard]] Cosets solve(const std::vector<int> &sub_gens = {}) const;
     };
 
     struct SubGroup : public Group {

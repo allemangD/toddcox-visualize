@@ -8,3 +8,7 @@
 #include "util.hpp"
 #include "cosets.hpp"
 #include "group.hpp"
+
+namespace tc {
+    Cosets solve(const Group &group, const std::vector<size_t> &sub_gens);
+}

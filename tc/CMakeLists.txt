@@ -6,8 +6,7 @@ add_library(tc
     include/tc/groups.hpp
     include/tc/util.hpp
     src/core.cpp
-    src/groups.cpp
-    src/solve.cpp)
+    src/groups.cpp)
 
 target_include_directories(tc PUBLIC include)
 

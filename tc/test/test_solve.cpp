@@ -8,7 +8,7 @@
 int main(int argc, char *argv[]) {
     std::string key = argv[1];
 
-    std::vector<std::tuple<std::string, tc::Group, std::vector<int>, size_t>> groups;
+    std::vector<std::tuple<std::string, tc::Group, std::vector<size_t>, size_t>> groups;
 
     // See the group orders here https://en.wikipedia.org/wiki/Coxeter_group#Properties
     if (key == "A") {
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     int status = EXIT_SUCCESS;
 
     for (const auto &[name, group, sub_gens, expected]: groups) {
-        auto cos = group.solve(sub_gens);
+        auto cos = tc::solve(group, sub_gens);
         auto actual = cos.size();
         std::cout << name << " : " << actual;
         if (expected != actual) {
