@@ -179,7 +179,7 @@ namespace tc {
 
     template<typename T>
     size_t pair_map<T>::idx(size_t i, size_t j) {
-        if (i < j) std::swap(i, j);
+        if (i > j) std::swap(i, j);
         return j * (j + 1) / 2 + i;
     }
 
