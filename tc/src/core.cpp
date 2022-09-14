@@ -33,6 +33,8 @@ namespace tc {
 
     Cosets solve(const Group &group, const std::vector<size_t> &sub_gens) {
         auto ngens = group.ngens;
+
+        // region Initialize Cosets Table
         Cosets cosets(ngens);
         cosets.add_row();
 
@@ -44,8 +46,11 @@ namespace tc {
             if (g < ngens)
                 cosets.put(0, g, 0);
         }
+        // endregion
 
         auto rels = group.rels();
+
+        // region Initialize Relation Tables
         Tables rel_tables(rels);
         std::vector<std::vector<int>> gen_map(ngens);
         int rel_idx = 0;
@@ -69,36 +74,48 @@ namespace tc {
                 row.gnr = -1;
             }
         }
+        // endregion
 
         int idx = 0;
         int coset, gen, target, fact_idx, lst, gen_;
+
         while (true) {
+            // find next unknown product
             while (idx < cosets.data.size() and cosets.get(idx) >= 0)
                 idx++;
 
+            // if there are none, then return
             if (idx == cosets.data.size()) {
-//                rel_tables.del_rows_to(idx / ngens);
+                // todo unrolled linked list interval
+//                rel_tables.del_rows_to(idx / ngens);  
                 break;
             }
 
+            // the unknown product must be a new coset, so add it
             target = cosets.size();
             cosets.add_row();
             rel_tables.add_row();
 
+            // queue of products that can be determined by the new coset
             std::vector<int> facts;
             facts.push_back(idx);
 
-            coset = idx / ngens;
-            gen = idx % ngens;
-
+            // todo unrolled linked list interval
+//            coset = idx / ngens;
+//            gen = idx % ngens;
 //            rel_tables.del_rows_to(coset);
 
             while (!facts.empty()) {
+                // todo heap
+                std::sort(facts.begin(), facts.end(), std::greater<>());
                 fact_idx = facts.back();
                 facts.pop_back();
 
-                if (cosets.get(fact_idx) != -1)
+                // skip if this product was already determined
+                // todo try to avoid these duplications
+                if (cosets.get(fact_idx) != -1) {
                     continue;
+                }
 
                 cosets.put(fact_idx, target);
 
@@ -117,32 +134,30 @@ namespace tc {
 
                 for (int table_idx: gen_map[gen]) {
                     auto &col = rel_tables.cols[table_idx];
+                    auto &rel = rel_tables.rels[table_idx];
                     auto &trow = col[target];
                     auto &crow = col[coset];
 
                     if (trow.lst_ptr == nullptr) {
-                        Rel &ti = rel_tables.rels[table_idx];
                         trow.lst_ptr = crow.lst_ptr;
                         trow.gnr = crow.gnr + 1;
 
                         if (crow.gnr < 0)
                             trow.gnr -= 2;
 
-                        if (trow.gnr == ti.mult) {
+                        if (trow.gnr == rel.mult) {
                             lst = *(trow.lst_ptr);
                             delete trow.lst_ptr;
-                            gen_ = ti.gens[(int) (ti.gens[0] == gen)];
+                            gen_ = rel.gens[(int) (rel.gens[0] == gen)];
                             facts.push_back(lst * ngens + gen_);
-                        } else if (trow.gnr == -ti.mult) {
-                            gen_ = ti.gens[ti.gens[0] == gen];
+                        } else if (trow.gnr == -rel.mult) {
+                            gen_ = rel.gens[rel.gens[0] == gen];
                             facts.push_back(target * ngens + gen_);
-                        } else if (trow.gnr == ti.mult - 1) {
+                        } else if (trow.gnr == rel.mult - 1) {
                             *(trow.lst_ptr) = target;
                         }
                     }
                 }
-
-                std::sort(facts.begin(), facts.end(), std::greater<>());
             }
 
             for (int table_idx = 0; table_idx < rel_tables.size(); table_idx++) {
