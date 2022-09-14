@@ -1,6 +1,8 @@
 #include <tc/core.hpp>
 
 #include <algorithm>
+#include <queue>
+#include <vector>
 
 namespace tc {
     SubGroup Group::subgroup(const std::vector<int> &gens) const {
@@ -97,8 +99,8 @@ namespace tc {
             rel_tables.add_row();
 
             // queue of products that can be determined by the new coset
-            std::vector<int> facts;
-            facts.push_back(idx);
+            std::queue<int> facts;
+            facts.push(idx);
 
             // todo unrolled linked list interval
 //            coset = idx / ngens;
@@ -106,16 +108,11 @@ namespace tc {
 //            rel_tables.del_rows_to(coset);
 
             while (!facts.empty()) {
-                // todo heap
-                std::sort(facts.begin(), facts.end(), std::greater<>());
-                fact_idx = facts.back();
-                facts.pop_back();
+                fact_idx = facts.front();
+                facts.pop();
 
                 // skip if this product was already determined
-                // todo try to avoid these duplications
-                if (cosets.get(fact_idx) != -1) {
-                    continue;
-                }
+                if (cosets.get(fact_idx) != -1)continue;
 
                 cosets.put(fact_idx, target);
 
@@ -149,10 +146,10 @@ namespace tc {
                             lst = *(trow.lst_ptr);
                             delete trow.lst_ptr;
                             gen_ = rel.gens[(int) (rel.gens[0] == gen)];
-                            facts.push_back(lst * ngens + gen_);
+                            facts.push(lst * ngens + gen_);
                         } else if (trow.gnr == -rel.mult) {
                             gen_ = rel.gens[rel.gens[0] == gen];
-                            facts.push_back(target * ngens + gen_);
+                            facts.push(target * ngens + gen_);
                         } else if (trow.gnr == rel.mult - 1) {
                             *(trow.lst_ptr) = target;
                         }
