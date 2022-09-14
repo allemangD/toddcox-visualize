@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <queue>
+#include <utility>
 #include <vector>
 
 namespace tc {
@@ -16,10 +17,10 @@ namespace tc {
 
     struct Tables {
         std::vector<Rel> rels;
-        std::vector<std::vector<Row>> cols;
+        std::vector<std::vector<Row>> rows;
 
-        explicit Tables(const std::vector<Rel> &rels)
-            : rels(rels), cols(rels.size()) {
+        explicit Tables(std::vector<Rel> rels)
+            : rels(std::move(rels)), rows() {
         }
 
         [[nodiscard]] size_t size() const {
@@ -27,9 +28,7 @@ namespace tc {
         }
 
         void add_row() {
-            for (auto &col: cols) {
-                col.emplace_back();
-            }
+            rows.emplace_back(rels.size());
         }
     };
 
@@ -66,7 +65,7 @@ namespace tc {
         rel_tables.add_row();
         for (int table_idx = 0; table_idx < rel_tables.size(); ++table_idx) {
             Rel &rel = rel_tables.rels[table_idx];
-            Row &row = rel_tables.cols[table_idx][0];
+            Row &row = rel_tables.rows[0][table_idx];
 
             if (cosets.get(rel.gens[0]) + cosets.get(rel.gens[1]) == -2) {
                 row.lst_ptr = new int;
@@ -121,8 +120,7 @@ namespace tc {
 
                 if (target == coset)
                     for (int table_idx: gen_map[gen]) {
-                        auto &col = rel_tables.cols[table_idx];
-                        auto &row = col[target];
+                        auto &row = rel_tables.rows[target][table_idx];
 
                         if (row.lst_ptr == nullptr) {
                             row.gnr = -1;
@@ -130,10 +128,9 @@ namespace tc {
                     }
 
                 for (int table_idx: gen_map[gen]) {
-                    auto &col = rel_tables.cols[table_idx];
                     auto &rel = rel_tables.rels[table_idx];
-                    auto &trow = col[target];
-                    auto &crow = col[coset];
+                    auto &trow = rel_tables.rows[target][table_idx];
+                    auto &crow = rel_tables.rows[coset][table_idx];
 
                     if (trow.lst_ptr == nullptr) {
                         trow.lst_ptr = crow.lst_ptr;
@@ -159,8 +156,7 @@ namespace tc {
 
             for (int table_idx = 0; table_idx < rel_tables.size(); table_idx++) {
                 auto &rel = rel_tables.rels[table_idx];
-                auto &col = rel_tables.cols[table_idx];
-                auto &trow = col[target];
+                auto &trow = rel_tables.rows[target][table_idx];
 
                 if (trow.lst_ptr == nullptr) {
                     if ((cosets.get(target, rel.gens[0]) != target) and
