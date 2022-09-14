@@ -9,12 +9,11 @@ namespace tc {
     struct Group {
         int ngens;
         std::vector<std::vector<int>> _mults;
-        std::string name;
 
         Group(const Group &) = default;
 
-        explicit Group(int ngens, const std::vector<Rel> &rels = {}, std::string name = "G")
-            : ngens(ngens), name(std::move(name)) {
+        explicit Group(int ngens, const std::vector<Rel> &rels = {})
+            : ngens(ngens) {
             _mults.resize(ngens);
 
             for (auto &mult: _mults) {
@@ -46,33 +45,6 @@ namespace tc {
         }
 
         [[nodiscard]] SubGroup subgroup(const std::vector<int> &gens) const;
-
-        [[nodiscard]] Group product(const Group &other) const {
-            std::stringstream ss;
-            ss << name << "*" << other.name;
-
-            Group g(ngens + other.ngens, rels(), ss.str());
-
-            for (const auto &rel: other.rels()) {
-                g.set(rel.shift(ngens));
-            }
-
-            return g;
-        }
-
-        [[nodiscard]] Group power(int p) const {
-            std::stringstream ss;
-            ss << name << "^" << p;
-
-            Group g(ngens * p, {}, ss.str());
-            for (const auto &rel: rels()) {
-                for (int off = 0; off < g.ngens; off += ngens) {
-                    g.set(rel.shift(off));
-                }
-            }
-
-            return g;
-        }
 
         [[nodiscard]] Cosets solve(const std::vector<int> &sub_gens = {}) const;
     };

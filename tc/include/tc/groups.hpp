@@ -8,12 +8,6 @@ namespace tc {
      * Construct a group from a (simplified) Schlafli Symbol of the form [a, b, ..., c]
      * @param mults: The sequence of multiplicites between adjacent generators.
      */
-    Group schlafli(const std::vector<int> &mults, const std::string &name);
-
-    /**
-     * Construct a group from a (simplified) Schlafli Symbol of the form [a, b, ..., c]
-     * @param mults: The sequence of multiplicites between adjacent generators.
-     */
     Group schlafli(const std::vector<int> &mults);
 
     namespace group {
