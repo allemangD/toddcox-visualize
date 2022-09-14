@@ -10,9 +10,13 @@ namespace tc {
         return {*this, gens};
     }
 
+    /**
+     * Each coset is associated a row in each table.
+     * Rows document the "loops" formed by 
+     */
     struct Row {
         int gnr = 0;
-        int *lst_ptr = nullptr;
+        size_t lst_idx = -1;  // identifies the loop or "family"
     };
 
     struct Tables {
@@ -61,24 +65,26 @@ namespace tc {
             rel_idx++;
         }
 
-        int null_lst_ptr;
+        std::vector<int> lst_vals;
+        size_t null_lst_idx = 0;
         rel_tables.add_row();
         for (int table_idx = 0; table_idx < rel_tables.size(); ++table_idx) {
             Rel &rel = rel_tables.rels[table_idx];
             Row &row = rel_tables.rows[0][table_idx];
 
             if (cosets.get(rel.gens[0]) + cosets.get(rel.gens[1]) == -2) {
-                row.lst_ptr = new int;
+                row.lst_idx = lst_vals.size();
+                lst_vals.push_back(0);
                 row.gnr = 0;
             } else {
-                row.lst_ptr = &null_lst_ptr;
+                row.lst_idx = null_lst_idx;
                 row.gnr = -1;
             }
         }
         // endregion
 
         int idx = 0;
-        int coset, gen, target, fact_idx, lst, gen_;
+        int coset, gen, target, fact_idx, lst;
 
         while (true) {
             // find next unknown product
@@ -97,74 +103,83 @@ namespace tc {
             cosets.add_row();
             rel_tables.add_row();
 
-            // queue of products that can be determined by the new coset
+            // queue of products that equal target
             std::queue<int> facts;
-            facts.push(idx);
+            facts.push(idx);  // new product should be recorded and propagated
 
             // todo unrolled linked list interval
 //            coset = idx / ngens;
 //            gen = idx % ngens;
 //            rel_tables.del_rows_to(coset);
 
+            // find all products which also lead to target
             while (!facts.empty()) {
                 fact_idx = facts.front();
                 facts.pop();
 
-                // skip if this product was already determined
-                if (cosets.get(fact_idx) != -1)continue;
+                // skip if this product was already learned
+                if (cosets.get(fact_idx) != -1) continue;
 
                 cosets.put(fact_idx, target);
 
                 coset = fact_idx / ngens;
                 gen = fact_idx % ngens;
 
+                // If the product stays within the coset todo
                 if (target == coset)
                     for (int table_idx: gen_map[gen]) {
-                        auto &row = rel_tables.rows[target][table_idx];
+                        auto &trow = rel_tables.rows[target][table_idx];
 
-                        if (row.lst_ptr == nullptr) {
-                            row.gnr = -1;
+                        if (trow.lst_idx == -1) {
+                            trow.gnr = -1;
                         }
                     }
 
+                // Test if loop is closed
                 for (int table_idx: gen_map[gen]) {
                     auto &rel = rel_tables.rels[table_idx];
                     auto &trow = rel_tables.rows[target][table_idx];
                     auto &crow = rel_tables.rows[coset][table_idx];
 
-                    if (trow.lst_ptr == nullptr) {
-                        trow.lst_ptr = crow.lst_ptr;
+                    auto other_gen = rel.gens[0] == gen ? rel.gens[1] : rel.gens[0];
+
+                    if (trow.lst_idx == -1) {
+                        trow.lst_idx = crow.lst_idx;
                         trow.gnr = crow.gnr + 1;
 
                         if (crow.gnr < 0)
                             trow.gnr -= 2;
 
-                        if (trow.gnr == rel.mult) {
-                            lst = *(trow.lst_ptr);
-                            delete trow.lst_ptr;
-                            gen_ = rel.gens[(int) (rel.gens[0] == gen)];
-                            facts.push(lst * ngens + gen_);
-                        } else if (trow.gnr == -rel.mult) {
-                            gen_ = rel.gens[rel.gens[0] == gen];
-                            facts.push(target * ngens + gen_);
+                        if (trow.gnr == -rel.mult) {
+                            // loop is closed, but internal, so the target links to itself via this generator.
+                            // todo might be able to move this logic up into the (target == coset) block and avoid those computations.
+                            facts.push(target * ngens + other_gen);
                         } else if (trow.gnr == rel.mult - 1) {
-                            *(trow.lst_ptr) = target;
+                            // loop is almost closed. record that the target closes this loop.
+                            lst_vals[trow.lst_idx] = target;
+                        } else if (trow.gnr == rel.mult) {
+                            // loop is closed. We know the last element in the loop must link with this one. 
+                            lst = lst_vals[trow.lst_idx];
+//                            delete trow.lst_ptr;
+                            facts.push(lst * ngens + other_gen);
                         }
                     }
                 }
             }
 
+            // Find rows which are still not part of any loop, and assign them to a new loop.
             for (int table_idx = 0; table_idx < rel_tables.size(); table_idx++) {
                 auto &rel = rel_tables.rels[table_idx];
                 auto &trow = rel_tables.rows[target][table_idx];
 
-                if (trow.lst_ptr == nullptr) {
+                if (trow.lst_idx == -1) {
                     if ((cosets.get(target, rel.gens[0]) != target) and
                         (cosets.get(target, rel.gens[1]) != target)) {
-                        trow.lst_ptr = new int;  // todo slow; memory leak.
+                        trow.lst_idx = lst_vals.size();
+                        lst_vals.push_back(0);
                         trow.gnr = 0;
                     } else {
-                        trow.lst_ptr = &null_lst_ptr;
+                        trow.lst_idx = null_lst_idx;
                         trow.gnr = -1;
                     }
                 }
