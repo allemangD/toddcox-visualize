@@ -118,23 +118,34 @@ void set_style() {
 int run(GLFWwindow *window, ImGuiContext *context) {
     State state;
 
+    PointCloud pc;
+    LineCloud lc;
     PointRenderer<Eigen::Vector4f> point_render;
+    LineRenderer<Eigen::Vector4f> line_render;
 
     {
         tc::Group group = tc::coxeter("3 4 3");
         Eigen::Vector4f coords{1, 1, 1, 1};
 
         auto cosets = tc::solve(group, {}, 1000000);
-        
+
         auto mirrors = mirror<4>(group);
 
         auto corners = plane_intersections(mirrors);
         auto start = barycentric(corners, coords);
         start.normalize();
-        
+
         auto points = cosets.path.walk<vec4, vec4>(start, mirrors, reflect<vec4>);
 
-        point_render.upload(points);
+        std::vector<unsigned> edges = {
+            0, 1,
+            0, 2,
+            0, 3,
+            0, 4,
+        };
+
+        pc.upload(points);
+        lc.upload(points, edges);
     }
 
     glEnable(GL_DEPTH_TEST);
@@ -158,7 +169,8 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         auto aspect = (float) display_h / (float) display_w;
         state.proj = Eigen::AlignedScaling3f(aspect, 1.0, -0.6);
 
-        point_render.draw(state);
+        point_render.draw(pc, state);
+        line_render.draw(lc, state);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);

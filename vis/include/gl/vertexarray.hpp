@@ -15,6 +15,7 @@ public:
 
 private:
     GLuint id = 0;
+    GLuint count = 0;
 
     template<size_t ...idx>
     inline void formatall(
