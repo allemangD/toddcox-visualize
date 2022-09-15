@@ -15,14 +15,12 @@ namespace tc {
      * Rows document the "loops" formed by 
      */
     struct Row {
-        bool free = true;
-        bool idem = false;
+        bool free: 1;
+        bool idem: 1;
+        unsigned int gnr: 14;  // progress through the loop
+        unsigned int lst_idx: 32;  // the coset that would complete the loop
 
-        // the number of cosets identified so far
-        int gnr = 0;
-
-        // the index of the coset that would complete the loop
-        size_t lst_idx = 0;
+        Row() : free(true), idem(false), gnr(0), lst_idx(0) {}
     };
 
     struct Tables {
@@ -149,12 +147,6 @@ namespace tc {
 
                         trow = crow;
                         trow.gnr++;
-//                        trow.lst_idx = crow.lst_idx;
-//                        trow.free = crow.free;
-//                        trow.gnr = crow.gnr + 1;
-
-//                        if (crow.gnr < 0)
-//                            trow.gnr -= 2;
 
                         if (trow.idem) {
                             if (trow.gnr == rel.mult) {
