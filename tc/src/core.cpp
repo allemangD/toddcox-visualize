@@ -40,7 +40,7 @@ namespace tc {
         }
     };
 
-    Cosets solve(const Group &group, const std::vector<Coset> &sub_gens) {
+    Cosets solve(const Group &group, const std::vector<Gen> &sub_gens) {
         auto ngens = group.ngens;
 
         // region Initialize Cosets Table
@@ -75,7 +75,7 @@ namespace tc {
             const auto &[i, j, m] = rel_tables.rels[table_idx];
             Row &row = rel_tables.rows[0][table_idx];
 
-            if (cosets.get(i) + cosets.get(j) == -2) {
+            if (!cosets.isset(0, i) && !cosets.isset(0, j)) {
                 row.lst_idx = lst_vals.size();
                 lst_vals.push_back(0);
                 row.free = false;
@@ -94,7 +94,7 @@ namespace tc {
 
         while (true) {
             // find next unknown product
-            while (idx < cosets.data.size() and cosets.get(idx) >= 0)
+            while (idx < cosets.data.size() and cosets.isset(idx))
                 idx++;
 
             // if there are none, then return

@@ -6,54 +6,66 @@
 
 namespace tc {
     using Coset = uint32_t;
-    using Gen = uint16_t;
+    using Gen = uint8_t;
     using Mult = uint16_t;
-    
+
     using Rel = std::tuple<Gen, Gen, Mult>;
 
     struct Cosets {
-        int ngens;
+        const Coset UNSET = Coset(-1);
+
+        Gen ngens;
         std::vector<int> data;
         Path path;
 
         Cosets(const Cosets &) = default;
 
-        explicit Cosets(int ngens)
+        explicit Cosets(Gen ngens)
             : ngens(ngens) {
         }
 
         void add_row() {
-            data.resize(data.size() + ngens, -1);
+            data.resize(data.size() + ngens, UNSET);
             path.add_row();
         }
 
-        void put(int coset, int gen, int target) {
+        void put(Coset coset, Gen gen, Coset target) {
             data[coset * ngens + gen] = target;
             data[target * ngens + gen] = coset;
 
-            if (path.get(target).from_idx == -1) {
+            if (path.get(target).from_idx == UNSET) {
                 path.put(coset, gen, target);
             }
         }
 
-        void put(int idx, int target) {
-            int coset = idx / ngens;
-            int gen = idx % ngens;
+        void put(size_t idx, Coset target) {
+            Coset coset = idx / ngens;
+            Gen gen = idx % ngens;
+
             data[idx] = target;
             data[target * ngens + gen] = coset;
 
-            if (path.get(target).from_idx == -1) {
+            if (path.get(target).from_idx == UNSET) {
                 path.put(coset, gen, target);
             }
         }
 
-        [[nodiscard]] int get(int coset, int gen) const {
+        [[nodiscard]] Coset get(Coset coset, Gen gen) const {
             return data[coset * ngens + gen];
         }
 
-        [[nodiscard]] int get(int idx) const {
+        [[nodiscard]] Coset get(size_t idx) const {
             return data[idx];
         }
+
+        [[nodiscard]] bool isset(Coset coset, Gen gen) const {
+            return get(coset, gen) != UNSET;
+        }
+
+        [[nodiscard]] bool isset(size_t idx) const {
+            return get(idx) != UNSET;
+        }
+
 
         [[nodiscard]] size_t size() const {
             return path.size();

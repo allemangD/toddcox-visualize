@@ -10,5 +10,5 @@
 #include "group.hpp"
 
 namespace tc {
-    Cosets solve(const Group &group, const std::vector<Coset> &sub_gens);
+    Cosets solve(const Group &group, const std::vector<Gen> &sub_gens);
 }
