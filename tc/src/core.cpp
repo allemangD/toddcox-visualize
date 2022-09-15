@@ -15,8 +15,13 @@ namespace tc {
      * Rows document the "loops" formed by 
      */
     struct Row {
-        int gnr = 0;  // the number of cosets identified so far
-        size_t lst_idx = -1;  // the index of the coset that would complete the loop
+        bool free = true;
+        
+        // the number of cosets identified so far
+        int gnr = 0;
+        
+        // the index of the coset that would complete the loop
+        size_t lst_idx = 0;
     };
 
     struct Tables {
@@ -66,7 +71,6 @@ namespace tc {
         }
 
         std::vector<Coset> lst_vals;
-        Coset null_lst_idx = 0;
         rel_tables.add_row();
         for (int table_idx = 0; table_idx < rel_tables.size(); ++table_idx) {
             Rel &rel = rel_tables.rels[table_idx];
@@ -75,9 +79,10 @@ namespace tc {
             if (cosets.get(rel.gens[0]) + cosets.get(rel.gens[1]) == -2) {
                 row.lst_idx = lst_vals.size();
                 lst_vals.push_back(0);
+                row.free = false;
                 row.gnr = 0;
             } else {
-                row.lst_idx = null_lst_idx;
+                row.free = false;
                 row.gnr = -1;
             }
         }
@@ -135,13 +140,16 @@ namespace tc {
                     // Test if loop is closed
                     Coset other_gen = rel.gens[0] == gen ? rel.gens[1] : rel.gens[0];
 
-                    if (trow.lst_idx == -1) {
+                    if (trow.free) {
                         if (target == coset) {
                             trow.gnr = -1;
                         }
 
-                        trow.lst_idx = crow.lst_idx;
-                        trow.gnr = crow.gnr + 1;
+                        trow = crow;
+                        trow.gnr++;
+//                        trow.lst_idx = crow.lst_idx;
+//                        trow.free = crow.free;
+//                        trow.gnr = crow.gnr + 1;
 
                         if (crow.gnr < 0)
                             trow.gnr -= 2;
@@ -163,19 +171,21 @@ namespace tc {
                 }
             }
 
-            // Find rows which are still not part of any loop, and assign them to a new loop.
+            // If any target row wasn't identified with a loop,
+            // then assign it a new loop.
             for (size_t table_idx = 0; table_idx < rel_tables.size(); table_idx++) {
                 auto &rel = rel_tables.rels[table_idx];
                 auto &trow = rel_tables.rows[target][table_idx];
 
-                if (trow.lst_idx == -1) {
+                if (trow.free) {
                     if ((cosets.get(target, rel.gens[0]) != target) and
                         (cosets.get(target, rel.gens[1]) != target)) {
                         trow.lst_idx = lst_vals.size();
+                        trow.free = false;
                         lst_vals.push_back(0);
                         trow.gnr = 0;
                     } else {
-                        trow.lst_idx = null_lst_idx;
+                        trow.free = false;
                         trow.gnr = -1;
                     }
                 }
