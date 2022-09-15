@@ -16,10 +16,11 @@ namespace tc {
      */
     struct Row {
         bool free = true;
-        
+        bool idem = false;
+
         // the number of cosets identified so far
         int gnr = 0;
-        
+
         // the index of the coset that would complete the loop
         size_t lst_idx = 0;
     };
@@ -83,7 +84,8 @@ namespace tc {
                 row.gnr = 0;
             } else {
                 row.free = false;
-                row.gnr = -1;
+                row.gnr = 1;
+                row.idem = true;
             }
         }
         // endregion
@@ -151,21 +153,25 @@ namespace tc {
 //                        trow.free = crow.free;
 //                        trow.gnr = crow.gnr + 1;
 
-                        if (crow.gnr < 0)
-                            trow.gnr -= 2;
+//                        if (crow.gnr < 0)
+//                            trow.gnr -= 2;
 
-                        if (trow.gnr == -rel.mult) {
-                            // loop is closed, but internal, so the target links to itself via this generator.
-                            // todo might be able to move this logic up into the (target == coset) block and avoid those computations.
-                            facts.push(target * ngens + other_gen);
-                        } else if (trow.gnr == rel.mult - 1) {
-                            // loop is almost closed. record that the target closes this loop.
-                            lst_vals[trow.lst_idx] = target;
-                        } else if (trow.gnr == rel.mult) {
-                            // loop is closed. We know the last element in the loop must link with this one. 
-                            lst = lst_vals[trow.lst_idx];
+                        if (trow.idem) {
+                            if (trow.gnr == rel.mult) {
+                                // loop is closed, but internal, so the target links to itself via this generator.
+                                // todo might be able to move this logic up into the (target == coset) block and avoid those computations.
+                                facts.push(target * ngens + other_gen);
+                            }
+                        } else {
+                            if (trow.gnr == rel.mult - 1) {
+                                // loop is almost closed. record that the target closes this loop.
+                                lst_vals[trow.lst_idx] = target;
+                            } else if (trow.gnr == rel.mult) {
+                                // loop is closed. We know the last element in the loop must link with this one. 
+                                lst = lst_vals[trow.lst_idx];
 //                            delete trow.lst_ptr;
-                            facts.push(lst * ngens + other_gen);
+                                facts.push(lst * ngens + other_gen);
+                            }
                         }
                     }
                 }
@@ -186,7 +192,8 @@ namespace tc {
                         trow.gnr = 0;
                     } else {
                         trow.free = false;
-                        trow.gnr = -1;
+                        trow.gnr = 1;
+                        trow.idem = true;
                     }
                 }
             }
