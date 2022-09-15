@@ -23,11 +23,12 @@ namespace tc {
         }
 
         void set(const Rel &r) {
-            _mults(r.gens[0], r.gens[1]) = r.mult;
+            auto &[i, j, m] = r;
+            _mults(i, j) = m;
         }
 
-        [[nodiscard]] int get(int a, int b) const {
-            return _mults(a, b);
+        [[nodiscard]] int get(int i, int j) const {
+            return _mults(i, j);
         }
 
         [[nodiscard]] std::vector<Rel> rels() const {

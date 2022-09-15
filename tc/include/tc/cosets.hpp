@@ -5,6 +5,12 @@
 #include "cosets.hpp"
 
 namespace tc {
+    using Coset = uint32_t;
+    using Gen = uint16_t;
+    using Mult = uint16_t;
+    
+    using Rel = std::tuple<Gen, Gen, Mult>;
+
     struct Cosets {
         int ngens;
         std::vector<int> data;

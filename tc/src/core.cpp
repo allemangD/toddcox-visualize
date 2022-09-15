@@ -63,19 +63,19 @@ namespace tc {
         Tables rel_tables(rels);
         std::vector<std::vector<size_t>> tables_for(ngens);
         int rel_idx = 0;
-        for (Rel m: rels) {
-            tables_for[m.gens[0]].push_back(rel_idx);
-            tables_for[m.gens[1]].push_back(rel_idx);
+        for (const auto &[i, j, m]: rels) {
+            tables_for[i].push_back(rel_idx);
+            tables_for[j].push_back(rel_idx);
             rel_idx++;
         }
 
         std::vector<Coset> lst_vals;
         rel_tables.add_row();
         for (int table_idx = 0; table_idx < rel_tables.size(); ++table_idx) {
-            Rel &rel = rel_tables.rels[table_idx];
+            const auto &[i, j, m] = rel_tables.rels[table_idx];
             Row &row = rel_tables.rows[0][table_idx];
 
-            if (cosets.get(rel.gens[0]) + cosets.get(rel.gens[1]) == -2) {
+            if (cosets.get(i) + cosets.get(j) == -2) {
                 row.lst_idx = lst_vals.size();
                 lst_vals.push_back(0);
                 row.free = false;
@@ -133,12 +133,12 @@ namespace tc {
 
                 // If the product stays within the coset todo
                 for (size_t table_idx: tables_for[gen]) {
-                    auto &rel = rel_tables.rels[table_idx];
+                    auto &[i, j, m] = rel_tables.rels[table_idx];
                     auto &trow = rel_tables.rows[target][table_idx];
                     auto &crow = rel_tables.rows[coset][table_idx];
 
                     // Test if loop is closed
-                    Coset other_gen = rel.gens[0] == gen ? rel.gens[1] : rel.gens[0];
+                    Coset other_gen = (i == gen) ? j : i;
 
                     if (trow.free) {
                         if (target == coset) {
@@ -149,16 +149,16 @@ namespace tc {
                         trow.gnr++;
 
                         if (trow.idem) {
-                            if (trow.gnr == rel.mult) {
+                            if (trow.gnr == m) {
                                 // loop is closed, but internal, so the target links to itself via this generator.
                                 // todo might be able to move this logic up into the (target == coset) block and avoid those computations.
                                 facts.push(target * ngens + other_gen);
                             }
                         } else {
-                            if (trow.gnr == rel.mult - 1) {
+                            if (trow.gnr == m - 1) {
                                 // loop is almost closed. record that the target closes this loop.
                                 lst_vals[trow.lst_idx] = target;
-                            } else if (trow.gnr == rel.mult) {
+                            } else if (trow.gnr == m) {
                                 // loop is closed. We know the last element in the loop must link with this one. 
                                 lst = lst_vals[trow.lst_idx];
 //                            delete trow.lst_ptr;
@@ -172,12 +172,12 @@ namespace tc {
             // If any target row wasn't identified with a loop,
             // then assign it a new loop.
             for (size_t table_idx = 0; table_idx < rel_tables.size(); table_idx++) {
-                auto &rel = rel_tables.rels[table_idx];
+                auto &[i, j, m] = rel_tables.rels[table_idx];
                 auto &trow = rel_tables.rows[target][table_idx];
 
                 if (trow.free) {
-                    if ((cosets.get(target, rel.gens[0]) != target) and
-                        (cosets.get(target, rel.gens[1]) != target)) {
+                    if ((cosets.get(target, i) != target) and
+                        (cosets.get(target, j) != target)) {
                         trow.lst_idx = lst_vals.size();
                         trow.free = false;
                         lst_vals.push_back(0);
