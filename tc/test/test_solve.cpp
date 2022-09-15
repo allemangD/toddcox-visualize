@@ -8,7 +8,7 @@
 int main(int argc, char *argv[]) {
     std::string key = argv[1];
 
-    std::vector<std::tuple<std::string, tc::Group, std::vector<size_t>, size_t>> groups;
+    std::vector<std::tuple<std::string, tc::Group, std::vector<tc::Coset>, size_t>> groups;
 
     // See the group orders here https://en.wikipedia.org/wiki/Coxeter_group#Properties
     if (key == "A") {

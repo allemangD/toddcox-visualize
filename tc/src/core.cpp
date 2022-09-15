@@ -15,8 +15,8 @@ namespace tc {
      * Rows document the "loops" formed by 
      */
     struct Row {
-        int gnr = 0;
-        size_t lst_idx = -1;  // identifies the loop or "family"
+        int gnr = 0;  // the number of cosets identified so far
+        size_t lst_idx = -1;  // the index of the coset that would complete the loop
     };
 
     struct Tables {
@@ -36,7 +36,7 @@ namespace tc {
         }
     };
 
-    Cosets solve(const Group &group, const std::vector<size_t> &sub_gens) {
+    Cosets solve(const Group &group, const std::vector<Coset> &sub_gens) {
         auto ngens = group.ngens;
 
         // region Initialize Cosets Table
@@ -47,7 +47,7 @@ namespace tc {
             return cosets;
         }
 
-        for (int g: sub_gens) {
+        for (Coset g: sub_gens) {
             if (g < ngens)
                 cosets.put(0, g, 0);
         }
@@ -57,16 +57,16 @@ namespace tc {
 
         // region Initialize Relation Tables
         Tables rel_tables(rels);
-        std::vector<std::vector<int>> gen_map(ngens);
+        std::vector<std::vector<size_t>> tables_for(ngens);
         int rel_idx = 0;
         for (Rel m: rels) {
-            gen_map[m.gens[0]].push_back(rel_idx);
-            gen_map[m.gens[1]].push_back(rel_idx);
+            tables_for[m.gens[0]].push_back(rel_idx);
+            tables_for[m.gens[1]].push_back(rel_idx);
             rel_idx++;
         }
 
-        std::vector<int> lst_vals;
-        size_t null_lst_idx = 0;
+        std::vector<Coset> lst_vals;
+        Coset null_lst_idx = 0;
         rel_tables.add_row();
         for (int table_idx = 0; table_idx < rel_tables.size(); ++table_idx) {
             Rel &rel = rel_tables.rels[table_idx];
@@ -83,8 +83,9 @@ namespace tc {
         }
         // endregion
 
-        int idx = 0;
-        int coset, gen, target, fact_idx, lst;
+        size_t idx = 0;
+        size_t fact_idx;
+        Coset coset, gen, target, lst;
 
         while (true) {
             // find next unknown product
@@ -104,7 +105,7 @@ namespace tc {
             rel_tables.add_row();
 
             // queue of products that equal target
-            std::queue<int> facts;
+            std::queue<size_t> facts;
             facts.push(idx);  // new product should be recorded and propagated
 
             // todo unrolled linked list interval
@@ -126,24 +127,19 @@ namespace tc {
                 gen = fact_idx % ngens;
 
                 // If the product stays within the coset todo
-                if (target == coset)
-                    for (int table_idx: gen_map[gen]) {
-                        auto &trow = rel_tables.rows[target][table_idx];
-
-                        if (trow.lst_idx == -1) {
-                            trow.gnr = -1;
-                        }
-                    }
-
-                // Test if loop is closed
-                for (int table_idx: gen_map[gen]) {
+                for (size_t table_idx: tables_for[gen]) {
                     auto &rel = rel_tables.rels[table_idx];
                     auto &trow = rel_tables.rows[target][table_idx];
                     auto &crow = rel_tables.rows[coset][table_idx];
 
-                    auto other_gen = rel.gens[0] == gen ? rel.gens[1] : rel.gens[0];
+                    // Test if loop is closed
+                    Coset other_gen = rel.gens[0] == gen ? rel.gens[1] : rel.gens[0];
 
                     if (trow.lst_idx == -1) {
+                        if (target == coset) {
+                            trow.gnr = -1;
+                        }
+
                         trow.lst_idx = crow.lst_idx;
                         trow.gnr = crow.gnr + 1;
 
@@ -168,7 +164,7 @@ namespace tc {
             }
 
             // Find rows which are still not part of any loop, and assign them to a new loop.
-            for (int table_idx = 0; table_idx < rel_tables.size(); table_idx++) {
+            for (size_t table_idx = 0; table_idx < rel_tables.size(); table_idx++) {
                 auto &rel = rel_tables.rels[table_idx];
                 auto &trow = rel_tables.rows[target][table_idx];
 

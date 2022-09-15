@@ -10,5 +10,7 @@
 #include "group.hpp"
 
 namespace tc {
-    Cosets solve(const Group &group, const std::vector<size_t> &sub_gens);
+    using Coset = unsigned int;
+    
+    Cosets solve(const Group &group, const std::vector<Coset> &sub_gens);
 }
