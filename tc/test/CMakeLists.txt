@@ -1,39 +1,18 @@
-function(add_simple_test exec arg)
-    add_test(NAME "${exec}_${arg}" COMMAND ${exec} ${arg})
-    set_tests_properties("${exec}_${arg}" PROPERTIES TIMEOUT 5)
-endfunction()
+include(GoogleTest)
 
 add_executable(test_pair_map test_pair_map.cpp)
-target_link_libraries(test_pair_map PUBLIC tc)
-add_simple_test(test_pair_map populate)
-add_simple_test(test_pair_map symmetry)
-add_simple_test(test_pair_map fill)
-add_simple_test(test_pair_map copy)
-add_simple_test(test_pair_map move)
-add_simple_test(test_pair_map iterate)
-add_simple_test(test_pair_map iterate_ref)
-add_simple_test(test_pair_map view)
+target_link_libraries(test_pair_map tc GTest::gtest_main)
 
 add_executable(test_solve test_solve.cpp)
-target_link_libraries(test_solve PUBLIC tc)
-add_simple_test(test_solve A)
-add_simple_test(test_solve B)
-add_simple_test(test_solve D)
-add_simple_test(test_solve E)
-add_simple_test(test_solve F)
-add_simple_test(test_solve G)
-add_simple_test(test_solve H)
-add_simple_test(test_solve I)
-add_simple_test(test_solve T)
+target_link_libraries(test_solve tc GTest::gtest_main)
 
 set(MIN_DEBUG_CPS 200000)
 set(MIN_RELEASE_CPS 1000000)
-add_executable(test_solve_speed test_solve_speed.cpp)
-target_link_libraries(test_solve_speed PUBLIC tc)
-target_compile_definitions(test_solve_speed PUBLIC MINIMUM_COS_PER_SEC=$<IF:$<CONFIG:Debug>,${MIN_DEBUG_CPS},${MIN_RELEASE_CPS}>)
-add_simple_test(test_solve_speed B)
-set_tests_properties(test_solve_speed_B PROPERTIES TIMEOUT 60)  # B8 is big.
-add_simple_test(test_solve_speed E)
-set_tests_properties(test_solve_speed_E PROPERTIES TIMEOUT 15)
-add_simple_test(test_solve_speed T)
-set_tests_properties(test_solve_speed_T PROPERTIES TIMEOUT 10)
+
+target_compile_definitions(
+    test_solve PUBLIC
+    MIN_COS_PER_SEC=$<IF:$<CONFIG:Debug>,${MIN_DEBUG_CPS},${MIN_RELEASE_CPS}>
+)
+
+gtest_discover_tests(test_pair_map)
+gtest_discover_tests(test_solve)

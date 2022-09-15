@@ -1,172 +1,187 @@
-#include <iostream>
-#include <string>
+#include <ctime>
 #include <vector>
 
 #include <tc/groups.hpp>
 #include <tc/core.hpp>
 
+#include <gtest/gtest.h>
 
-int main(int argc, char *argv[]) {
-    std::string key = argv[1];
+/// helper for testing solve and testing speed
+testing::AssertionResult AssertSolveOrder(
+    const char *group_expr,
+    const char *sub_gens_expr,
+    const char *expected_order_expr,
+    const tc::Group &group,
+    const std::vector<tc::Gen> &sub_gens,
+    tc::Coset expected_order
+) {
+    auto start = std::clock();
+    auto cosets = tc::solve(group, sub_gens);
+    auto end = std::clock();
 
-    std::vector<std::tuple<
-        std::string,
-        tc::Group,
-        std::vector<tc::Gen>,
-        size_t
-    >> groups;
+    tc::Coset actual_order = cosets.size();
 
-    // See the group orders here https://en.wikipedia.org/wiki/Coxeter_group#Properties
-    if (key == "A") {
-        groups = {
-            {"A(1)", tc::group::A(1), {},     2},
-            {"A(2)", tc::group::A(2), {},     6},
-            {"A(3)", tc::group::A(3), {},     24},
-            {"A(3)", tc::group::A(3), {0},    12},
-            {"A(3)", tc::group::A(3), {0, 1}, 4},
-            {"A(3)", tc::group::A(3), {0, 2}, 6},
-            {"A(3)", tc::group::A(3), {2},    12},
-            {"A(4)", tc::group::A(4), {},     120},
-            {"A(4)", tc::group::A(4), {0},    60},
-            {"A(4)", tc::group::A(4), {0, 1}, 20},
-            {"A(4)", tc::group::A(4), {2},    60},
-            {"A(4)", tc::group::A(4), {0, 2}, 30},
-        };
-    }
-    if (key == "B") {
-        groups = {
-            {"B(2)", tc::group::B(2), {},           8},
-            {"B(3)", tc::group::B(3), {},           48},
-            {"B(3)", tc::group::B(3), {0},          24},
-            {"B(3)", tc::group::B(3), {0, 2},       12},
-            {"B(4)", tc::group::B(4), {},           384},
-            {"B(4)", tc::group::B(4), {0},          192},
-            {"B(4)", tc::group::B(4), {0, 2},       96},
-            {"B(5)", tc::group::B(5), {},           3840},
-            {"B(5)", tc::group::B(5), {0},          1920},
-            {"B(5)", tc::group::B(5), {0, 2},       960},
-            {"B(5)", tc::group::B(5), {0, 2, 3},    320},
-            {"B(6)", tc::group::B(6), {},           46080},
-            {"B(6)", tc::group::B(6), {0},          23040},
-            {"B(6)", tc::group::B(6), {0, 2},       11520},
-            {"B(6)", tc::group::B(6), {0, 2, 3},    3840},
-            {"B(6)", tc::group::B(6), {0, 2, 3, 5}, 1920},
-        };
-    }
-    if (key == "D") {
-        groups = {
-            {"D(2)", tc::group::D(2), {},           4},
-            {"D(3)", tc::group::D(3), {},           24},
-            {"D(4)", tc::group::D(4), {},           192},
-            {"D(4)", tc::group::D(4), {0, 1},       32},
-            {"D(4)", tc::group::D(4), {0, 1, 3},    8},
-            {"D(5)", tc::group::D(5), {},           1920},
-            {"D(5)", tc::group::D(5), {0, 1},       320},
-            {"D(5)", tc::group::D(5), {0, 1, 3},    160},
-            {"D(5)", tc::group::D(5), {0, 1, 3, 4}, 40},
-            {"D(6)", tc::group::D(6), {},           23040},
-            {"D(6)", tc::group::D(6), {0, 1},       3840},
-            {"D(6)", tc::group::D(6), {0, 1, 3},    1920},
-            {"D(6)", tc::group::D(6), {0, 1, 3, 5}, 480},
-        };
-    }
-    if (key == "E") {
-        groups = {
-            {"E(3)", tc::group::E(3), {},        12},
-            {"E(4)", tc::group::E(4), {},        120},
-            {"E(4)", tc::group::E(4), {2},       60},
-            {"E(4)", tc::group::E(4), {2, 1},    20},
-            {"E(4)", tc::group::E(4), {2, 1, 3}, 5},
-            {"E(5)", tc::group::E(5), {},        1920},
-            {"E(5)", tc::group::E(5), {2},       960},
-            {"E(5)", tc::group::E(5), {2, 1},    320},
-            {"E(5)", tc::group::E(5), {2, 1, 3}, 80},
-            {"E(6)", tc::group::E(6), {},        51840},
-            {"E(6)", tc::group::E(6), {2},       25920},
-            {"E(6)", tc::group::E(6), {2, 1},    8640},
-            {"E(6)", tc::group::E(6), {2, 1, 3}, 2160},
-        };
-    }
-    if (key == "F") {
-        groups = {
-            {"F4()", tc::group::F4(), {},        1152},
-            {"F4()", tc::group::F4(), {0},       576},
-            {"F4()", tc::group::F4(), {0, 2},    288},
-            {"F4()", tc::group::F4(), {1, 3},    288},
-            {"F4()", tc::group::F4(), {1, 2, 3}, 24},
-        };
-    }
-    if (key == "G") {
-        groups = {
-            {"G2()", tc::group::G2(), {},  12},
-            {"G2()", tc::group::G2(), {0}, 6},
-            {"G2()", tc::group::G2(), {1}, 6},
-        };
-    }
-    if (key == "H") {
-        groups = {
-            {"H(2)", tc::group::H(2), {},     10},
-            {"H(2)", tc::group::H(2), {0},    5},
-            {"H(2)", tc::group::H(2), {1},    5},
-            {"H(3)", tc::group::H(3), {},     120},
-            {"H(3)", tc::group::H(3), {0},    60},
-            {"H(3)",   tc::group::H(3), {0, 1}, 12},
-            {"H(3)",   tc::group::H(3), {0, 2}, 30},
-            {"H(3)",   tc::group::H(3), {1, 2}, 20},
-            {"H(4)", tc::group::H(4), {},     14400},
-            {"H(4)", tc::group::H(4), {0},    7200},
-            {"H(4)", tc::group::H(4), {1},    7200},
-            {"H(4)", tc::group::H(4), {1, 3}, 3600},
-        };
-    }
-    if (key == "I") {
-        groups = {
-            {"I2(2)", tc::group::I2(2), {},  4},
-            {"I2(3)", tc::group::I2(3), {},  6},
-            {"I2(3)", tc::group::I2(3), {0}, 3},
-            {"I2(3)", tc::group::I2(3), {1}, 3},
-            {"I2(4)", tc::group::I2(4), {},  8},
-            {"I2(4)", tc::group::I2(4), {0}, 4},
-            {"I2(4)", tc::group::I2(4), {1}, 4},
-            {"I2(5)", tc::group::I2(5), {},  10},
-            {"I2(5)", tc::group::I2(5), {0}, 5},
-            {"I2(5)", tc::group::I2(5), {1}, 5},
-        };
-    }
-    if (key == "T") {
-        groups = {
-            {"T(3)",        tc::group::T(3),        {},     36},
-            {"T(4)",        tc::group::T(4),        {},     64},
-            {"T(400)",      tc::group::T(400),      {},     640000},
-            {"T(400)",      tc::group::T(400),      {0},    320000},
-            {"T(400)",      tc::group::T(400),      {0, 2}, 160000},
-            {"T(400, 300)", tc::group::T(400, 300), {},     480000},
-            {"T(400, 300)", tc::group::T(400, 300), {0},    240000},
-            {"T(400, 300)", tc::group::T(400, 300), {0, 2}, 120000},
-        };
+    auto total_sec = (double) (end - start) / CLOCKS_PER_SEC;
+    auto cosets_per_sec = (double) actual_order / total_sec;
+
+    bool order_good = actual_order == expected_order;
+    bool speed_good = cosets_per_sec >= MIN_COS_PER_SEC;
+
+    if (order_good && speed_good) {
+        return testing::AssertionSuccess();
     }
 
-    int status = EXIT_SUCCESS;
-
-    for (const auto &[name, group, sub_gens, expected]: groups) {
-        auto cos = tc::solve(group, sub_gens);
-        auto actual = cos.size();
-        std::cout << name;
-        if (!sub_gens.empty()) {
-            std::cout << " / {";
-            std::cout << (int) sub_gens[0];
-            for (int i = 1; i < sub_gens.size(); ++i) {
-                std::cout << ", " << (int) sub_gens[i];
-            }
-            std::cout << "}";
-        }
-        std::cout << " : " << actual;
-        if (expected != actual) {
-            std::cout << " (Expected " << expected << ")";
-            status = EXIT_FAILURE;
-        }
-        std::cout << std::endl;
+    testing::AssertionResult res = testing::AssertionFailure();
+    res << group_expr << " / " << sub_gens_expr << " :";
+    if (!order_good) {
+        res << " Gave order " << actual_order << " but expected order " << expected_order << ".";
+    }
+    if (!speed_good) {
+        res << " Solution too slow (" << cosets_per_sec
+            << " cos/s < " << MIN_COS_PER_SEC << ").";
     }
 
-    return status;
+    return res;
+}
+
+using namespace tc::group;
+
+#define EXPECT_SOLVE_ORDER(group, sub_gens, expected_order) EXPECT_PRED_FORMAT3(AssertSolveOrder, group, sub_gens, expected_order);
+
+using v = std::vector<tc::Gen>;
+
+// See the group orders here https://en.wikipedia.org/wiki/Coxeter_group#Properties
+
+TEST(solve, A) {
+    EXPECT_SOLVE_ORDER(A(1), v({}), 2);
+    EXPECT_SOLVE_ORDER(A(2), v({}), 6);
+    EXPECT_SOLVE_ORDER(A(3), v({}), 24);
+    EXPECT_SOLVE_ORDER(A(3), v({0}), 12);
+    EXPECT_SOLVE_ORDER(A(3), v({0, 1}), 4);
+    EXPECT_SOLVE_ORDER(A(3), v({0, 2}), 6);
+    EXPECT_SOLVE_ORDER(A(3), v({2}), 12);
+    EXPECT_SOLVE_ORDER(A(4), v({}), 120);
+    EXPECT_SOLVE_ORDER(A(4), v({0}), 60);
+    EXPECT_SOLVE_ORDER(A(4), v({0, 1}), 20);
+    EXPECT_SOLVE_ORDER(A(4), v({2}), 60);
+    EXPECT_SOLVE_ORDER(A(4), v({0, 2}), 30);
+}
+
+TEST(solve, B) {
+    EXPECT_SOLVE_ORDER(B(2), v({}), 8);
+    EXPECT_SOLVE_ORDER(B(3), v({}), 48);
+    EXPECT_SOLVE_ORDER(B(3), v({0}), 24);
+    EXPECT_SOLVE_ORDER(B(3), v({0, 2}), 12);
+    EXPECT_SOLVE_ORDER(B(4), v({}), 384);
+    EXPECT_SOLVE_ORDER(B(4), v({0}), 192);
+    EXPECT_SOLVE_ORDER(B(4), v({0, 2}), 96);
+    EXPECT_SOLVE_ORDER(B(5), v({}), 3840);
+    EXPECT_SOLVE_ORDER(B(5), v({0}), 1920);
+    EXPECT_SOLVE_ORDER(B(5), v({0, 2}), 960);
+    EXPECT_SOLVE_ORDER(B(5), v({0, 2, 3}), 320);
+    EXPECT_SOLVE_ORDER(B(6), v({}), 46080);
+    EXPECT_SOLVE_ORDER(B(6), v({0}), 23040);
+    EXPECT_SOLVE_ORDER(B(6), v({0, 2}), 11520);
+    EXPECT_SOLVE_ORDER(B(6), v({0, 2, 3}), 3840);
+    EXPECT_SOLVE_ORDER(B(6), v({0, 2, 3, 5}), 1920);
+}
+
+TEST(solve, D) {
+    EXPECT_SOLVE_ORDER(D(2), v({}), 4);
+    EXPECT_SOLVE_ORDER(D(3), v({}), 24);
+    EXPECT_SOLVE_ORDER(D(4), v({}), 192);
+    EXPECT_SOLVE_ORDER(D(4), v({0, 1}), 32);
+    EXPECT_SOLVE_ORDER(D(4), v({0, 1, 3}), 8);
+    EXPECT_SOLVE_ORDER(D(5), v({}), 1920);
+    EXPECT_SOLVE_ORDER(D(5), v({0, 1}), 320);
+    EXPECT_SOLVE_ORDER(D(5), v({0, 1, 3}), 160);
+    EXPECT_SOLVE_ORDER(D(5), v({0, 1, 3, 4}), 40);
+    EXPECT_SOLVE_ORDER(D(6), v({}), 23040);
+    EXPECT_SOLVE_ORDER(D(6), v({0, 1}), 3840);
+    EXPECT_SOLVE_ORDER(D(6), v({0, 1, 3}), 1920);
+    EXPECT_SOLVE_ORDER(D(6), v({0, 1, 3, 5}), 480);
+}
+
+TEST(solve, E) {
+    EXPECT_SOLVE_ORDER(E(3), v({}), 12);
+    EXPECT_SOLVE_ORDER(E(4), v({}), 120);
+    EXPECT_SOLVE_ORDER(E(4), v({2}), 60);
+    EXPECT_SOLVE_ORDER(E(4), v({2, 1}), 20);
+    EXPECT_SOLVE_ORDER(E(4), v({2, 1, 3}), 5);
+    EXPECT_SOLVE_ORDER(E(5), v({}), 1920);
+    EXPECT_SOLVE_ORDER(E(5), v({2}), 960);
+    EXPECT_SOLVE_ORDER(E(5), v({2, 1}), 320);
+    EXPECT_SOLVE_ORDER(E(5), v({2, 1, 3}), 80);
+    EXPECT_SOLVE_ORDER(E(6), v({}), 51840);
+    EXPECT_SOLVE_ORDER(E(6), v({2}), 25920);
+    EXPECT_SOLVE_ORDER(E(6), v({2, 1}), 8640);
+    EXPECT_SOLVE_ORDER(E(6), v({2, 1, 3}), 2160);
+}
+
+TEST(solve, F) {
+    EXPECT_SOLVE_ORDER(F4(), v({}), 1152);
+    EXPECT_SOLVE_ORDER(F4(), v({0}), 576);
+    EXPECT_SOLVE_ORDER(F4(), v({0, 2}), 288);
+    EXPECT_SOLVE_ORDER(F4(), v({1, 3}), 288);
+    EXPECT_SOLVE_ORDER(F4(), v({1, 2, 3}), 24);
+}
+
+TEST(solve, G) {
+    EXPECT_SOLVE_ORDER(G2(), v({}), 12);
+    EXPECT_SOLVE_ORDER(G2(), v({0}), 6);
+    EXPECT_SOLVE_ORDER(G2(), v({1}), 6);
+}
+
+TEST(solve, H) {
+    EXPECT_SOLVE_ORDER(H(2), v({}), 10);
+    EXPECT_SOLVE_ORDER(H(2), v({0}), 5);
+    EXPECT_SOLVE_ORDER(H(2), v({1}), 5);
+    EXPECT_SOLVE_ORDER(H(3), v({}), 120);
+    EXPECT_SOLVE_ORDER(H(3), v({0}), 60);
+    EXPECT_SOLVE_ORDER(H(3), v({0, 1}), 12);
+    EXPECT_SOLVE_ORDER(H(3), v({0, 2}), 30);
+    EXPECT_SOLVE_ORDER(H(3), v({1, 2}), 20);
+    EXPECT_SOLVE_ORDER(H(4), v({}), 14400);
+    EXPECT_SOLVE_ORDER(H(4), v({0}), 7200);
+    EXPECT_SOLVE_ORDER(H(4), v({1}), 7200);
+    EXPECT_SOLVE_ORDER(H(4), v({1, 3}), 3600);
+}
+
+TEST(solve, I) {
+    EXPECT_SOLVE_ORDER(I2(2), v({}), 4);
+    EXPECT_SOLVE_ORDER(I2(3), v({}), 6);
+    EXPECT_SOLVE_ORDER(I2(3), v({0}), 3);
+    EXPECT_SOLVE_ORDER(I2(3), v({1}), 3);
+    EXPECT_SOLVE_ORDER(I2(4), v({}), 8);
+    EXPECT_SOLVE_ORDER(I2(4), v({0}), 4);
+    EXPECT_SOLVE_ORDER(I2(4), v({1}), 4);
+    EXPECT_SOLVE_ORDER(I2(5), v({}), 10);
+    EXPECT_SOLVE_ORDER(I2(5), v({0}), 5);
+    EXPECT_SOLVE_ORDER(I2(5), v({1}), 5);
+}
+
+TEST(solve, T) {
+    EXPECT_SOLVE_ORDER(T(3), v({}), 36);
+    EXPECT_SOLVE_ORDER(T(4), v({}), 64);
+    EXPECT_SOLVE_ORDER(T(400), v({}), 640000);
+    EXPECT_SOLVE_ORDER(T(400), v({0}), 320000);
+    EXPECT_SOLVE_ORDER(T(400), v({0, 2}), 160000);
+    EXPECT_SOLVE_ORDER(T(400, 300), v({}), 480000);
+    EXPECT_SOLVE_ORDER(T(400, 300), v({0}), 240000);
+    EXPECT_SOLVE_ORDER(T(400, 300), v({0, 2}), 120000);
+}
+
+TEST(solve_large, B) {
+    EXPECT_SOLVE_ORDER(B(7), v({}), 645120);
+    EXPECT_SOLVE_ORDER(B(8), v({}), 10321920);
+}
+
+TEST(solve_large, E) {
+    EXPECT_SOLVE_ORDER(E(6), v({}), 51840);
+    EXPECT_SOLVE_ORDER(E(7), v({}), 2903040);
+}
+
+TEST(solve_large, T) {
+    EXPECT_SOLVE_ORDER(T(500), v({}), 1000000);
+    EXPECT_SOLVE_ORDER(T(1000), v({}), 4000000);
 }
