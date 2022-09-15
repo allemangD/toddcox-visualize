@@ -25,7 +25,6 @@ add_simple_test(test_solve G)
 add_simple_test(test_solve H)
 add_simple_test(test_solve I)
 add_simple_test(test_solve T)
-add_simple_test(test_solve X)
 
 set(MIN_DEBUG_CPS 200000)
 set(MIN_RELEASE_CPS 1000000)
