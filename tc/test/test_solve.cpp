@@ -5,10 +5,6 @@
 #include <tc/groups.hpp>
 #include <tc/core.hpp>
 
-#define UNWRAP(...) {__VA_ARGS__}
-#define CASE(GROUP, SUBGROUP, EXPECT) {#GROUP " / " #SUBGROUP, UNWRAP SUBGROUP, SUBGROUP, EXPECT}
-//#define CASE(GROUP, SUBGROUP, EXPECT) {#GROUP " / " #SUBGROUP, tc::group::GROUP, SUBGROUP, EXPECT}
-
 
 int main(int argc, char *argv[]) {
     std::string key = argv[1];

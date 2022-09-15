@@ -5,10 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 
 include(FetchContent)
 
-include(External/glfw.cmake)
-include(External/imgui.cmake)
 include(External/eigen.cmake)
 include(External/glad.cmake)
+include(External/glfw.cmake)
+include(External/gtest.cmake)
+include(External/imgui.cmake)
 include(External/json.cmake)
 
 include_directories(include)
