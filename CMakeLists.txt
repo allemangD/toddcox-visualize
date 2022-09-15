@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 include(FetchContent)
 
 include(External/eigen.cmake)
+include(External/fmt.cmake)
 include(External/glad.cmake)
 include(External/glfw.cmake)
 include(External/gtest.cmake)
