@@ -137,20 +137,20 @@ namespace tc {
                     auto &trow = rel_tables.rows[target][table_idx];
                     auto &crow = rel_tables.rows[coset][table_idx];
 
-                    // Test if loop is closed
                     Coset other_gen = (i == gen) ? j : i;
 
+                    // Test if loop is closed
                     if (trow.free) {
-                        if (target == coset) {
-                            trow.gnr = -1;
-                        }
-
                         trow = crow;
                         trow.gnr++;
 
+                        if (target == coset) {
+                            trow.idem = true;
+                        }
+
                         if (trow.idem) {
                             if (trow.gnr == m) {
-                                // loop is closed, but internal, so the target links to itself via this generator.
+                                // loop is closed, but idempotent, so the target links to itself via the other generator.
                                 // todo might be able to move this logic up into the (target == coset) block and avoid those computations.
                                 facts.push(target * ngens + other_gen);
                             }
