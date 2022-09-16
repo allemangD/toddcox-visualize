@@ -25,6 +25,10 @@ namespace tc {
         }
 
         Group D(const int dim) {
+            if (dim <= 2) {
+                throw std::runtime_error("tc::group::D requires dim > 2.");
+            }
+            
             std::vector<int> mults(dim - 1, 3);
             mults[dim - 2] = 2;
 
@@ -35,6 +39,10 @@ namespace tc {
         }
 
         Group E(const int dim) {
+            if (dim <= 3) {
+                throw std::runtime_error("tc::group::E requires dim > 3.");
+            }
+            
             std::vector<int> mults(dim - 1, 3);
             mults[dim - 2] = 2;
 

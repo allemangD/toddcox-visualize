@@ -25,7 +25,8 @@ testing::AssertionResult AssertSolveOrder(
     auto cosets_per_sec = (double) actual_order / total_sec;
 
     bool order_good = actual_order == expected_order;
-    bool speed_good = cosets_per_sec >= MIN_COS_PER_SEC;
+    bool speed_good = cosets_per_sec >= MIN_COS_PER_SEC || total_sec < 0.0001;
+    // extremely short times cause false negatives. ex. A2 can be solved in only 3 clocks.
 
     if (order_good && speed_good) {
         return testing::AssertionSuccess();
@@ -38,7 +39,8 @@ testing::AssertionResult AssertSolveOrder(
     }
     if (!speed_good) {
         res << " Solution too slow (" << cosets_per_sec
-            << " cos/s < " << MIN_COS_PER_SEC << ").";
+            << " cos/s < " << MIN_COS_PER_SEC << ")."
+            << " " << std::fixed << total_sec << " s.";
     }
 
     return res;
@@ -87,7 +89,6 @@ TEST(solve, B) {
 }
 
 TEST(solve, D) {
-    EXPECT_SOLVE_ORDER(D(2), v({}), 4);
     EXPECT_SOLVE_ORDER(D(3), v({}), 24);
     EXPECT_SOLVE_ORDER(D(4), v({}), 192);
     EXPECT_SOLVE_ORDER(D(4), v({0, 1}), 32);
@@ -103,7 +104,6 @@ TEST(solve, D) {
 }
 
 TEST(solve, E) {
-    EXPECT_SOLVE_ORDER(E(3), v({}), 12);
     EXPECT_SOLVE_ORDER(E(4), v({}), 120);
     EXPECT_SOLVE_ORDER(E(4), v({2}), 60);
     EXPECT_SOLVE_ORDER(E(4), v({2, 1}), 20);
