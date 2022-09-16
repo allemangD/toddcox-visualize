@@ -1,6 +1,6 @@
-#include "tc/groups.hpp"
+#include <cassert>
 
-#include <sstream>
+#include "tc/groups.hpp"
 
 namespace tc {
     Group schlafli(const std::vector<int> &mults) {
@@ -13,11 +13,14 @@ namespace tc {
 
     namespace group {
         Group A(const int dim) {
-            if (dim == 0) return Group(0);
+            assert(dim >= 1);
+            
             return schlafli(std::vector<int>(dim - 1, 3));
         }
 
         Group B(const int dim) {
+            assert(dim >= 2);
+            
             std::vector<int> mults(dim - 1, 3);
             mults[0] = 4;
 
@@ -25,9 +28,7 @@ namespace tc {
         }
 
         Group D(const int dim) {
-            if (dim <= 2) {
-                throw std::runtime_error("tc::group::D requires dim > 2.");
-            }
+            assert(dim >= 4);
             
             std::vector<int> mults(dim - 1, 3);
             mults[dim - 2] = 2;
@@ -39,9 +40,7 @@ namespace tc {
         }
 
         Group E(const int dim) {
-            if (dim <= 3) {
-                throw std::runtime_error("tc::group::E requires dim > 3.");
-            }
+            assert(dim >= 6);
             
             std::vector<int> mults(dim - 1, 3);
             mults[dim - 2] = 2;
@@ -61,6 +60,9 @@ namespace tc {
         }
 
         Group H(const int dim) {
+            assert(dim >= 2);
+            assert(dim <= 4);
+            
             std::vector<int> mults(dim - 1, 3);
             mults[0] = 5;
 

@@ -3,6 +3,7 @@
 #include <sstream>
 
 #include <tc/pair_map.hpp>
+#include <cassert>
 
 namespace tc {
     struct Group;
@@ -45,9 +46,7 @@ namespace tc {
 
         void set(const Rel &r) {
             auto &[i, j, m] = r;
-            if (i == j && m != 1) {
-                throw std::runtime_error("Coxeter groups must satisfy m_ii=1.");
-            }
+            assert(i != j || m == 1);
             _mults(i, j) = m;
         }
 
