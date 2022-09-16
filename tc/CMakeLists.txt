@@ -11,3 +11,4 @@ add_library(tc
 target_include_directories(tc PUBLIC include)
 
 add_subdirectory(test)
+add_subdirectory(bench)

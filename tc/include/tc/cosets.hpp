@@ -67,7 +67,7 @@ namespace tc {
         }
 
 
-        [[nodiscard]] size_t size() const {
+        [[nodiscard]] tc::Coset size() const {
             return path.size();
         }
     };
