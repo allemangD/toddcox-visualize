@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
 
     using namespace tc::group;
 
-    fmt::print("{:>24},{:>10},{:>9},{:>10}\n", "NAME", "ORDER", "TIME", "COS/S");
+    fmt::print("{:>24},{:>10},{:>6},{:>9},{:>10}\n", "NAME", "ORDER", "COMPL", "TIME", "COS/S");
 
     bench(NAMED(H(2)), {});
     bench(NAMED(H(3)), {});
