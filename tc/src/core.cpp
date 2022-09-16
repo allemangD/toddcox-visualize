@@ -40,7 +40,7 @@ namespace tc {
         }
     };
 
-    Cosets solve(const Group &group, const std::vector<Gen> &sub_gens) {
+    Cosets solve(const Group &group, const std::vector<Gen> &sub_gens, const Coset &bound) {
         auto ngens = group.ngens;
 
         // region Initialize Cosets Table
@@ -48,6 +48,7 @@ namespace tc {
         cosets.add_row();
 
         if (ngens == 0) {
+            cosets.complete = true;
             return cosets;
         }
 
@@ -57,9 +58,22 @@ namespace tc {
         }
         // endregion
 
-        auto rels = group.rels();
-
         // region Initialize Relation Tables
+        std::vector<std::tuple<Gen, Gen, Mult>> rels;
+        for (const auto &[i, j, m]: group._mults) {
+            // The algorithm only works for Coxeter groups; multiplicities m_ii=1 are assumed. Relation tables
+            // _may_ be added for them, but they are redundant and hurt performance so are skipped.
+            if (i == j) continue;
+
+            // Coxeter groups admit infinite multiplicities, represented by contexpr tc::FREE. Relation tables
+            // for these should be skipped.
+            if (m == FREE) {
+                continue;
+            }
+
+            rels.emplace_back(i, j, m);
+        }
+
         Tables rel_tables(rels);
         std::vector<std::vector<size_t>> tables_for(ngens);
         int rel_idx = 0;
@@ -96,6 +110,10 @@ namespace tc {
             // find next unknown product
             while (idx < cosets.data.size() and cosets.isset(idx))
                 idx++;
+
+            if (cosets.size() >= bound) {
+                return cosets;
+            }
 
             // if there are none, then return
             if (idx == cosets.data.size()) {
@@ -191,6 +209,7 @@ namespace tc {
             }
         }
 
+        cosets.complete = true;
         return cosets;
     }
 }

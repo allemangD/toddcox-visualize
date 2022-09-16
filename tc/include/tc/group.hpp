@@ -8,6 +8,23 @@ namespace tc {
     struct Group;
     struct SubGroup;
 
+    /** 
+     * @brief Manage the presentation of a Coxeter group and enforce constraints
+     * on the multiplicities of its relations.
+     * <ul>
+     *   <li>
+     *     <code>m_ij = 1</code> iff <code>i != j</code>
+     *   </li>
+     *   <li>
+     *     <code>m_ij = m_ji</code>
+     *   </li>
+     *   <li>
+     *     If <code>m_ij == inf</code> (<code>tc::FREE</code>) then no relation is imposed.
+     *   </li>
+     * </ul>
+     * @see
+     * <a href="https://en.wikipedia.org/wiki/Coxeter_group#Definition">Coxeter Group (Wikipedia)</a>
+     */
     struct Group {
         int ngens;
         tc::pair_map<int> _mults;
@@ -17,6 +34,10 @@ namespace tc {
         explicit Group(int ngens, const std::vector<Rel> &rels = {})
             : ngens(ngens), _mults(ngens, 2) {
 
+            for (int i = 0; i < ngens; ++i) {
+                set(Rel{i, i, 1});
+            }
+            
             for (const auto &rel: rels) {
                 set(rel);
             }
@@ -24,21 +45,14 @@ namespace tc {
 
         void set(const Rel &r) {
             auto &[i, j, m] = r;
+            if (i == j && m != 1) {
+                throw std::runtime_error("Coxeter groups must satisfy m_ii=1.");
+            }
             _mults(i, j) = m;
         }
 
         [[nodiscard]] int get(int i, int j) const {
             return _mults(i, j);
-        }
-
-        [[nodiscard]] std::vector<Rel> rels() const {
-            std::vector<Rel> res;
-            for (int i = 0; i < ngens - 1; ++i) {
-                for (int j = i + 1; j < ngens; ++j) {
-                    res.emplace_back(i, j, get(i, j));
-                }
-            }
-            return res;
         }
 
         [[nodiscard]] SubGroup subgroup(const std::vector<int> &gens) const;

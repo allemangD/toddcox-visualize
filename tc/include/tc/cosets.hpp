@@ -8,15 +8,16 @@ namespace tc {
     using Coset = uint32_t;
     using Gen = uint8_t;
     using Mult = uint16_t;
+    constexpr Mult FREE = Mult(-1);
+    constexpr Coset UNSET = Coset(-1);
 
     using Rel = std::tuple<Gen, Gen, Mult>;
 
     struct Cosets {
-        const Coset UNSET = Coset(-1);
-
         Gen ngens;
         std::vector<int> data;
         Path path;
+        bool complete = false;
 
         Cosets(const Cosets &) = default;
 
