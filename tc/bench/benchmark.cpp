@@ -47,31 +47,10 @@ int main(int argc, char *argv[]) {
 
     fmt::print("{:>24},{:>10},{:>9},{:>10}\n", "NAME", "ORDER", "TIME", "COS/S");
 
-    auto g = tc::group::A(4);
-    g.set(tc::Rel{0, 3, 3});
-    bench("~A(3)", g, {}, 4385964);
-    bench("~I(1)", sch(tc::FREE), {}, 4385964);
-
     bench(NAMED(H(2)), {});
     bench(NAMED(H(3)), {});
     bench(NAMED(H(4)), {});
-    bench(NAMED(sch(5, 3, 3, 2)), {});
-    bench(NAMED(sch(5, 3, 3, 2)), {0});
-    bench(NAMED(sch(5, 3, 3, 2)), {1});
-    bench(NAMED(sch(5, 3, 3, 2)), {2});
-    bench(NAMED(sch(5, 3, 3, 2)), {3});
-    bench(NAMED(sch(5, 3, 3, 2)), {4});
-    bench(NAMED(sch(5, 3, 3, 2)), {0, 1});
-    bench(NAMED(sch(5, 3, 3, 2)), {0, 2});
-    bench(NAMED(sch(5, 3, 3, 2)), {1, 2});
-    bench(NAMED(sch(5, 3, 3, 2)), {0, 3});
-    bench(NAMED(sch(5, 3, 3, 2)), {1, 3});
-    bench(NAMED(sch(5, 3, 3, 2)), {2, 3});
-    bench(NAMED(sch(5, 3, 3, 2)), {0, 4});
-    bench(NAMED(sch(5, 3, 3, 2)), {1, 4});
-    bench(NAMED(sch(5, 3, 3, 2)), {2, 4});
-    bench(NAMED(sch(5, 3, 3, 2)), {3, 4});
-
+    
     bench(NAMED(T(100)), {});
     bench(NAMED(T(500)), {});
     bench(NAMED(T(1000)), {});
@@ -82,6 +61,11 @@ int main(int argc, char *argv[]) {
     bench(NAMED(B(6)), {});
     bench(NAMED(B(7)), {});
     bench(NAMED(B(8)), {});
+
+    auto g = tc::group::A(4);
+    g.set(tc::Rel{0, 3, 3});
+    bench("~A(3)", g, {}, 4385964);
+    bench("~I(1)", sch(tc::FREE), {}, 4385964);
 
     return EXIT_SUCCESS;
 }
