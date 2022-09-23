@@ -4,15 +4,15 @@
 #include <fmt/core.h>
 
 namespace tc {
-    Group schlafli(const std::vector<int> &mults) {
+    Group schlafli(const std::vector<unsigned int> &mults) {
         Group res(mults.size() + 1);
-        for (int i = 0; i < mults.size(); ++i) {
+        for (size_t i = 0; i < mults.size(); ++i) {
             res.set(Rel{i, i + 1, mults[i]});
         }
         return res;
     }
 
-    Group v_coxeter(const std::string &symbol, std::vector<int> &values) {
+    Group vcoxeter(const std::string &symbol, std::vector<unsigned int> &values) {
         fmt::dynamic_format_arg_store<fmt::format_context> ds;
 
         for (const auto &value: values) {

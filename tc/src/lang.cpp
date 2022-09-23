@@ -211,7 +211,7 @@ std::vector<Op> compile(const std::string &source) {
     std::shared_ptr<peg::Ast> ast;
     bool ast_ok = ast_parser.parse(source, ast);
     assert(ast_ok);
-    std::cout << peg::ast_to_s(ast) << std::endl;
+//    std::cout << peg::ast_to_s(ast) << std::endl;
 #endif
 
     static peg::parser parser = build_parser();
