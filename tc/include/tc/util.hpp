@@ -6,6 +6,17 @@
 #include <functional>
 
 namespace tc {
+    using Gen = uint8_t;
+    using Mult = uint16_t;
+
+    constexpr Mult FREE = Mult(-1);
+
+    using Coset = uint32_t;
+    constexpr Coset UNSET = Coset(-1);
+    constexpr Coset UNBOUNDED = (Coset) (-1);
+
+    using Rel = std::tuple<Gen, Gen, Mult>;
+
     struct Action {
         int from_idx = -1;
         int gen = -1;

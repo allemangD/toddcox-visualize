@@ -12,6 +12,7 @@ include(External/glfw.cmake)
 include(External/gtest.cmake)
 include(External/imgui.cmake)
 include(External/json.cmake)
+include(External/peglib.cmake)
 
 include_directories(include)
 

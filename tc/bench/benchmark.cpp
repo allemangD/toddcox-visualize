@@ -8,14 +8,14 @@
 #include <tc/core.hpp>
 #include <tc/groups.hpp>
 
-#define NAMED(x) #x, x
-
 void bench(
-    std::string group_expr,
-    const tc::Group &group,
+    const std::string &group_expr,
+    const std::string &symbol,
     const std::vector<tc::Gen> &gens,
     const tc::Coset bound = tc::UNBOUNDED
 ) {
+    tc::Group group = tc::coxeter(symbol);
+    
     std::clock_t s = std::clock();
     tc::Cosets cosets = tc::solve(group, gens, bound);
     std::clock_t e = std::clock();
@@ -43,29 +43,27 @@ tc::Group sch(T ...arg) {
 int main(int argc, char *argv[]) {
     std::vector<std::string> args(argv + 1, argv + argc);
 
-    using namespace tc::group;
-
     fmt::print("{:>24},{:>10},{:>6},{:>9},{:>10}\n", "NAME", "ORDER", "COMPL", "TIME", "COS/S");
 
-    bench(NAMED(H(2)), {});
-    bench(NAMED(H(3)), {});
-    bench(NAMED(H(4)), {});
+    bench("H2", "5", {});
+    bench("H3", "5 3", {});
+    bench("H4", "5 3 3", {});
     
-    bench(NAMED(T(100)), {});
-    bench(NAMED(T(500)), {});
-    bench(NAMED(T(1000)), {});
+    bench("T100", "100 2 100", {});
+    bench("T500", "500 2 500", {});
+    bench("T1000", "1000 2 1000", {});
 
-    bench(NAMED(E(6)), {});
-    bench(NAMED(E(7)), {});
+    bench("E6", "3 * [2 2 1]", {});
+    bench("E7", "3 * [3 2 1]", {});
+//    bench("E8", "3 * [4 2 1]", {});  // too big
 
-    bench(NAMED(B(6)), {});
-    bench(NAMED(B(7)), {});
-    bench(NAMED(B(8)), {});
+    bench("B6", "4 3 * 4", {});
+    bench("B7", "4 3 * 5", {});
+    bench("B8", "4 3 * 6", {});
 
-    auto g = tc::group::A(4);
-    g.set(tc::Rel{0, 3, 3});
-    bench("~A(3)", g, {}, 4385964);
-    bench("~I(1)", sch(tc::FREE), {}, 4385964);
+    bench("~A3", "{3 * 4}", {}, 5000000);
+    bench("~A4", "{3 * 5}", {}, 5000000);
+    bench("~I1", "{- * 5}", {}, 5000000);
 
     return EXIT_SUCCESS;
 }

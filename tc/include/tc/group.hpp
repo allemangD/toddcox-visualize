@@ -1,9 +1,10 @@
 #pragma once
 
+#include <cassert>
 #include <sstream>
 
+#include <tc/util.hpp>
 #include <tc/pair_map.hpp>
-#include <cassert>
 
 namespace tc {
     struct Group;

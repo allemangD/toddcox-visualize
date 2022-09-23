@@ -1,7 +1,8 @@
 #pragma once
 
-#include "core.hpp"
+#include <vector>
 
+#include <tc/group.hpp>
 
 namespace tc {
     /**
@@ -10,55 +11,13 @@ namespace tc {
      */
     Group schlafli(const std::vector<int> &mults);
 
-    namespace group {
-        /**
-         * Simplex
-         */
-        Group A(int dim);
+    Group coxeter(const std::string &symbol);
 
-        /**
-         * Cube, Orthoplex
-         */
-        Group B(int dim);
+    Group vcoxeter(const std::string &symbol, std::vector<int> &values);
 
-        /**
-         * Demicube, Orthoplex
-         */
-        Group D(int dim);
-
-        /**
-         * E groups
-         */
-        Group E(int dim);
-
-        /**
-         * 24 Cell
-         */
-        Group F4();
-
-        /**
-         * Hexagon
-         */
-        Group G2();
-
-        /**
-         * Icosahedron
-         */
-        Group H(int dim);
-
-        /**
-         * Polygonal
-         */
-        Group I2(int n);
-
-        /**
-         * Toroidal. I2(n) * I2(m)
-         */
-        Group T(int n, int m);
-
-        /**
-         * Toroidal. T(n, n)
-         */
-        Group T(int n);
+    template<typename ...Args>
+    Group coxeter(const std::string &symbol, const Args &... args) {
+        std::vector<int> values = {{args...}};
+        return vcoxeter(symbol, values);
     }
 }

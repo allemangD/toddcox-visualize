@@ -1,6 +1,7 @@
-#include <cassert>
+#include <tc/groups.hpp>
 
-#include "tc/groups.hpp"
+#include <fmt/args.h>
+#include <fmt/core.h>
 
 namespace tc {
     Group schlafli(const std::vector<int> &mults) {
@@ -11,74 +12,13 @@ namespace tc {
         return res;
     }
 
-    namespace group {
-        Group A(const int dim) {
-            assert(dim >= 1);
-            
-            return schlafli(std::vector<int>(dim - 1, 3));
+    Group v_coxeter(const std::string &symbol, std::vector<int> &values) {
+        fmt::dynamic_format_arg_store<fmt::format_context> ds;
+
+        for (const auto &value: values) {
+            ds.push_back(value);
         }
 
-        Group B(const int dim) {
-            assert(dim >= 2);
-            
-            std::vector<int> mults(dim - 1, 3);
-            mults[0] = 4;
-
-            return schlafli(mults);
-        }
-
-        Group D(const int dim) {
-            assert(dim >= 4);
-            
-            std::vector<int> mults(dim - 1, 3);
-            mults[dim - 2] = 2;
-
-            Group g = schlafli(mults);
-            g.set(Rel{1, dim - 1, 3});
-
-            return g;
-        }
-
-        Group E(const int dim) {
-            assert(dim >= 6);
-            
-            std::vector<int> mults(dim - 1, 3);
-            mults[dim - 2] = 2;
-
-            Group g = schlafli(mults);
-            g.set(Rel{2, dim - 1, 3});
-
-            return g;
-        }
-
-        Group F4() {
-            return schlafli({3, 4, 3});
-        }
-
-        Group G2() {
-            return schlafli({6});
-        }
-
-        Group H(const int dim) {
-            assert(dim >= 2);
-            assert(dim <= 4);
-            
-            std::vector<int> mults(dim - 1, 3);
-            mults[0] = 5;
-
-            return schlafli(mults);
-        }
-
-        Group I2(const int n) {
-            return schlafli({n});
-        }
-
-        Group T(const int n, const int m) {
-            return schlafli({n, 2, m});
-        }
-
-        Group T(const int n) {
-            return T(n, n);
-        }
+        return coxeter(fmt::vformat(symbol, ds));
     }
 }

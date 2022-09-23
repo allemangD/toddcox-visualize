@@ -2,17 +2,9 @@
 
 #include <cstdlib>
 
-#include "cosets.hpp"
+#include "util.hpp"
 
 namespace tc {
-    using Coset = uint32_t;
-    using Gen = uint8_t;
-    using Mult = uint16_t;
-    constexpr Mult FREE = Mult(-1);
-    constexpr Coset UNSET = Coset(-1);
-
-    using Rel = std::tuple<Gen, Gen, Mult>;
-
     struct Cosets {
         Gen ngens;
         std::vector<int> data;
