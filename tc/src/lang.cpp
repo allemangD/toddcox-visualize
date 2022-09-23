@@ -3,6 +3,7 @@
 #include <string>
 #include <cassert>
 
+#include <tc/util.hpp>
 #include <tc/group.hpp>
 #include <tc/groups.hpp>
 
@@ -17,6 +18,7 @@ struct Op {
         PUSH,
         POP,
         LOOP,
+        FREE,
     };
 
     Code code: 4;
@@ -45,6 +47,8 @@ struct fmt::formatter<Op> {
                 return fmt::format_to(ctx.out(), "pop()");
             case Op::LOOP:
                 return fmt::format_to(ctx.out(), "loop()");
+            case Op::FREE:
+                return fmt::format_to(ctx.out(), "free()");
             default:
                 return fmt::format_to(ctx.out(), "[{}]({})",
                                       (unsigned int) op.code,
@@ -76,6 +80,10 @@ struct codegen {
     void loop() {
         ops.emplace_back(Op::LOOP);
     }
+    
+    void free() {
+        ops.emplace_back(Op::FREE);
+    }
 
     template<typename It>
     void insert(It begin, It end) {
@@ -92,7 +100,7 @@ static const std::string GRAMMAR = R"(
     term    <- product / op
     op      <- block / link
     block   <- '(' root ')' / '{' root '}' / '[' root ']'
-    link    <- int
+    link    <- int / '-'
     product <- op '*' factor
     factor  <- int / '{' int+ '}' / '[' int+ ']'
     int     <- < [0-9]+ >
@@ -115,8 +123,12 @@ peg::parser build_parser() {
     parser["link"] = [](const peg::SemanticValues &vs) -> std::any {
         codegen cg;
 
-        auto order = std::any_cast<unsigned int>(vs[0]);
-        cg.link(order);
+        if (vs.choice() == 0) {
+            auto order = std::any_cast<unsigned int>(vs[0]);
+            cg.link(order);
+        } else {
+            cg.free();
+        }
 
         return cg;
     };
@@ -211,7 +223,7 @@ std::vector<Op> compile(const std::string &source) {
 
 struct Graph {
     size_t rank{};
-    std::vector<std::tuple<size_t, size_t, unsigned int>> edges{};
+    std::vector<tc::Rel> edges{};
 };
 
 Graph eval(const std::vector<Op> &ops) {
@@ -222,8 +234,13 @@ Graph eval(const std::vector<Op> &ops) {
 
     for (const auto &op: ops) {
         switch (op.code) {
+            case Op::FREE: 
             case Op::LINK: {
-                auto order = op.value;
+                tc::Mult order = tc::FREE;
+                
+                if (op.code == Op::LINK) {
+                    order = op.value;
+                }
 
                 auto top = stacks.back().top();
                 auto curr = g.rank++;
