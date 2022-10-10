@@ -1,5 +1,10 @@
 #pragma once
 
+#include <glad/glad.h>
+#include <fmt/core.h>
+
+#include <string>
+
 #ifndef NDEBUG
 
 void GLAPIENTRY log_gl_debug_callback(
