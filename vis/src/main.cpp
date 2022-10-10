@@ -18,6 +18,7 @@
 #include <tc/core.hpp>
 
 #include <geo/mirror.hpp>
+#include <geo/solver.hpp>
 
 #include "render/pointrender.hpp"
 
@@ -118,7 +119,10 @@ void set_style() {
 int run(GLFWwindow *window, ImGuiContext *context) {
     State state;
 
+    PointCloud pc;
+    LineCloud lc;
     PointRenderer<Eigen::Vector4f> point_render;
+    LineRenderer<Eigen::Vector4f> line_render;
 
     {
         tc::Group group = tc::coxeter("3 4 3");
@@ -134,7 +138,10 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         
         auto points = cosets.path.walk<vec4, vec4>(start, mirrors, reflect<vec4>);
 
-        point_render.upload(points);
+        std::vector<Prims<2>> edges = hull<2>(group, std::vector<std::vector<tc::Gen>>{{0}, {1}, {2}, {3}}, {});
+        
+        pc.upload(points);
+        lc.upload(points, edges);
     }
 
     glEnable(GL_DEPTH_TEST);
@@ -158,8 +165,9 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         auto aspect = (float) display_h / (float) display_w;
         state.proj = Eigen::AlignedScaling3f(aspect, 1.0, -0.6);
 
-        point_render.draw(state);
-
+        point_render.draw(pc, state);
+        line_render.draw(lc, state);
+        
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
     }

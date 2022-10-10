@@ -67,14 +67,14 @@ namespace tc {
             return _orders(i, j);
         }
 
-        [[nodiscard]] SubGroup subgroup(const std::vector<int> &gens) const;
+        [[nodiscard]] SubGroup subgroup(const std::vector<tc::Gen> &gens) const;
     };
 
     struct SubGroup : public Group {
-        std::vector<int> gen_map;
+        std::vector<tc::Gen> gen_map;
         const Group &parent;
 
-        SubGroup(const Group &parent, std::vector<int> gen_map)
+        SubGroup(const Group &parent, std::vector<tc::Gen> gen_map)
             : Group(gen_map.size()), parent(parent), gen_map() {
 
             std::sort(gen_map.begin(), gen_map.end());

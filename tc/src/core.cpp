@@ -6,7 +6,7 @@
 #include <vector>
 
 namespace tc {
-    SubGroup Group::subgroup(const std::vector<int> &gens) const {
+    SubGroup Group::subgroup(const std::vector<tc::Gen> &gens) const {
         return {*this, gens};
     }
 

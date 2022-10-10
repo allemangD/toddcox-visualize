@@ -11,12 +11,12 @@
 #include "combo.hpp"
 
 /**
- * Produce a list of all generators for the group context. The range [0..group.ngens).
+ * Produce a list of all generators for the group context. The range [0..group.rank).
  */
-std::vector<int> generators(const tc::Group &context) {
+std::vector<tc::Gen> generators(const tc::Group &context) {
     // todo if tc::Group has 'global' generators, then this will be a member of tc::Group.
     //  std::iota would populate a 'default' list of names, if names are not provided.
-    std::vector<int> g_gens(context.ngens);
+    std::vector<tc::Gen> g_gens(context.rank);
     std::iota(g_gens.begin(), g_gens.end(), 0);
     return g_gens;
 }
@@ -24,20 +24,20 @@ std::vector<int> generators(const tc::Group &context) {
 /**
  * Determine which of g_gens are the correct names for sg_gens within the current context
  */
-std::vector<int> recontext_gens(
+std::vector<tc::Gen> recontext_gens(
     const tc::Group &context,
-    std::vector<int> g_gens,
-    std::vector<int> sg_gens) {
+    std::vector<tc::Gen> g_gens,
+    std::vector<tc::Gen> sg_gens) {
     // todo ideally tc::Group will deal in 'global' generators so this stell will be unecessary.
 
     std::sort(g_gens.begin(), g_gens.end());
 
-    int inv_gen_map[context.ngens];
+    tc::Gen inv_gen_map[context.rank];
     for (size_t i = 0; i < g_gens.size(); i++) {
         inv_gen_map[g_gens[i]] = i;
     }
 
-    std::vector<int> s_sg_gens;
+    std::vector<tc::Gen> s_sg_gens;
     s_sg_gens.reserve(sg_gens.size());
     for (const auto gen: sg_gens) {
         s_sg_gens.push_back(inv_gen_map[gen]);
@@ -52,21 +52,22 @@ std::vector<int> recontext_gens(
  */
 tc::Cosets solve(
     const tc::Group &context,
-    const std::vector<int> &g_gens,
-    const std::vector<int> &sg_gens
+    const std::vector<tc::Gen> &g_gens,
+    const std::vector<tc::Gen> &sg_gens
 ) {
     // todo this should also be handled with 'global' generators.
     const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
-    return context.subgroup(g_gens).solve(proper_sg_gens);
+    
+    return tc::solve(context.subgroup(g_gens), proper_sg_gens);
 }
 
 /**
  * Apply some context transformation to all primitives of this mesh.
  */
 template<unsigned N>
-void apply(const tc::Cosets &table, int gen, Prims<N> &mat) {
+void apply(const tc::Cosets &table, tc::Gen gen, Prims<N> &mat) {
     auto data = mat.data();
-    for (int i = 0; i < mat.size(); ++i) {
+    for (tc::Gen i = 0; i < mat.size(); ++i) {
         data[i] = table.get(data[i], gen);
     }
 }
@@ -79,15 +80,15 @@ template<unsigned N>
 Prims<N> recontext(
     Prims<N> prims,
     const tc::Group &context,
-    const std::vector<int> &g_gens,
-    const std::vector<int> &sg_gens
+    const std::vector<tc::Gen> &g_gens,
+    const std::vector<tc::Gen> &sg_gens
 ) {
     // todo this will be simpler with 'global' gens, but it's still not free...
     const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
     const auto table = solve(context, g_gens, {});
     const auto path = solve(context, sg_gens, {}).path;
 
-    auto map = path.template walk<int, int>(0, proper_sg_gens, [table](int coset, int gen) {
+    auto map = path.template walk<tc::Coset, tc::Gen>(0, proper_sg_gens, [table](tc::Coset coset, tc::Gen gen) {
         return table.get(coset, gen);
     });
 
@@ -127,8 +128,8 @@ template<unsigned N>
 std::vector<Prims<N>> tile(
     Prims<N> prims,
     const tc::Group &context,
-    const std::vector<int> &g_gens,
-    const std::vector<int> &sg_gens
+    const std::vector<tc::Gen> &g_gens,
+    const std::vector<tc::Gen> &sg_gens
 ) {
     // todo convert to nullaryexpr.
     //  some stuff will be easier with global generators, but not all.
@@ -138,11 +139,11 @@ std::vector<Prims<N>> tile(
     const auto table = solve(context, g_gens, {});
     const auto path = solve(context, g_gens, sg_gens).path;
 
-    std::vector<int> _gens = generators(context);
+    std::vector<tc::Gen> _gens = generators(context);
 
-    std::vector<Prims<N>> res = path.walk<Prims<N>, int>(
+    std::vector<Prims<N>> res = path.walk<Prims<N>, tc::Gen>(
         base, _gens,
-        [&](Prims<N> from, int gen) {
+        [&](Prims<N> from, tc::Gen gen) {
             apply<N>(table, gen, from);
             return from;
         }
@@ -172,7 +173,7 @@ Prims<N + 1> fan(Prims<N> prims, int root) {
 template<unsigned N>
 Prims<N> triangulate(
     const tc::Group &context,
-    const std::vector<int> &g_gens
+    const std::vector<tc::Gen> &g_gens
 ) {
     // todo (?) might be possible with nullaryexpr
     //  not so sure, though.
@@ -201,7 +202,7 @@ Prims<N> triangulate(
 template<>
 Prims<1> triangulate<1>(
     const tc::Group &context,
-    const std::vector<int> &g_gens
+    const std::vector<tc::Gen> &g_gens
 ) {
     if (not g_gens.empty()) // todo make static assert
         throw std::logic_error("g_gens must be empty for a trivial Mesh");
@@ -210,10 +211,10 @@ Prims<1> triangulate<1>(
 }
 
 template<unsigned N, class T>
-auto hull(const tc::Group &group, T all_sg_gens, const std::vector<std::vector<int>> &exclude) {
+auto hull(const tc::Group &group, T all_sg_gens, const std::vector<std::vector<tc::Gen>> &exclude) {
     std::vector<Prims<N>> parts;
     auto g_gens = generators(group);
-    for (const std::vector<int> &sg_gens: all_sg_gens) {
+    for (const std::vector<tc::Gen> &sg_gens: all_sg_gens) {
         bool excluded = false;
         for (const auto &test: exclude) {
             if (sg_gens == test) {
