@@ -19,20 +19,7 @@
 
 #include <geo/mirror.hpp>
 
-struct State {
-    Eigen::Vector4f bg{0.169f, 0.169f, 0.169f, 1.00f};
-    Eigen::Vector4f fg{0.71f, 0.53f, 0.94f, 1.00f};
-    Eigen::Vector4f wf{0.95f, 0.95f, 0.95f, 1.00f};
-
-    Eigen::Vector4f R{1.00f, 0.00f, 0.00f, 1.00f};
-    Eigen::Vector4f G{0.00f, 1.00f, 0.00f, 1.00f};
-    Eigen::Vector4f B{0.00f, 0.00f, 1.00f, 1.00f};
-    Eigen::Vector4f Y{1.20f, 1.20f, 0.00f, 1.00f};
-
-    Eigen::Matrix4f rot = Eigen::Matrix4f::Identity();
-
-    bool color_axes = false;
-};
+#include "render/pointrender.hpp"
 
 Eigen::Matrix4f rotor(int u, int v, float rad) {
     Eigen::Matrix4f res = Eigen::Matrix4f::Identity();
@@ -89,9 +76,9 @@ void show_overlay(State &state) {
 
     ImGui::ColorEdit3("Background", state.bg.data(), ImGuiColorEditFlags_Float);
     ImGui::ColorEdit3("Foreground", state.fg.data(), ImGuiColorEditFlags_Float);
-    ImGui::ColorEdit3("Wireframe", state.wf.data(), ImGuiColorEditFlags_Float);
+//    ImGui::ColorEdit3("Wireframe", state.wf.data(), ImGuiColorEditFlags_Float);
 
-    ImGui::Checkbox("Show RGBY axis colors", &state.color_axes);
+//    ImGui::Checkbox("Show RGBY axis colors", &state.color_axes);
 
     if (io.MouseDown[0] && !io.WantCaptureMouse) {
         Eigen::Matrix4f rot = Eigen::Matrix4f::Identity();
@@ -112,7 +99,7 @@ void show_overlay(State &state) {
             rot = rx * ry;
         }
 
-        state.rot = rot * state.rot;
+        state.view = rot * state.view;
     }
 
     ImGui::End();
@@ -131,36 +118,27 @@ void set_style() {
 int run(GLFWwindow *window, ImGuiContext *context) {
     State state;
 
-//    Buffer<GLuint> ind_buf;
-    Buffer<Eigen::Vector4f> vert_buf;
+    PointRenderer<Eigen::Vector4f> point_render;
 
-    VertexArray<Eigen::Vector4f> vao(vert_buf);
-//    glVertexArrayElementBuffer(vao, ind_buf);
+    {
+        tc::Group group = tc::coxeter("3 4 3");
+        Eigen::Vector4f coords{1, 1, 1, 1};
 
-    tc::Group group = tc::coxeter("3 4 3");
+        auto cosets = tc::solve(group, {}, 1000000);
+        
+        auto mirrors = mirror<4>(group);
 
-    auto cosets = solve(group, {}, 1000000);
-    vec4 coords {1, 1, 1, 1};
+        auto corners = plane_intersections(mirrors);
+        auto start = barycentric(corners, coords);
+        start.normalize();
+        
+        auto points = cosets.path.walk<vec4, vec4>(start, mirrors, reflect<vec4>);
 
-    auto mirrors = mirror<4>(group);
-
-    auto corners = plane_intersections(mirrors);
-    auto start = barycentric(corners, coords);
-    start.normalize();
-
-    auto points = cosets.path.walk<vec4, vec4>(start, mirrors, reflect<vec4>);
-
-    vert_buf.upload(points);
-
-    VertexShader vs(std::ifstream("res/shaders/main.vert.glsl"));
-    FragmentShader fs(std::ifstream("res/shaders/main.frag.glsl"));
-
-    Program pgm(vs, fs);
+        point_render.upload(points);
+    }
 
     glEnable(GL_DEPTH_TEST);
     glPointSize(2);
-
-    Eigen::Projective3f proj;
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -178,17 +156,9 @@ int run(GLFWwindow *window, ImGuiContext *context) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         auto aspect = (float) display_h / (float) display_w;
-        proj = Eigen::AlignedScaling3f(aspect, 1.0, -0.6);
+        state.proj = Eigen::AlignedScaling3f(aspect, 1.0, -0.6);
 
-        glUseProgram(pgm);
-        glBindVertexArray(vao);
-        glUniform4fv(0, 1, state.fg.data());
-        glUniform1f(1, (GLfloat) glfwGetTime());
-        glUniformMatrix4fv(2, 1, false, proj.data());
-        glUniformMatrix4fv(3, 1, false, state.rot.data());
-        glDrawArrays(GL_POINTS, 0, points.size());
-        glBindVertexArray(0);
-        glUseProgram(0);
+        point_render.draw(state);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
