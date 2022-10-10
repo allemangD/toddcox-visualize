@@ -40,27 +40,31 @@ namespace tc {
         }
     };
 
-    Cosets solve(const Group &group, const std::vector<Gen> &sub_gens, const Coset &bound) {
-        auto ngens = group.ngens;
+    Cosets solve(
+        const Group &group,
+        const std::vector<Gen> &sub_gens,
+        const Coset &bound
+    ) {
+        auto rank = group.rank;
 
         // region Initialize Cosets Table
-        Cosets cosets(ngens);
+        Cosets cosets(rank);
         cosets.add_row();
 
-        if (ngens == 0) {
+        if (rank == 0) {
             cosets.complete = true;
             return cosets;
         }
 
         for (Coset g: sub_gens) {
-            if (g < ngens)
+            if (g < rank)
                 cosets.put(0, g, 0);
         }
         // endregion
 
         // region Initialize Relation Tables
         std::vector<std::tuple<Gen, Gen, Mult>> rels;
-        for (const auto &[i, j, m]: group._mults) {
+        for (const auto &[i, j, m]: group._orders) {
             // The algorithm only works for Coxeter groups; multiplicities m_ii=1 are assumed. Relation tables
             // _may_ be added for them, but they are redundant and hurt performance so are skipped.
             if (i == j) continue;
@@ -75,7 +79,7 @@ namespace tc {
         }
 
         Tables rel_tables(rels);
-        std::vector<std::vector<size_t>> tables_for(ngens);
+        std::vector<std::vector<size_t>> tables_for(rank);
         int rel_idx = 0;
         for (const auto &[i, j, m]: rels) {
             tables_for[i].push_back(rel_idx);
@@ -146,8 +150,8 @@ namespace tc {
 
                 cosets.put(fact_idx, target);
 
-                coset = fact_idx / ngens;
-                gen = fact_idx % ngens;
+                coset = fact_idx / rank;
+                gen = fact_idx % rank;
 
                 // If the product stays within the coset todo
                 for (size_t table_idx: tables_for[gen]) {
@@ -170,7 +174,7 @@ namespace tc {
                             if (trow.gnr == m) {
                                 // loop is closed, but idempotent, so the target links to itself via the other generator.
                                 // todo might be able to move this logic up into the (target == coset) block and avoid those computations.
-                                facts.push(target * ngens + other_gen);
+                                facts.push(target * rank + other_gen);
                             }
                         } else {
                             if (trow.gnr == m - 1) {
@@ -180,7 +184,7 @@ namespace tc {
                                 // loop is closed. We know the last element in the loop must link with this one. 
                                 lst = lst_vals[trow.lst_idx];
 //                            delete trow.lst_ptr;
-                                facts.push(lst * ngens + other_gen);
+                                facts.push(lst * rank + other_gen);
                             }
                         }
                     }

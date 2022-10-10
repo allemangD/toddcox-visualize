@@ -80,7 +80,7 @@ struct codegen {
     void loop() {
         ops.emplace_back(Op::LOOP);
     }
-    
+
     void free() {
         ops.emplace_back(Op::FREE);
     }
@@ -221,23 +221,18 @@ std::vector<Op> compile(const std::string &source) {
     return cg.ops;
 }
 
-struct Graph {
-    size_t rank{};
-    std::vector<tc::Rel> edges{};
-};
-
-Graph eval(const std::vector<Op> &ops) {
+tc::Graph eval(const std::vector<Op> &ops) {
     std::vector<std::stack<size_t>> stacks(1);
 
-    Graph g;
+    tc::Graph g;
     stacks.back().emplace(g.rank++);
 
     for (const auto &op: ops) {
         switch (op.code) {
-            case Op::FREE: 
+            case Op::FREE:
             case Op::LINK: {
                 tc::Mult order = tc::FREE;
-                
+
                 if (op.code == Op::LINK) {
                     order = op.value;
                 }
@@ -287,20 +282,7 @@ Graph eval(const std::vector<Op> &ops) {
 namespace tc {
     Group coxeter(const std::string &symbol) {
         auto ops = compile(symbol);
-
-//        fmt::print("#ops: {}\n", ops.size());
-//        for (const auto &op: ops) {
-//            fmt::print(" {}\n", op);
-//        }
-        
         auto diagram = eval(ops);
-
-        Group res((int) diagram.rank);
-
-        for (const auto &[i, j, order]: diagram.edges) {
-            res.set({i, j, order});
-        }
-
-        return res;
+        return Group(diagram);
     }
 }

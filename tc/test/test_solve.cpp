@@ -46,11 +46,49 @@ testing::AssertionResult AssertSolveOrder(
     return res;
 }
 
-using namespace tc::group;
-
 #define EXPECT_SOLVE_ORDER(group, sub_gens, expected_order) EXPECT_PRED_FORMAT3(AssertSolveOrder, group, sub_gens, expected_order);
 
 using v = std::vector<tc::Gen>;
+
+tc::Group A(unsigned int n) {
+    return tc::vcoxeter("3 * {}", {n - 1});
+}
+
+tc::Group B(unsigned int n) {
+    return tc::vcoxeter("4 3 * {}", {n - 2});
+}
+
+tc::Group D(unsigned int n) {
+    return tc::vcoxeter("3 * [1 1 {}]", {n - 3});
+}
+
+tc::Group E(unsigned int n) {
+    return tc::vcoxeter("3 * [1 2 {}]", {n - 4});
+}
+
+tc::Group F4() {
+    return tc::coxeter("3 4 3");
+}
+
+tc::Group G2() {
+    return tc::coxeter("6");
+}
+
+tc::Group H(unsigned int n) {
+    return tc::vcoxeter("5 3 * {}", {n - 2});
+}
+
+tc::Group I2(unsigned int n) {
+    return tc::vcoxeter("{}", {n});
+}
+
+tc::Group T(unsigned int m, unsigned int n) {
+    return tc::vcoxeter("{} 2 {}", {m, n});
+}
+
+tc::Group T(unsigned int n) {
+    return T(n, n);
+}
 
 // See the group orders here https://en.wikipedia.org/wiki/Coxeter_group#Properties
 
@@ -95,27 +133,27 @@ TEST(solve, D) {
     EXPECT_SOLVE_ORDER(D(4), v({0, 1, 3}), 8);
     EXPECT_SOLVE_ORDER(D(5), v({}), 1920);
     EXPECT_SOLVE_ORDER(D(5), v({0, 1}), 320);
-    EXPECT_SOLVE_ORDER(D(5), v({0, 1, 3}), 160);
-    EXPECT_SOLVE_ORDER(D(5), v({0, 1, 3, 4}), 40);
+    EXPECT_SOLVE_ORDER(D(5), v({0, 1, 3}), 80);
+    EXPECT_SOLVE_ORDER(D(5), v({0, 1, 3, 4}), 16);
     EXPECT_SOLVE_ORDER(D(6), v({}), 23040);
     EXPECT_SOLVE_ORDER(D(6), v({0, 1}), 3840);
-    EXPECT_SOLVE_ORDER(D(6), v({0, 1, 3}), 1920);
+    EXPECT_SOLVE_ORDER(D(6), v({0, 1, 3}), 960);
     EXPECT_SOLVE_ORDER(D(6), v({0, 1, 3, 5}), 480);
 }
 
 TEST(solve, E) {
     EXPECT_SOLVE_ORDER(E(4), v({}), 120);
     EXPECT_SOLVE_ORDER(E(4), v({2}), 60);
-    EXPECT_SOLVE_ORDER(E(4), v({2, 1}), 20);
-    EXPECT_SOLVE_ORDER(E(4), v({2, 1, 3}), 5);
+    EXPECT_SOLVE_ORDER(E(4), v({2, 1}), 30);
+    EXPECT_SOLVE_ORDER(E(4), v({2, 1, 3}), 10);
     EXPECT_SOLVE_ORDER(E(5), v({}), 1920);
     EXPECT_SOLVE_ORDER(E(5), v({2}), 960);
-    EXPECT_SOLVE_ORDER(E(5), v({2, 1}), 320);
-    EXPECT_SOLVE_ORDER(E(5), v({2, 1, 3}), 80);
+    EXPECT_SOLVE_ORDER(E(5), v({2, 1}), 480);
+    EXPECT_SOLVE_ORDER(E(5), v({2, 1, 3}), 160);
     EXPECT_SOLVE_ORDER(E(6), v({}), 51840);
     EXPECT_SOLVE_ORDER(E(6), v({2}), 25920);
-    EXPECT_SOLVE_ORDER(E(6), v({2, 1}), 8640);
-    EXPECT_SOLVE_ORDER(E(6), v({2, 1, 3}), 2160);
+    EXPECT_SOLVE_ORDER(E(6), v({2, 1}), 12960);
+    EXPECT_SOLVE_ORDER(E(6), v({2, 1, 3}), 4320);
 }
 
 TEST(solve, F) {

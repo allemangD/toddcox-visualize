@@ -13,7 +13,7 @@ namespace tc {
 
     Group coxeter(const std::string &symbol);
 
-    Group vcoxeter(const std::string &symbol, std::vector<unsigned int> &values);
+    Group vcoxeter(const std::string &symbol, const std::vector<unsigned int> &values);
 
     template<typename ...Args>
     Group coxeter(const std::string &symbol, const Args &... args) {

@@ -8,8 +8,6 @@
 #include <tc/core.hpp>
 #include <tc/groups.hpp>
 
-#define NAMED(x) #x, x
-
 void bench(
     const std::string &group_expr,
     const std::string &symbol,

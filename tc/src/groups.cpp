@@ -12,7 +12,7 @@ namespace tc {
         return res;
     }
 
-    Group vcoxeter(const std::string &symbol, std::vector<unsigned int> &values) {
+    Group vcoxeter(const std::string &symbol, const std::vector<unsigned int> &values) {
         fmt::dynamic_format_arg_store<fmt::format_context> ds;
 
         for (const auto &value: values) {

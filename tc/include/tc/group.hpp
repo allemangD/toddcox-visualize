@@ -10,6 +10,11 @@ namespace tc {
     struct Group;
     struct SubGroup;
 
+    struct Graph {
+        size_t rank{};
+        std::vector<tc::Rel> edges{};
+    };
+
     /** 
      * @brief Manage the presentation of a Coxeter group and enforce constraints
      * on the multiplicities of its relations.
@@ -28,31 +33,38 @@ namespace tc {
      * <a href="https://en.wikipedia.org/wiki/Coxeter_group#Definition">Coxeter Group (Wikipedia)</a>
      */
     struct Group {
-        int ngens;
-        tc::pair_map<int> _mults;
+        int rank;
+        tc::pair_map<int> _orders;
 
         Group(const Group &) = default;
 
-        explicit Group(int ngens, const std::vector<Rel> &rels = {})
-            : ngens(ngens), _mults(ngens, 2) {
+        explicit Group(int rank, const std::vector<Rel> &rels = {})
+            : rank(rank), _orders(rank, 2) {
 
-            for (int i = 0; i < ngens; ++i) {
+            for (int i = 0; i < rank; ++i) {
                 set(Rel{i, i, 1});
             }
-            
+
             for (const auto &rel: rels) {
                 set(rel);
+            }
+        }
+
+        explicit Group(const Graph &graph)
+            : rank(graph.rank), _orders(graph.rank, 2) {
+            for (const auto &[i, j, order]: graph.edges) {
+                set({i, j, order});
             }
         }
 
         void set(const Rel &r) {
             auto &[i, j, m] = r;
             assert(i != j || m == 1);
-            _mults(i, j) = m;
+            _orders(i, j) = m;
         }
 
         [[nodiscard]] int get(int i, int j) const {
-            return _mults(i, j);
+            return _orders(i, j);
         }
 
         [[nodiscard]] SubGroup subgroup(const std::vector<int> &gens) const;

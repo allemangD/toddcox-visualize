@@ -20,7 +20,7 @@
 TEST(coxeter, simple) {
     auto g = tc::coxeter("5 3 3");
 
-    ASSERT_EQ(g.ngens, 4);
+    ASSERT_EQ(g.rank, 4);
 
     EXPECT_EQ(g.get(0, 1), 5);
     EXPECT_EQ(g.get(1, 2), 3);
@@ -37,7 +37,7 @@ TEST(coxeter, simple) {
 TEST(coxeter, looping) {
     auto g = tc::coxeter("{5 3 4}");
 
-    ASSERT_EQ(g.ngens, 3);
+    ASSERT_EQ(g.rank, 3);
 
     EXPECT_EQ(g.get(0, 1), 5);
     EXPECT_EQ(g.get(1, 2), 3);
