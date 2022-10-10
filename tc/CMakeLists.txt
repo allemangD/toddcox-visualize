@@ -9,7 +9,7 @@ add_library(tc
     src/groups.cpp
     src/lang.cpp
     )
-target_link_libraries(tc PUBLIC peglib::peglib fmt::fmt)
+target_link_libraries(tc peglib::peglib fmt::fmt)
 target_include_directories(tc PUBLIC include)
 
 add_library(tc::tc ALIAS tc)
