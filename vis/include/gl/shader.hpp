@@ -23,6 +23,17 @@ public:
         // todo throw if compile failed
     }
 
+    explicit Shader(const std::string_view &src) {
+        id = glCreateShader(mode);
+
+        const char *str = src.data();
+        const GLint length = (GLint) src.length();
+        glShaderSource(id, 1, &str, &length);
+        glCompileShader(id);
+
+        // todo throw if compile failed
+    }
+
     explicit Shader(std::ifstream source)
         : Shader(std::string(
         std::istreambuf_iterator<char>(source),

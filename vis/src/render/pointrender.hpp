@@ -7,6 +7,8 @@
 
 #include <fstream>
 
+#include <shaders.hpp>
+
 struct State {
     Eigen::Vector4f bg{0.16, 0.16, 0.16, 1.00};
     Eigen::Vector4f fg{0.71, 0.53, 0.94, 1.00};
@@ -39,8 +41,8 @@ template<typename V_=Eigen::Vector4f>
 struct PointRenderer {
     using Vertex = V_;
 
-    VertexShader vs{std::ifstream("res/shaders/main.vert.glsl")};
-    FragmentShader fs{std::ifstream("res/shaders/main.frag.glsl")};
+    VertexShader vs{shaders::main_vert_glsl};
+    FragmentShader fs{shaders::main_frag_glsl};
 
     Program pgm{vs, fs};
 
