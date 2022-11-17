@@ -4,19 +4,18 @@ find_program(EMBED_OBJCOPY ${CMAKE_OBJCOPY})
 function(_generate_embed_source EMBED_NAME)
   set(options)
   set(oneValueArgs SOURCE HEADER)
-  set(multiValueArgs FILES SYMBOLS)
+  set(multiValueArgs FILES)
   cmake_parse_arguments(PARSE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   set(VIEW_DECLARATIONS)
   set(VOID_DECLARATIONS)
   set(DEFINITIONS)
 
-  foreach (FILE SYMBOL IN ZIP_LISTS PARSE_FILES PARSE_SYMBOLS)
+  foreach (FILE IN LISTS PARSE_FILES)
     get_filename_component(FILE_NAME "${FILE}" NAME)
+    
+    string(MAKE_C_IDENTIFIER "_binary_${FILE}" SYMBOL)
     string(MAKE_C_IDENTIFIER "${FILE_NAME}" IDENTIFIER)
-
-    set(START_SYMBOL "_binary_${SYMBOL}_start")
-    set(END_SYMBOL "_binary_${SYMBOL}_end")
 
     string(APPEND VIEW_DECLARATIONS
       "  /// ${FILE} Text Contents\n"
@@ -28,9 +27,9 @@ function(_generate_embed_source EMBED_NAME)
 
     string(APPEND DEFINITIONS
       "// ${IDENTIFIER} (${FILE})\n"
-      "extern \"C\" const char ${START_SYMBOL}[], ${END_SYMBOL}[];\n"
-      "std::string_view const ${EMBED_NAME}::${IDENTIFIER}(${START_SYMBOL}, ${END_SYMBOL});\n"
-      "void* const ${EMBED_NAME}::bin::${IDENTIFIER} = (void *) ${START_SYMBOL};\n\n")
+      "extern \"C\" const char ${SYMBOL}_start[], ${SYMBOL}_end[];\n"
+      "std::string_view const ${EMBED_NAME}::${IDENTIFIER}(${SYMBOL}_start, ${SYMBOL}_end);\n"
+      "void* const ${EMBED_NAME}::bin::${IDENTIFIER} = (void *) ${SYMBOL}_start;\n\n")
   endforeach ()
 
   file(WRITE "${PARSE_HEADER}"
@@ -44,12 +43,10 @@ function(_generate_embed_source EMBED_NAME)
     "${DEFINITIONS}")
 endfunction()
 
-function(_embed_file OUTPUT_OBJECT OUTPUT_SYMBOL FILE)
+function(_embed_file OUTPUT_OBJECT FILE)
   set(OBJECT "${CMAKE_CURRENT_BINARY_DIR}/${FILE}.o")
-  string(MAKE_C_IDENTIFIER "${FILE}" SYMBOL)
 
   set(${OUTPUT_OBJECT} ${OBJECT} PARENT_SCOPE)
-  set(${OUTPUT_SYMBOL} ${SYMBOL} PARENT_SCOPE)
 
   add_custom_command(
     COMMENT "Embedding ${FILE} in ${OBJECT}"
@@ -70,11 +67,9 @@ function(add_embed_library EMBED_NAME)
   set(EMBED_HEADER "${EMBED_INCLUDE}/${EMBED_NAME}.hpp")
 
   set(OBJECTS)
-  set(SYMBOLS)
   foreach (FILE ${ARGN})
-    _embed_file(OBJECT SYMBOL ${FILE})
+    _embed_file(OBJECT ${FILE})
     list(APPEND OBJECTS ${OBJECT})
-    list(APPEND SYMBOLS ${SYMBOL})
   endforeach ()
 
   message(STATUS "Generating embedding library ${EMBED_NAME}")
@@ -82,8 +77,7 @@ function(add_embed_library EMBED_NAME)
     ${EMBED_NAME}
     SOURCE ${EMBED_SOURCE}
     HEADER ${EMBED_HEADER}
-    FILES ${FILES}
-    SYMBOLS ${SYMBOLS})
+    FILES ${FILES})
 
   add_library(${EMBED_NAME} STATIC ${OBJECTS} "${EMBED_SOURCE}")
   target_include_directories(${EMBED_NAME} PUBLIC "${EMBED_INCLUDE}")
