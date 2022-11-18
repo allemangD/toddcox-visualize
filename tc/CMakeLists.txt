@@ -1,13 +1,13 @@
 add_library(tc
     include/tc/core.hpp
-    include/tc/cosets.hpp
-    include/tc/group.hpp
     include/tc/groups.hpp
-    include/tc/pair_map.hpp
     include/tc/util.hpp
-    src/core.cpp
+
+    src/cosets.cpp
+    src/group.cpp
     src/groups.cpp
     src/lang.cpp
+    src/solve.cpp
     )
 target_link_libraries(tc peglib::peglib fmt::fmt)
 target_include_directories(tc PUBLIC include)

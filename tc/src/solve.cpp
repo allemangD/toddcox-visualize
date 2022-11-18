@@ -1,15 +1,11 @@
-#include <tc/core.hpp>
-
 #include <algorithm>
 #include <queue>
 #include <utility>
 #include <vector>
 
-namespace tc {
-    SubGroup Group::subgroup(const std::vector<tc::Gen> &gens) const {
-        return {*this, gens};
-    }
+#include <tc/core.hpp>
 
+namespace tc {
     /**
      * Each coset is associated a row in each table.
      * Rows document the "loops" formed by 
@@ -24,10 +20,10 @@ namespace tc {
     };
 
     struct Tables {
-        std::vector<Rel> rels;
+        std::vector<Group<>::Rel> rels;
         std::vector<std::vector<Row>> rows;
 
-        explicit Tables(std::vector<Rel> rels)
+        explicit Tables(std::vector<Group<>::Rel> rels)
             : rels(std::move(rels)), rows() {
         }
 
@@ -40,46 +36,44 @@ namespace tc {
         }
     };
 
-    Cosets solve(
-        const Group &group,
-        const std::vector<Gen> &sub_gens,
-        const Coset &bound
-    ) {
-        auto rank = group.rank;
-
+    [[nodiscard]] Cosets<> Group<>::solve(std::vector<size_t> const &idxs, size_t bound) const {
         // region Initialize Cosets Table
-        Cosets cosets(rank);
+        Cosets<> cosets(rank());
         cosets.add_row();
 
-        if (rank == 0) {
-            cosets.complete = true;
+        if (rank() == 0) {
+            cosets._complete = true;
             return cosets;
         }
 
-        for (Coset g: sub_gens) {
-            if (g < rank)
-                cosets.put(0, g, 0);
+        for (size_t g: idxs) {
+            if (g < rank())
+                cosets.set(0, g, 0);
         }
         // endregion
 
         // region Initialize Relation Tables
-        std::vector<std::tuple<Gen, Gen, Mult>> rels;
-        for (const auto &[i, j, m]: group._orders) {
-            // The algorithm only works for Coxeter groups; multiplicities m_ii=1 are assumed. Relation tables
-            // _may_ be added for them, but they are redundant and hurt performance so are skipped.
-            if (i == j) continue;
+        std::vector<Group<>::Rel> rels;
+        for (int i = 0; i < rank(); ++i) {
+            for (int j = i + 1; j < rank(); ++j) {
+                // The algorithm only works for Coxeter groups; multiplicities m_ii=1 are assumed. Relation tables
+                // _may_ be added for them, but they are redundant and hurt performance so are skipped.
+                if (i == j) continue;
 
-            // Coxeter groups admit infinite multiplicities, represented by contexpr tc::FREE. Relation tables
-            // for these should be skipped.
-            if (m == FREE) {
-                continue;
+                // Coxeter groups admit infinite multiplicities, represented by contexpr tc::FREE. Relation tables
+                // for these should be skipped.
+                auto m = get(i, j);
+
+                if (m == FREE) {
+                    continue;
+                }
+
+                rels.emplace_back(i, j, m);
             }
-
-            rels.emplace_back(i, j, m);
         }
 
         Tables rel_tables(rels);
-        std::vector<std::vector<size_t>> tables_for(rank);
+        std::vector<std::vector<size_t>> tables_for(rank());
         int rel_idx = 0;
         for (const auto &[i, j, m]: rels) {
             tables_for[i].push_back(rel_idx);
@@ -87,7 +81,7 @@ namespace tc {
             rel_idx++;
         }
 
-        std::vector<Coset> lst_vals;
+        std::vector<size_t> lst_vals;
         rel_tables.add_row();
         for (int table_idx = 0; table_idx < rel_tables.size(); ++table_idx) {
             const auto &[i, j, m] = rel_tables.rels[table_idx];
@@ -108,26 +102,26 @@ namespace tc {
 
         size_t idx = 0;
         size_t fact_idx;
-        Coset coset, gen, target, lst;
+        size_t coset, gen, target, lst;
 
         while (true) {
             // find next unknown product
-            while (idx < cosets.data.size() and cosets.isset(idx))
+            while (idx < cosets.size() and cosets.isset(idx))
                 idx++;
 
-            if (cosets.size() >= bound) {
+            if (cosets.order() >= bound) {
                 return cosets;
             }
 
             // if there are none, then return
-            if (idx == cosets.data.size()) {
+            if (idx == cosets.size()) {
                 // todo unrolled linked list interval
 //                rel_tables.del_rows_to(idx / ngens);  
                 break;
             }
 
             // the unknown product must be a new coset, so add it
-            target = cosets.size();
+            target = cosets.order();
             cosets.add_row();
             rel_tables.add_row();
 
@@ -136,8 +130,6 @@ namespace tc {
             facts.push(idx);  // new product should be recorded and propagated
 
             // todo unrolled linked list interval
-//            coset = idx / ngens;
-//            gen = idx % ngens;
 //            rel_tables.del_rows_to(coset);
 
             // find all products which also lead to target
@@ -148,10 +140,10 @@ namespace tc {
                 // skip if this product was already learned
                 if (cosets.get(fact_idx) != -1) continue;
 
-                cosets.put(fact_idx, target);
+                cosets.set(fact_idx, target);
 
-                coset = fact_idx / rank;
-                gen = fact_idx % rank;
+                coset = fact_idx / rank();
+                gen = fact_idx % rank();
 
                 // If the product stays within the coset todo
                 for (size_t table_idx: tables_for[gen]) {
@@ -159,7 +151,7 @@ namespace tc {
                     auto &trow = rel_tables.rows[target][table_idx];
                     auto &crow = rel_tables.rows[coset][table_idx];
 
-                    Coset other_gen = (i == gen) ? j : i;
+                    size_t other_gen = (i == gen) ? j : i;
 
                     // Test if loop is closed
                     if (trow.free) {
@@ -174,7 +166,7 @@ namespace tc {
                             if (trow.gnr == m) {
                                 // loop is closed, but idempotent, so the target links to itself via the other generator.
                                 // todo might be able to move this logic up into the (target == coset) block and avoid those computations.
-                                facts.push(target * rank + other_gen);
+                                facts.push(target * rank() + other_gen);
                             }
                         } else {
                             if (trow.gnr == m - 1) {
@@ -184,7 +176,7 @@ namespace tc {
                                 // loop is closed. We know the last element in the loop must link with this one. 
                                 lst = lst_vals[trow.lst_idx];
 //                            delete trow.lst_ptr;
-                                facts.push(lst * rank + other_gen);
+                                facts.push(lst * rank() + other_gen);
                             }
                         }
                     }
@@ -213,7 +205,7 @@ namespace tc {
             }
         }
 
-        cosets.complete = true;
+        cosets._complete = true;
         return cosets;
     }
 }

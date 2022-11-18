@@ -4,13 +4,19 @@
 #include <cassert>
 
 #include <tc/util.hpp>
-#include <tc/group.hpp>
+#include <tc/core.hpp>
 #include <tc/groups.hpp>
 
 #include <peglib.h>
 
 #include <fmt/core.h>
 #include <fmt/ranges.h>
+#include <numeric>
+
+struct Graph {
+    size_t rank{};
+    std::vector<tc::Group<>::Rel> edges{};
+};
 
 struct Op {
     enum Code {
@@ -191,6 +197,7 @@ peg::parser build_parser() {
 }
 
 #ifndef NDEBUG
+
 peg::parser build_ast_parser() {
     peg::parser parser;
     parser.set_logger([](size_t line, size_t col, const std::string &msg, const std::string &rule) {
@@ -203,6 +210,7 @@ peg::parser build_ast_parser() {
 
     return parser;
 }
+
 #endif
 
 std::vector<Op> compile(const std::string &source) {
@@ -221,10 +229,10 @@ std::vector<Op> compile(const std::string &source) {
     return cg.ops;
 }
 
-tc::Graph eval(const std::vector<Op> &ops) {
+Graph eval(const std::vector<Op> &ops) {
     std::vector<std::stack<size_t>> stacks(1);
 
-    tc::Graph g;
+    Graph g;
     stacks.back().emplace(g.rank++);
 
     for (const auto &op: ops) {
@@ -280,9 +288,13 @@ tc::Graph eval(const std::vector<Op> &ops) {
 }
 
 namespace tc {
-    Group coxeter(const std::string &symbol) {
+    Group<> coxeter(const std::string &symbol) {
         auto ops = compile(symbol);
         auto diagram = eval(ops);
-        return Group(diagram);
+        Group<> res(diagram.rank);
+        for (const auto &[i, j, m]: diagram.edges) {
+            res.set(i, j, m);
+        }
+        return res;
     }
 }

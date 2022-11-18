@@ -11,15 +11,15 @@ testing::AssertionResult AssertSolveOrder(
     const char *group_expr,
     const char *sub_gens_expr,
     const char *expected_order_expr,
-    const tc::Group &group,
-    const std::vector<tc::Gen> &sub_gens,
-    tc::Coset expected_order
+    const tc::Group<> &group,
+    const std::vector<size_t> &sub_gens,
+    size_t expected_order
 ) {
     auto start = std::clock();
-    auto cosets = tc::solve(group, sub_gens);
+    auto cosets = group.solve(sub_gens);
     auto end = std::clock();
 
-    tc::Coset actual_order = cosets.size();
+    size_t actual_order = cosets.order();
 
     auto total_sec = (double) (end - start) / CLOCKS_PER_SEC;
     auto cosets_per_sec = (double) actual_order / total_sec;
@@ -48,45 +48,45 @@ testing::AssertionResult AssertSolveOrder(
 
 #define EXPECT_SOLVE_ORDER(group, sub_gens, expected_order) EXPECT_PRED_FORMAT3(AssertSolveOrder, group, sub_gens, expected_order);
 
-using v = std::vector<tc::Gen>;
+using v = std::vector<size_t>;
 
-tc::Group A(unsigned int n) {
+tc::Group<> A(unsigned int n) {
     return tc::vcoxeter("3 * {}", {n - 1});
 }
 
-tc::Group B(unsigned int n) {
+tc::Group<> B(unsigned int n) {
     return tc::vcoxeter("4 3 * {}", {n - 2});
 }
 
-tc::Group D(unsigned int n) {
+tc::Group<> D(unsigned int n) {
     return tc::vcoxeter("3 * [1 1 {}]", {n - 3});
 }
 
-tc::Group E(unsigned int n) {
+tc::Group<> E(unsigned int n) {
     return tc::vcoxeter("3 * [1 2 {}]", {n - 4});
 }
 
-tc::Group F4() {
+tc::Group<> F4() {
     return tc::coxeter("3 4 3");
 }
 
-tc::Group G2() {
+tc::Group<> G2() {
     return tc::coxeter("6");
 }
 
-tc::Group H(unsigned int n) {
+tc::Group<> H(unsigned int n) {
     return tc::vcoxeter("5 3 * {}", {n - 2});
 }
 
-tc::Group I2(unsigned int n) {
+tc::Group<> I2(unsigned int n) {
     return tc::vcoxeter("{}", {n});
 }
 
-tc::Group T(unsigned int m, unsigned int n) {
+tc::Group<> T(unsigned int m, unsigned int n) {
     return tc::vcoxeter("{} 2 {}", {m, n});
 }
 
-tc::Group T(unsigned int n) {
+tc::Group<> T(unsigned int n) {
     return T(n, n);
 }
 

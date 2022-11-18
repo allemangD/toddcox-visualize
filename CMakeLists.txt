@@ -18,4 +18,4 @@ include(embed.cmake)
 
 enable_testing()
 add_subdirectory(tc)
-add_subdirectory(vis)
+#add_subdirectory(vis)
