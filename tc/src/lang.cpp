@@ -3,7 +3,6 @@
 #include <string>
 #include <cassert>
 
-#include <tc/util.hpp>
 #include <tc/core.hpp>
 #include <tc/groups.hpp>
 

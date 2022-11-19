@@ -44,6 +44,13 @@ namespace tc {
     template<typename Gen_=void>
     struct Group;
 
+    /**
+     * @brief Support generating values given a Cosets and transformation callback.
+     * @tparam Gen_ 
+     */
+    template<typename Gen_=void>
+    struct Path;  // todo not yet implemented
+    
     template<>
     struct Index<> {
         size_t operator()(size_t const &idx) const {
@@ -57,7 +64,7 @@ namespace tc {
 
         std::vector<Gen> _gens{};
 
-        explicit Index(std::vector<Gen> gens) : _gens(gens) {}
+//        explicit Index(std::vector<Gen> gens) : _gens(gens) {}
 
         size_t operator()(Gen const &gen) const {
             auto it = std::find(_gens.begin(), _gens.end(), gen);

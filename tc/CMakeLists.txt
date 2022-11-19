@@ -1,7 +1,6 @@
 add_library(tc
     include/tc/core.hpp
     include/tc/groups.hpp
-    include/tc/util.hpp
 
     src/cosets.cpp
     src/group.cpp
