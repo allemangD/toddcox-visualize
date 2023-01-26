@@ -94,10 +94,10 @@ float dot(const V &a, const V &b) {
 }
 
 template<unsigned N>
-std::vector<vec<N>> mirror(const tc::Group &group) {
+std::vector<vec<N>> mirror(const tc::Group<> &group) {
     std::vector<std::vector<float>> mirrors;
 
-    for (int p = 0; p < group.ngens; ++p) {
+    for (int p = 0; p < group.rank(); ++p) {
         std::vector<float> vp;
         for (int m = 0; m < p; ++m) {
             auto &vq = mirrors[m];

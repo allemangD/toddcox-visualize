@@ -78,17 +78,22 @@ Matrices build(GLFWwindow *window, State &state) {
 }
 
 template<class C>
-std::vector<vec4> points(const tc::Group &group, const C &coords) {
+std::vector<vec4> points(const tc::Group<> &group, const C &coords) {
     auto cosets = group.solve();
     auto mirrors = mirror<5>(group);
+
+    tc::Path<vec5> path(cosets, mirrors);
 
     auto corners = plane_intersections(mirrors);
 
     auto start = barycentric(corners, coords);
 
-    const auto &higher = cosets.path.walk<vec5, vec5>(start, mirrors, reflect<vec5>);
+    std::vector<vec5> higher(path.order());
+    path.walk(start, reflect<vec5>, higher.begin());
+
     std::vector<vec4> lower(higher.size());
     std::transform(higher.begin(), higher.end(), lower.begin(), stereo<4>);
+
     return lower;
 }
 
@@ -132,11 +137,11 @@ struct SliceProp : public Prop<N> {
 
     template<class T, class C>
     static SliceProp<N> build(
-        const tc::Group &g,
+        const tc::Group<> &g,
         const C &coords,
         vec3 color,
         T all_sg_gens,
-        const std::vector<std::vector<int>> &exclude
+        const std::vector<std::vector<size_t>> &exclude
     ) {
         SliceProp<N> res(color);
 
@@ -225,13 +230,13 @@ struct WireframeProp : public Prop<2> {
     WireframeProp(WireframeProp &&) noexcept = default;
 
     template<class T, class C>
-    static WireframeProp build(const tc::Group &g,
+    static WireframeProp build(const tc::Group<> &g,
         const C &coords,
         bool curve,
         bool ortho,
         vec3 color,
         T all_sg_gens,
-        const std::vector<std::vector<int>> &exclude
+        const std::vector<std::vector<size_t>> &exclude
     ) {
         WireframeProp res(color);
 
@@ -274,10 +279,10 @@ void run(const std::string &config_file, GLFWwindow *window) {
     State state{};
     glfwSetWindowUserPointer(window, &state);
 
-    state.dimension = scene["dimension"].as<int>();
+    state.dimension = scene["dimension"].as<size_t>();
 
     for (const auto &group_info : scene["groups"]) {
-        auto symbol = group_info["symbol"].as<std::vector<int>>();
+        auto symbol = group_info["symbol"].as<std::vector<unsigned int>>();
         auto group = tc::schlafli(symbol);
         auto gens = generators(group);
 
@@ -285,19 +290,19 @@ void run(const std::string &config_file, GLFWwindow *window) {
             for (const auto &slice_info : group_info["slices"]) {
                 auto root = slice_info["root"].as<vec5>();
                 auto color = slice_info["color"].as<vec3>();
-                auto exclude = std::vector<std::vector<int>>();
+                auto exclude = std::vector<std::vector<size_t>>();
 
                 if (slice_info["exclude"].IsDefined()) {
-                    exclude = slice_info["exclude"].as<std::vector<std::vector<int>>>();
+                    exclude = slice_info["exclude"].as<std::vector<std::vector<size_t>>>();
                 }
 
                 if (slice_info["subgroups"].IsDefined()) {
-                    auto subgroups = slice_info["subgroups"].as<std::vector<std::vector<int>>>();
+                    auto subgroups = slice_info["subgroups"].as<std::vector<std::vector<size_t>>>();
                     sRen.props.push_back(SliceProp<4>::build(
                         group, root, color, subgroups, exclude
                     ));
                 } else {
-                    auto combos = Combos<int>(gens, 3);
+                    auto combos = Combos<size_t>(gens, 3);
                     sRen.props.push_back(SliceProp<4>::build(
                         group, root, color, combos, exclude
                     ));
@@ -309,16 +314,16 @@ void run(const std::string &config_file, GLFWwindow *window) {
             for (const auto &wire_info : group_info["wires"]) {
                 auto root = wire_info["root"].as<vec5>();
                 auto color = wire_info["color"].as<vec3>();
-                auto exclude = std::vector<std::vector<int>>();
+                auto exclude = std::vector<std::vector<size_t>>();
                 auto curve = wire_info["curve"].IsDefined() && wire_info["curve"].as<bool>();
                 auto ortho = wire_info["ortho"].IsDefined() && wire_info["ortho"].as<bool>();
 
                 if (wire_info["exclude"].IsDefined()) {
-                    exclude = wire_info["exclude"].as<std::vector<std::vector<int>>>();
+                    exclude = wire_info["exclude"].as<std::vector<std::vector<size_t>>>();
                 }
 
                 if (wire_info["subgroups"].IsDefined()) {
-                    auto subgroups = wire_info["subgroups"].as<std::vector<std::vector<int>>>();
+                    auto subgroups = wire_info["subgroups"].as<std::vector<std::vector<size_t>>>();
 
                     if (ortho && curve) {
                         wocRen.props.push_back(WireframeProp::build(
@@ -338,7 +343,7 @@ void run(const std::string &config_file, GLFWwindow *window) {
                         ));
                     }
                 } else {
-                    auto combos = Combos<int>(gens, 1);
+                    auto combos = Combos<size_t>(gens, 1);
 
                     if (ortho && curve) {
                         wocRen.props.push_back(WireframeProp::build(
