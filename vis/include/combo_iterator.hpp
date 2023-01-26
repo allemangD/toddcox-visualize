@@ -84,7 +84,7 @@ private:
     int size;
 
 public:
-    Combos(const std::vector<T> &options, int k)
+    Combos(const std::vector<T> &options, size_t k)
         : options(options), k(k), size(choose(options.size(), k)) {
     }
 

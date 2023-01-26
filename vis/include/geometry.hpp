@@ -15,21 +15,21 @@ template<unsigned N>
 struct Primitive {
     static_assert(N > 0, "Primitives must contain at least one point. Primitive<0> or lower is impossible.");
 
-    std::array<unsigned, N> inds;
+    std::array<unsigned, N> indices;
 
     Primitive() = default;
 
     Primitive(const Primitive<N> &) = default;
 
     Primitive(const Primitive<N - 1> &sub, unsigned root) {
-        std::copy(sub.inds.begin(), sub.inds.end(), inds.begin());
-        inds[N - 1] = root;
+        std::copy(sub.indices.begin(), sub.indices.end(), indices.begin());
+        indices[N - 1] = root;
     }
 
     ~Primitive() = default;
 
     void apply(const tc::Cosets<> &table, int gen) {
-        for (auto &ind: inds) {
+        for (auto &ind: indices) {
             ind = table.get(ind, gen);
         }
     }
@@ -50,19 +50,12 @@ std::vector<size_t> generators(const tc::Group<> &context) {
  * Produces the indexes of sg_gens within g_gens; sorted.
  */
 std::vector<size_t> recontext_gens(
-    const tc::Group<> &context,
     const std::vector<size_t> &g_gens,
     const std::vector<size_t> &sg_gens) {
 
-    size_t inv_gen_map[context.rank()];
-    for (size_t i = 0; i < g_gens.size(); i++) {
-        inv_gen_map[g_gens[i]] = i;
-    }
-
     std::vector<size_t> s_sg_gens;
-    s_sg_gens.reserve(sg_gens.size());
-    for (const auto gen : sg_gens) {
-        s_sg_gens.push_back(inv_gen_map[gen]);
+    for (const auto &gen: sg_gens) {
+        s_sg_gens.push_back(std::find(g_gens.begin(), g_gens.end(), gen) - g_gens.begin());
     }
 
     return s_sg_gens;
@@ -90,7 +83,7 @@ std::vector<Primitive<N>> recontext(
     const std::vector<size_t> &g_gens,
     const std::vector<size_t> &sg_gens
 ) {
-    const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
+    const auto proper_sg_gens = recontext_gens(g_gens, sg_gens);
     const auto table = context.sub(g_gens).solve({});
     const auto cosets = context.sub(sg_gens).solve({});
 
@@ -103,7 +96,7 @@ std::vector<Primitive<N>> recontext(
 
     std::vector<Primitive<N>> res(prims);
     for (Primitive<N> &prim: res) {
-        for (auto &ind: prim.inds) {
+        for (auto &ind: prim.indices) {
             ind = map[ind];
         }
     }
@@ -139,7 +132,7 @@ std::vector<std::vector<Primitive<N>>> each_tile(
     const std::vector<size_t> &sg_gens
 ) {
     std::vector<Primitive<N>> base = recontext(prims, context, g_gens, sg_gens);
-    const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
+    const auto proper_sg_gens = recontext_gens(g_gens, sg_gens);
 
     const auto table = context.sub(g_gens).solve({});
 
@@ -197,7 +190,7 @@ std::vector<Primitive<N>> triangulate(
         throw std::logic_error("g_gens size must be one less than N");
     }
 
-    const auto &combos = Combos<size_t>(g_gens, g_gens.size() - 1U);
+    const auto &combos = Combos<size_t>(g_gens, g_gens.size() - 1);
 
     std::vector<std::vector<Primitive<N>>> meshes;
 
