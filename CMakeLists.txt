@@ -3,12 +3,13 @@ project(toddcox-faster)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_subdirectory(vendor/toddcox)
+include(FetchContent)
 
-add_subdirectory(vendor/yaml-cpp)
-add_subdirectory(vendor/glad)
-add_subdirectory(vendor/glfw)
-add_subdirectory(vendor/glm)
+include(vendor/toddcox.cmake)
+include(vendor/yaml-cpp.cmake)
+include(vendor/glad.cmake)
+include(vendor/glfw.cmake)
+include(vendor/glm.cmake)
 
 add_subdirectory(vis)
 
