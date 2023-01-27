@@ -19,7 +19,9 @@ namespace cgl{
             glProgramParameteri(id, GL_PROGRAM_SEPARABLE, GL_TRUE);
         }
 
-        ShaderProgram(const std::string &src) : ShaderProgram() {
+        explicit ShaderProgram(const std::string_view &src) : ShaderProgram(std::string(src)) {}
+
+        explicit ShaderProgram(const std::string &src) : ShaderProgram() {
             Shader<mode> sh(src);
 
             attach(sh);

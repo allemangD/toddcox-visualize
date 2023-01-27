@@ -19,6 +19,8 @@
 #include <chrono>
 #include <yaml-cpp/yaml.h>
 
+#include <shaders.hpp>
+
 #ifdef _WIN32
 extern "C" {
 __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x00000001;
@@ -155,12 +157,9 @@ struct SliceProp : public Prop<N> {
 
 template<unsigned N>
 struct SliceRenderer : public Renderer<N> {
-    cgl::pgm::vert defer = cgl::pgm::vert::file(
-        "shaders/slice/deferred.vs.glsl");
-    cgl::pgm::geom slice = cgl::pgm::geom::file(
-        "shaders/slice/slice.gm.glsl");
-    cgl::pgm::frag solid = cgl::pgm::frag::file(
-        "shaders/solid.fs.glsl");
+    cgl::pgm::vert defer = cgl::pgm::vert(shaders::deferred_vs_glsl);
+    cgl::pgm::geom slice = cgl::pgm::geom(shaders::slice_gm_glsl);
+    cgl::pgm::frag solid = cgl::pgm::frag(shaders::solid_fs_glsl);
 
     cgl::pipeline pipe;
 
@@ -193,8 +192,7 @@ template<unsigned N>
 struct DirectRenderer : public Renderer<N> {
     cgl::pipeline pipe;
 
-    cgl::pgm::frag solid = cgl::pgm::frag::file(
-        "shaders/solid.fs.glsl");
+    cgl::pgm::frag solid = cgl::pgm::frag(shaders::solid_fs_glsl);
 
     DirectRenderer() {
         pipe.stage(solid);
@@ -255,10 +253,10 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
     SliceRenderer<4> sRen{};
 
-    cgl::pgm::vert o = cgl::pgm::vert::file("shaders/direct-ortho.vs.glsl");
-    cgl::pgm::vert s = cgl::pgm::vert::file("shaders/direct-stereo.vs.glsl");
-    cgl::pgm::geom co = cgl::pgm::geom::file("shaders/curve-ortho.gm.glsl");
-    cgl::pgm::geom cs = cgl::pgm::geom::file("shaders/curve-stereo.gm.glsl");
+    cgl::pgm::vert o = cgl::pgm::vert(shaders::direct_ortho_vs_glsl);
+    cgl::pgm::vert s = cgl::pgm::vert(shaders::direct_stereo_vs_glsl);
+    cgl::pgm::geom co = cgl::pgm::geom(shaders::curve_ortho_gm_glsl);
+    cgl::pgm::geom cs = cgl::pgm::geom(shaders::curve_stereo_gm_glsl);
 
     DirectRenderer<2> woRen{};
     woRen.pipe.stage(o);
