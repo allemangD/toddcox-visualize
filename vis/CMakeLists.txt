@@ -19,5 +19,5 @@ target_include_directories(vis-util INTERFACE include)
 
 add_executable(vis src/main.cpp)
 target_include_directories(vis PRIVATE include)
-target_link_libraries(vis PRIVATE tc glad glm glfw yaml-cpp shaders)
+target_link_libraries(vis PRIVATE tc glad eigen glfw yaml-cpp shaders fmt)
 add_dependencies(vis presets)

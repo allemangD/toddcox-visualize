@@ -6,6 +6,8 @@
 #include <vector>
 #include <algorithm>
 
+#include <Eigen/Eigen>
+
 template<unsigned N>
 using vec = std::array<float, N>;
 
@@ -184,11 +186,29 @@ std::vector<V> plane_intersections(std::vector<V> normals) {
     return results;
 }
 
-glm::mat4 utilRotate(const int u, const int v, const float theta) {
-    auto res = glm::identity<glm::mat4>();
-    res[u][u] = std::cos(theta);
-    res[u][v] = std::sin(theta);
-    res[v][u] = -std::sin(theta);
-    res[v][v] = std::cos(theta);
+Eigen::Matrix4f utilRotate(const int u, const int v, const float theta) {
+    Eigen::Matrix4f res;
+    res.setIdentity();
+    res(u, u) = std::cos(theta);
+    res(u, v) = std::sin(theta);
+    res(v, u) = -std::sin(theta);
+    res(v, v) = std::cos(theta);
+    return res;
+}
+
+Eigen::Matrix4f ortho(
+    float l,
+    float r,
+    float b,
+    float t,
+    float n,
+    float f
+) {
+    Eigen::Matrix4f res;
+    res <<
+        2 / (r - l), 0, 0, -(r + l) / (r - l),
+        0, 2 / (t - b), 0, -(t + b) / (t - b),
+        0, 0, -2 / (f - n), -(f + n) / (f - n),
+        0, 0, 0, 1;
     return res;
 }

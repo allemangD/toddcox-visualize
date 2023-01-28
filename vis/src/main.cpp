@@ -3,8 +3,6 @@
 #include <cmath>
 #include <iostream>
 
-#include <glm/gtc/type_ptr.hpp>
-
 #include <tc/groups.hpp>
 
 #include "util.hpp"
@@ -28,10 +26,10 @@ __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x000000
 #endif
 
 struct Matrices {
-    glm::mat4 proj;
-    glm::mat4 view;
+    Eigen::Matrix4f proj;
+    Eigen::Matrix4f view;
 
-    Matrices(const glm::mat4 &proj, const glm::mat4 &view)
+    Matrices(const Eigen::Matrix4f &proj, const Eigen::Matrix4f &view)
         : proj(proj), view(view) {
     }
 };
@@ -52,13 +50,15 @@ Matrices build(GLFWwindow *window, State &state) {
     auto aspect = (float) width / (float) height;
     auto pheight = 1.4f;
     auto pwidth = aspect * pheight;
-    glm::mat4 proj = glm::ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
+    Eigen::Matrix4f proj = ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
 
     if (!glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
         state.st += state.time_delta / 8;
     }
 
-    auto view = glm::identity<glm::mat4>();
+    Eigen::Matrix4f view;
+    view.setIdentity();
+
     if (state.dimension < 4) {
         view *= utilRotate(2, 3, M_PI_2f32 + 0.01f);
     }
