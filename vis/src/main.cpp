@@ -7,7 +7,7 @@
 
 #include "util.hpp"
 #include "mirror.hpp"
-#include "geometry.hpp"
+#include "solver.hpp"
 
 #include <cgl/vertexarray.hpp>
 #include <cgl/shaderprogram.hpp>
@@ -50,7 +50,7 @@ Matrices build(GLFWwindow *window, State &state) {
     auto aspect = (float) width / (float) height;
     auto pheight = 1.4f;
     auto pwidth = aspect * pheight;
-    Eigen::Matrix4f proj = ortho(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
+    Eigen::Matrix4f proj = orthographic(-pwidth, pwidth, -pheight, pheight, -10.0f, 10.0f);
 
     if (!glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
         state.st += state.time_delta / 8;
@@ -60,20 +60,20 @@ Matrices build(GLFWwindow *window, State &state) {
     view.setIdentity();
 
     if (state.dimension < 4) {
-        view *= utilRotate(2, 3, M_PI_2f32 + 0.01f);
+        view *= rot<4>(2, 3, M_PI_2f32 + 0.01f);
     }
 
     if (state.dimension > 1) {
-        view *= utilRotate(0, 1, state.st * .40f);
+        view *= rot<4>(0, 1, state.st * .40f);
     }
     if (state.dimension > 2) {
-        view *= utilRotate(0, 2, state.st * .20f);
-        view *= utilRotate(1, 2, state.st * .50f);
+        view *= rot<4>(0, 2, state.st * .20f);
+        view *= rot<4>(1, 2, state.st * .50f);
     }
     if (state.dimension > 3) {
-        view *= utilRotate(0, 3, state.st * 1.30f);
-        view *= utilRotate(1, 3, state.st * .25f);
-        view *= utilRotate(2, 3, state.st * 1.42f);
+        view *= rot<4>(0, 3, state.st * 1.30f);
+        view *= rot<4>(1, 3, state.st * .25f);
+        view *= rot<4>(2, 3, state.st * 1.42f);
     }
 
     return Matrices(proj, view);
@@ -179,7 +179,7 @@ struct SliceRenderer : public Renderer<N> {
 
     void _draw(const Prop<N> &prop) const override {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, prop.vbo);
-        glProgramUniform3fv(solid, 2, 1, &prop.color.front());
+        glProgramUniform3fv(solid, 2, 1, prop.color.data());
 //        glProgramUniform3f(solid, 2, 1.f, 1.f, 1.f);
         prop.vao.bound([&]() {
             glDrawArrays(GL_POINTS, 0, prop.ibo.count() * N);
@@ -208,7 +208,7 @@ struct DirectRenderer : public Renderer<N> {
 
     void _draw(const Prop<N> &prop) const override {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, prop.vbo);
-        glProgramUniform3fv(solid, 2, 1, &prop.color.front());
+        glProgramUniform3fv(solid, 2, 1, prop.color.data());
         prop.vao.bound([&]() {
             prop.ibo.bound(GL_ELEMENT_ARRAY_BUFFER, [&]() {
                 glDrawElements(GL_LINES, prop.ibo.count() * N, GL_UNSIGNED_INT, nullptr);
@@ -286,8 +286,14 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
         if (group_info["slices"].IsDefined()) {
             for (const auto &slice_info : group_info["slices"]) {
-                auto root = slice_info["root"].as<vec5>();
-                auto color = slice_info["color"].as<vec3>();
+                auto root_arr = slice_info["root"].as<std::array<float, 5>>();
+                auto color_arr = slice_info["color"].as<std::array<float, 3>>();
+
+                vec5 root;
+                std::copy(root_arr.begin(), root_arr.end(), root.begin());
+                vec3 color;
+                std::copy(color_arr.begin(), color_arr.end(), color.begin());
+
                 auto exclude = std::vector<std::vector<size_t>>();
 
                 if (slice_info["exclude"].IsDefined()) {
@@ -300,7 +306,7 @@ void run(const std::string &config_file, GLFWwindow *window) {
                         group, root, color, subgroups, exclude
                     ));
                 } else {
-                    auto combos = Combos<size_t>(gens, 3);
+                    auto combos = combinations(gens, 3);
                     sRen.props.push_back(SliceProp<4>::build(
                         group, root, color, combos, exclude
                     ));
@@ -310,9 +316,16 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
         if (group_info["wires"].IsDefined()) {
             for (const auto &wire_info : group_info["wires"]) {
-                auto root = wire_info["root"].as<vec5>();
-                auto color = wire_info["color"].as<vec3>();
+                auto root_arr = wire_info["root"].as<std::array<float, 5>>();
+                auto color_arr = wire_info["color"].as<std::array<float, 3>>();
+
+                vec5 root;
+                std::copy(root_arr.begin(), root_arr.end(), root.begin());
+                vec3 color;
+                std::copy(color_arr.begin(), color_arr.end(), color.begin());
+
                 auto exclude = std::vector<std::vector<size_t>>();
+
                 auto curve = wire_info["curve"].IsDefined() && wire_info["curve"].as<bool>();
                 auto ortho = wire_info["ortho"].IsDefined() && wire_info["ortho"].as<bool>();
 
@@ -341,7 +354,7 @@ void run(const std::string &config_file, GLFWwindow *window) {
                         ));
                     }
                 } else {
-                    auto combos = Combos<size_t>(gens, 1);
+                    auto combos = combinations(gens, 1);
 
                     if (ortho && curve) {
                         wocRen.props.push_back(WireframeProp::build(

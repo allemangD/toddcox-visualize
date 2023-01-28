@@ -5,241 +5,59 @@
 #include <optional>
 #include <numeric>
 #include <iostream>
+
+#include <Eigen/Eigen>
+
 #include "combo_iterator.hpp"
 
-/**
- * An primitive stage N indices.
- * @tparam N
- */
 template<unsigned N>
-struct Primitive {
-    static_assert(N > 0, "Primitives must contain at least one point. Primitive<0> or lower is impossible.");
+using Prims = Eigen::Matrix<unsigned, N, Eigen::Dynamic>;
 
-    std::array<unsigned, N> indices;
+template<int N>
+using vec = Eigen::Matrix<float, N, 1>;
+template<int N>
+using mat = Eigen::Matrix<float, N, N>;
 
-    Primitive() = default;
+using vec1 = vec<1>;
+using vec2 = vec<2>;
+using vec3 = vec<3>;
+using vec4 = vec<4>;
+using vec5 = vec<5>;
 
-    Primitive(const Primitive<N> &) = default;
+using mat1 = mat<1>;
+using mat2 = mat<2>;
+using mat3 = mat<3>;
+using mat4 = mat<4>;
+using mat5 = mat<5>;
 
-    Primitive(const Primitive<N - 1> &sub, unsigned root) {
-        std::copy(sub.indices.begin(), sub.indices.end(), indices.begin());
-        indices[N - 1] = root;
-    }
-
-    ~Primitive() = default;
-
-    void apply(const tc::Cosets<> &table, int gen) {
-        for (auto &ind: indices) {
-            ind = table.get(ind, gen);
-        }
-    }
-};
-
-/**
- * Produce a list of all generators for the group context. The range [0..group.ngens).
- */
-std::vector<size_t> generators(const tc::Group<> &context) {
-    std::vector<size_t> g_gens(context.rank());
-    std::iota(g_gens.begin(), g_gens.end(), 0);
-    return g_gens;
-}
-
-/**
- * Determine which of g_gens are the correct names for sg_gens within the current context
- *
- * Produces the indexes of sg_gens within g_gens; sorted.
- */
-std::vector<size_t> recontext_gens(
-    const std::vector<size_t> &g_gens,
-    const std::vector<size_t> &sg_gens) {
-
-    std::vector<size_t> s_sg_gens;
-    for (const auto &gen: sg_gens) {
-        s_sg_gens.push_back(std::find(g_gens.begin(), g_gens.end(), gen) - g_gens.begin());
-    }
-
-    return s_sg_gens;
-}
-
-/**
- * Apply some context transformation to all primitives of this mesh.
- */
-template<unsigned N>
-std::vector<Primitive<N>> apply(std::vector<Primitive<N>> prims, const tc::Cosets<> &table, int gen) {
-    for (auto &prim: prims) {
-        prim.apply(table, gen);
-    }
-    return prims;
-}
-
-/**
- * Convert the indexes of this mesh to those of a different context, using g_gens to build the parent context and sg_gens to build this context.
- */
-template<unsigned N>
-[[nodiscard]]
-std::vector<Primitive<N>> recontext(
-    std::vector<Primitive<N>> prims,
-    const tc::Group<> &context,
-    const std::vector<size_t> &g_gens,
-    const std::vector<size_t> &sg_gens
-) {
-    const auto proper_sg_gens = recontext_gens(g_gens, sg_gens);
-    const auto table = context.sub(g_gens).solve({});
-    const auto cosets = context.sub(sg_gens).solve({});
-
-    tc::Path<size_t> path(cosets, proper_sg_gens);
-
-    std::vector<size_t> map(path.order());
-    path.walk(0, [&table](size_t coset, size_t gen) {
-        return table.get(coset, gen);
-    }, map.begin());
-
-    std::vector<Primitive<N>> res(prims);
-    for (Primitive<N> &prim: res) {
-        for (auto &ind: prim.indices) {
-            ind = map[ind];
-        }
-    }
-
+mat4 orthographic(float left, float right, float bottom, float top, float front, float back) {
+    mat4 res = mat4();
+    res <<
+        2 / (right - left), 0, 0, -(right + left) / (right - left),
+            0, 2 / (top - bottom), 0, -(top + bottom) / (top - bottom),
+            0, 0, 2 / (front - back), -(front + back) / (front - back),
+            0, 0, 0, 1;
     return res;
 }
 
-/**
- * Union several meshes of the same dimension
- */
-template<unsigned N>
-std::vector<Primitive<N>> merge(const std::vector<std::vector<Primitive<N>>> &meshes) {
-    size_t size = 0;
-    for (const auto &mesh : meshes) {
-        size += mesh.size();
-    }
+mat4 perspective(float fovy, float aspect, float zNear, float zFar) {
+    float tanHalfFovy(std::tan(fovy / 2));
 
-    std::vector<Primitive<N>> res;
-    res.reserve(size);
-    for (const auto &mesh : meshes) {
-        res.insert(res.end(), mesh.begin(), mesh.end());
-    }
-
+    mat4 res = mat4::Identity();
+    res(0, 0) = 1 / (aspect * tanHalfFovy);
+    res(1, 1) = 1 / (tanHalfFovy);
+    res(2, 2) = -(zFar + zNear) / (zFar - zNear);
+    res(3, 2) = -1;
+    res(2, 3) = -(2 + zFar * zNear) / (zFar - zNear);
     return res;
 }
 
-template<unsigned N>
-[[nodiscard]]
-std::vector<std::vector<Primitive<N>>> each_tile(
-    std::vector<Primitive<N>> prims,
-    const tc::Group<> &context,
-    const std::vector<size_t> &g_gens,
-    const std::vector<size_t> &sg_gens
-) {
-    std::vector<Primitive<N>> base = recontext(prims, context, g_gens, sg_gens);
-    const auto proper_sg_gens = recontext_gens(g_gens, sg_gens);
-
-    const auto table = context.sub(g_gens).solve({});
-
-    const tc::Cosets<> &cosets = context.sub(g_gens).solve(proper_sg_gens);
-
-    tc::Path path(cosets);
-
-    std::vector<std::vector<Primitive<N>>> res(path.order());
-    path.walk(base, [&](auto from, auto to) {
-        return apply(from, table, to);
-    }, res.begin());
-
+mat4 translation(float x, float y, float z) {
+    mat4 res = mat4();
+    res <<
+        1, 0, 0, x,
+        0, 1, 0, y,
+        0, 0, 1, z,
+        0, 0, 0, 1;
     return res;
-}
-
-template<unsigned N>
-[[nodiscard]]
-std::vector<Primitive<N>> tile(
-    std::vector<Primitive<N>> prims,
-    const tc::Group<> &context,
-    const std::vector<size_t> &g_gens,
-    const std::vector<size_t> &sg_gens
-) {
-    auto res = each_tile<N>(prims, context, g_gens, sg_gens);
-
-    return merge(res);
-}
-
-/**
- * Produce a mesh of higher dimension by fanning a single point to all primitives in this mesh.
- */
-template<unsigned N>
-[[nodiscard]]
-std::vector<Primitive<N + 1>> fan(std::vector<Primitive<N>> prims, size_t root) {
-    std::vector<Primitive<N + 1>> res(prims.size());
-    std::transform(
-        prims.begin(), prims.end(),
-        res.begin(),
-        [root](const Primitive<N> &prim) {
-            return Primitive<N + 1>(prim, root);
-        }
-    );
-    return res;
-}
-
-/**
- * Produce a mesh of primitives that fill out the volume of the subgroup generated by generators g_gens within the group context
- */
-template<unsigned N>
-std::vector<Primitive<N>> triangulate(
-    const tc::Group<> &context,
-    const std::vector<size_t> &g_gens
-) {
-    if (g_gens.size() + 1 != N) {
-        throw std::logic_error("g_gens size must be one less than N");
-    }
-
-    const auto &combos = Combos<size_t>(g_gens, g_gens.size() - 1);
-
-    std::vector<std::vector<Primitive<N>>> meshes;
-
-    for (const auto &sg_gens: combos) {
-        auto base = triangulate<N - 1>(context, sg_gens);
-        auto raised = tile(base, context, g_gens, sg_gens);
-        raised.erase(raised.begin(), raised.begin() + base.size());
-        meshes.push_back(fan(raised, 0));
-    }
-
-    return merge(meshes);
-}
-
-// Single-index primitives should not be further triangulated.
-template<>
-std::vector<Primitive<1>> triangulate(
-    const tc::Group<> &,
-    const std::vector<size_t> &g_gens
-) {
-    if (not g_gens.empty()) {
-        throw std::logic_error("g_gens must be empty for a trivial Mesh");
-    }
-
-    std::vector<Primitive<1>> res;
-    res.emplace_back();
-    return res;
-}
-
-template<unsigned N, class T>
-auto hull(const tc::Group<> &group, T all_sg_gens, const std::vector<std::vector<size_t>> &exclude) {
-    std::vector<std::vector<Primitive<N>>> parts;
-
-    auto g_gens = generators(group);
-
-    for (std::vector<size_t> sg_gens: all_sg_gens) {
-        bool excluded = false;
-        for (const auto &test: exclude) {
-            if (sg_gens == test) {
-                excluded = true;
-                break;
-            }
-        }
-        if (excluded) continue;
-
-        const auto &base = triangulate<N>(group, sg_gens);
-        const auto &tiles = each_tile(base, group, g_gens, sg_gens);
-        for (const auto &tile : tiles) {
-            parts.push_back(tile);
-        }
-    }
-    return parts;
 }
