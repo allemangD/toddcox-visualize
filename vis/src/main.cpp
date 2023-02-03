@@ -43,7 +43,7 @@ struct State {
     int dimension;
 };
 
-Matrices build(GLFWwindow *window, State &state) {
+Matrices build(GLFWwindow* window, State &state) {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
 
@@ -90,13 +90,18 @@ std::vector<vec4> points(const tc::Group<> &group, const C &coords) {
 
     tc::Path<vec5> path(cosets, mirrors.colwise());
 
-    std::vector<vec5> higher(path.order());
-    path.walk(start, reflect<vec5>, higher.begin());
+    Eigen::Array<float, 5, Eigen::Dynamic> higher(5, path.order());
+    path.walk(start, Reflect(), higher.matrix().colwise().begin());
+//    std::vector<vec5> higher(path.order());
+//    path.walk(start, Reflect(), higher.begin());
 
-    std::vector<vec4> lower(higher.size());
-    std::transform(higher.begin(), higher.end(), lower.begin(), stereo<4>);
+//    Eigen::Array4Xf lower = higher.topRows<4>().rowwise() / (1 - higher.bottomRows<1>());
+    Eigen::Array4Xf lower = Stereo()(higher);
 
-    return lower;
+    std::vector<vec4> vec(lower.cols());
+    std::copy(lower.colwise().begin(), lower.colwise().end(), vec.begin());
+
+    return vec;
 }
 
 template<unsigned N>
@@ -120,7 +125,7 @@ struct Renderer {
 
     void render() const {
         bound([&]() {
-            for (const auto &prop : props) {
+            for (const auto &prop: props) {
                 _draw(prop);
             }
         });
@@ -219,7 +224,7 @@ struct DirectRenderer : public Renderer<N> {
 
 struct WireframeProp : public Prop<2> {
 
-    WireframeProp(vec3 color) : Prop<2>(){
+    WireframeProp(vec3 color) : Prop<2>() {
         this->color = color;
     }
 
@@ -229,12 +234,12 @@ struct WireframeProp : public Prop<2> {
 
     template<class T, class C>
     static WireframeProp build(const tc::Group<> &g,
-        const C &coords,
-        bool curve,
-        bool ortho,
-        vec3 color,
-        T all_sg_gens,
-        const std::vector<std::vector<size_t>> &exclude
+                               const C &coords,
+                               bool curve,
+                               bool ortho,
+                               vec3 color,
+                               T all_sg_gens,
+                               const std::vector<std::vector<size_t>> &exclude
     ) {
         WireframeProp res(color);
 
@@ -245,7 +250,7 @@ struct WireframeProp : public Prop<2> {
     }
 };
 
-void run(const std::string &config_file, GLFWwindow *window) {
+void run(const std::string &config_file, GLFWwindow* window) {
     glEnable(GL_DEPTH_TEST);
 
     glEnable(GL_BLEND);
@@ -279,13 +284,13 @@ void run(const std::string &config_file, GLFWwindow *window) {
 
     state.dimension = scene["dimension"].as<size_t>();
 
-    for (const auto &group_info : scene["groups"]) {
+    for (const auto &group_info: scene["groups"]) {
         auto symbol = group_info["symbol"].as<std::vector<unsigned int>>();
         auto group = tc::schlafli(symbol);
         auto gens = generators(group);
 
         if (group_info["slices"].IsDefined()) {
-            for (const auto &slice_info : group_info["slices"]) {
+            for (const auto &slice_info: group_info["slices"]) {
                 auto root_arr = slice_info["root"].as<std::array<float, 5>>();
                 auto color_arr = slice_info["color"].as<std::array<float, 3>>();
 
@@ -315,7 +320,7 @@ void run(const std::string &config_file, GLFWwindow *window) {
         }
 
         if (group_info["wires"].IsDefined()) {
-            for (const auto &wire_info : group_info["wires"]) {
+            for (const auto &wire_info: group_info["wires"]) {
                 auto root_arr = wire_info["root"].as<std::array<float, 5>>();
                 auto color_arr = wire_info["color"].as<std::array<float, 3>>();
 
@@ -411,7 +416,7 @@ void run(const std::string &config_file, GLFWwindow *window) {
     }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return EXIT_FAILURE;

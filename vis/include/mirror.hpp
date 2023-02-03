@@ -28,44 +28,41 @@ Eigen::Matrix<float, N, N> mirror(const tc::Group<> &group) {
     return res;
 }
 
-template<unsigned N>
-vec<N> stereo(const vec<N + 1> &v) {
-    vec<N> r;
-    for (int i = 0; i < N; ++i) {
-        r[i] = v[i] / (1 - v[N]);
+struct Stereo {
+    template<class U>
+    auto operator()(U &&mat) const {
+        const auto Rows = std::remove_reference<U>::type::RowsAtCompileTime;
+        return std::forward<U>(mat).template topRows<Rows - 1>().rowwise() / (1 - mat.template bottomRows<1>());
     }
-    return r;
-}
+};
 
-template<unsigned N>
-vec<N> ortho(const vec<N + 1> &v) {
-    vec<N> r;
-    for (int i = 0; i < N; ++i) {
-        r[i] = v[i];
+struct Ortho {
+    template<class U>
+    auto operator()(U &&mat) const {
+        const auto Rows = std::remove_reference<U>::type::RowsAtCompileTime;
+        return std::forward<U>(mat).template topRows<Rows - 1>();
     }
-    return r;
-}
+};
 
-template<class V>
-V project(const V &vec, const V &target) {
-    return vec.dot(target) / target.dot(target) * target;
-}
+struct Project {
+    template<class U, class V>
+    auto operator()(U &&point, V &&axis) const {
+        return point.dot(axis) / axis.dot(axis) * std::forward<V>(axis);
+    }
+};
 
-template<class V>
-V reflect(const V &a, const V &axis) {
-    return a - 2.f * project(a, axis);
-}
-
-template<class Point, class Axis>
-auto project_(const Point &point, const Axis &axis) {
-    return axis.dot(point) / axis.dot(axis) * axis;
-}
+struct Reflect {
+    template<class U, class V>
+    auto operator()(U &&point, V &&axis) const {
+        return std::forward<U>(point) - 2 * Project()(point, axis);
+    }
+};
 
 template<class Mat>
 Mat gram_schmidt(Mat mat) {
     for (int i = 0; i < mat.cols(); ++i) {
         for (int j = i + 1; j < mat.cols(); ++j) {
-            mat.col(j) -= project_(mat.col(j), mat.col(i));
+            mat.col(j) -= Project()(mat.col(j), mat.col(i));
         }
     }
     return mat;
