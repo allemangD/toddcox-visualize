@@ -8,50 +8,23 @@
 
 #include <geometry.hpp>
 
-template<class V>
-float dot(int n, const V &a, const V &b) {
-    float sum = 0;
-    for (int i = 0; i < n; ++i) {
-        sum += a[i] * b[i];
-    }
-    return sum;
-}
+template<unsigned int N>
+Eigen::Matrix<float, N, N> mirror(const tc::Group<> &group) {
+    Eigen::Matrix<float, N, N> res;
+    res.setZero();
 
-template<unsigned N>
-std::vector<vec<N>> mirror(const tc::Group<> &group) {
-    std::vector<std::vector<float>> mirrors;
+    for (int c = 0; c < group.rank(); ++c) {
+        for (int r = 0; r < c; ++r) {
+            auto angle = M_PI / group.get(c, r);
+            auto dot = res.col(c).dot(res.col(r));
 
-    for (int p = 0; p < group.rank(); ++p) {
-        std::vector<float> vp;
-        for (int m = 0; m < p; ++m) {
-            auto &vq = mirrors[m];
-            vp.push_back((cos(M_PI / group.get(p, m)) - dot(m, vp, vq)) / vq[m]);
-        }
-        vp.push_back(std::sqrt(1 - dot(p, vp, vp)));
-
-        for (const auto &v : mirrors) {
-            if (dot(p, vp, vp) > 0) {
-                for (auto &e : vp) {
-                    e *= -1;
-                }
-                break;
-            }
+            res(r, c) = (cos(angle) - dot) / res(r, r);
         }
 
-        mirrors.push_back(vp);
+        res(c, c) = sqrt(1 - res.col(c).squaredNorm());
+        res.col(c) *= -1;
     }
 
-    std::vector<vec<N>> res;
-    for (const auto &v : mirrors) {
-        vec<N> rv = vec<N>::Zero();
-
-        // ortho proj
-        for (int i = 0; i < std::min(v.size(), (size_t) N); ++i) {
-            rv[i] = v[i];
-        }
-
-        res.push_back(rv);
-    }
     return res;
 }
 
@@ -83,36 +56,41 @@ V reflect(const V &a, const V &axis) {
     return a - 2.f * project(a, axis);
 }
 
-template<class V>
-V gram_schmidt_last(std::vector<V> vecs) {
-    for (int i = 0; i < vecs.size(); ++i) {
-        for (int j = 0; j < i; ++j) {
-            vecs[i] -= project(vecs[i], vecs[j]);
+template<class Point, class Axis>
+auto project_(const Point &point, const Axis &axis) {
+    return axis.dot(point) / axis.dot(axis) * axis;
+}
+
+template<class Mat>
+Mat gram_schmidt(Mat mat) {
+    for (int i = 0; i < mat.cols(); ++i) {
+        for (int j = i + 1; j < mat.cols(); ++j) {
+            mat.col(j) -= project_(mat.col(j), mat.col(i));
         }
     }
-
-    return vecs[vecs.size() - 1].normalized();
+    return mat;
 }
 
-template<class V, class C>
-V barycentric(const std::vector<V> &basis, const C &coords) {
-    V res = V::Zero();
+template<class Mat>
+Mat plane_intersections(Mat normals) {
+    auto last = normals.cols() - 1;
 
-    int N = std::min((int) basis.size(), (int) coords.rows());
-    for (int i = 0; i < N; ++i) {
-        res += basis[i] * coords[i];
+    Mat results(normals.rows(), normals.cols());
+    results.setZero();
+
+    Eigen::Matrix<int, Mat::ColsAtCompileTime, 1> indices(normals.cols());
+    std::iota(indices.begin(), indices.end(), 0);
+
+    for (int i = 0; i < normals.cols(); ++i) {
+        std::rotate(indices.begin(), indices.begin() + 1, indices.end());
+
+        Mat cur = normals * Eigen::PermutationMatrix<Mat::ColsAtCompileTime>(indices);
+        Mat res = gram_schmidt(cur);
+
+        results.col(i) = res.col(last);
     }
-    return res;
-}
 
-template<class V>
-std::vector<V> plane_intersections(std::vector<V> normals) {
-    std::vector<V> results(normals.size());
-
-    for (int i = 0; i < normals.size(); ++i) {
-        std::rotate(normals.begin(), normals.begin() + 1, normals.end());
-        results[i] = gram_schmidt_last(normals);
-    }
+    results.colwise().normalize();
 
     return results;
 }

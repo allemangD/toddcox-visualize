@@ -83,12 +83,12 @@ template<class C>
 std::vector<vec4> points(const tc::Group<> &group, const C &coords) {
     auto cosets = group.solve();
     auto mirrors = mirror<5>(group);
-
-    tc::Path<vec5> path(cosets, mirrors);
-
     auto corners = plane_intersections(mirrors);
 
-    auto start = barycentric(corners, coords);
+    vec5 coord = coords;
+    auto start = corners * coord;
+
+    tc::Path<vec5> path(cosets, mirrors.colwise());
 
     std::vector<vec5> higher(path.order());
     path.walk(start, reflect<vec5>, higher.begin());
