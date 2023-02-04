@@ -100,3 +100,21 @@ mat<N> rot(int u, int v, float theta) {
     res(v, v) = std::cos(theta);
     return res;
 }
+
+template<class U, class V>
+auto rotor(U const &u, V const &v) {
+    using Rotor = Eigen::Matrix<
+        typename U::Scalar,
+        std::min(U::RowsAtCompileTime, V::RowsAtCompileTime),
+        std::min(U::RowsAtCompileTime, V::RowsAtCompileTime),
+        U::Options,
+        std::max(U::MaxRowsAtCompileTime, V::MaxRowsAtCompileTime),
+        std::max(U::MaxRowsAtCompileTime, V::MaxRowsAtCompileTime)
+    >;
+
+    const auto &ident = Rotor::Identity(u.rows(), v.rows());
+    const auto &inner = (u + v) / (1 + u.dot(v)) * (u + v).transpose();
+    const auto &outer = v * u.transpose();
+
+    return ident - inner + 2 * outer;
+}
