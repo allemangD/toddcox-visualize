@@ -1,10 +1,14 @@
+include(FetchContent)
+
 FetchContent_Declare(
     peglib
     GIT_REPOSITORY https://github.com/yhirose/cpp-peglib
     GIT_TAG v1.8.2
     GIT_PROGRESS TRUE
 )
+
 set(PEGLIB_BUILD_TESTS OFF CACHE INTERNAL "")
+
 FetchContent_GetProperties(peglib)
 if(NOT ${peglib}_POPULATED)
     FetchContent_Populate(peglib)
