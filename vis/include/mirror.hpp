@@ -18,11 +18,10 @@ Eigen::Matrix<float, N, N> mirror(const tc::Group<> &group) {
             auto angle = M_PI / group.get(c, r);
             auto dot = res.col(c).dot(res.col(r));
 
-            res(r, c) = (cos(angle) - dot) / res(r, r);
+            res(r, c) = (dot - cos(angle)) / res(r, r);
         }
 
         res(c, c) = sqrt(1 - res.col(c).squaredNorm());
-        res.col(c) *= -1;
     }
 
     return res;
