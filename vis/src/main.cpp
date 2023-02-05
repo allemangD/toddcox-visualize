@@ -130,7 +130,8 @@ void run(const std::string &config_file, GLFWwindow* window) {
             tc::schlafli({5, 3, 3, 2}),
             vec5{0.80, 0.09, 0.09, 0.09, 0.04},
             vec3{0.90, 0.90, 0.90},
-            std::vector<std::vector<size_t>>{{0, 1, 2}}
+            std::vector<std::vector<size_t>>{{0, 1, 2},
+                                             {0, 3, 4}, {1, 3, 4}, {2, 3, 4}}
         );
         registry.emplace<vis::VBOs>(entity);
     }

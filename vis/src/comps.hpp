@@ -24,6 +24,7 @@ namespace vis {
         vec3 color;
 
         std::vector<std::vector<size_t>> exclude {{0, 1, 2}};
+        std::vector<std::vector<size_t>> include = combinations(generators(group), 3);
     };
 
     struct VBOs {
@@ -53,9 +54,7 @@ namespace vis {
             // todo generate all, then mask using glMultiDraw.
             const size_t N = 4;
 
-            auto gens = generators(group.group);
-            auto combos = combinations(gens, N - 1);
-            auto inds = merge<N>(hull<N>(group.group, combos, group.exclude));
+            auto inds = merge<N>(hull<N>(group.group, group.include, group.exclude));
 
             vbos.ibo.put(inds.begin(), inds.end());
         }
