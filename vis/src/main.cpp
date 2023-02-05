@@ -9,6 +9,7 @@
 #include "mirror.hpp"
 #include "solver.hpp"
 
+#include <cgl/debug.hpp>
 #include <cgl/vertexarray.hpp>
 #include <cgl/shaderprogram.hpp>
 #include <cgl/pipeline.hpp>
@@ -251,6 +252,11 @@ struct WireframeProp : public Prop<2> {
 };
 
 void run(const std::string &config_file, GLFWwindow* window) {
+#ifndef NDEBUG
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(log_gl_debug_callback, nullptr);
+#endif
+
     glEnable(GL_DEPTH_TEST);
 
     glEnable(GL_BLEND);
