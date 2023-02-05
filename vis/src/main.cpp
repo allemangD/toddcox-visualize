@@ -153,8 +153,10 @@ struct SliceProp : public Prop<N> {
     ) {
         SliceProp<N> res(color);
 
-        res.vbo.put(points(g, coords));
-        res.ibo.put(merge<N>(hull<N>(g, all_sg_gens, exclude)));
+        auto pts = points(g, coords);
+        res.vbo.put(pts.begin(), pts.end());
+        auto inds = merge<N>(hull<N>(g, all_sg_gens, exclude));
+        res.ibo.put(inds.begin(), inds.end());
         res.vao.ipointer(0, res.ibo, 4, GL_UNSIGNED_INT);
 
         return res;
@@ -244,8 +246,10 @@ struct WireframeProp : public Prop<2> {
     ) {
         WireframeProp res(color);
 
-        res.vbo.put(points(g, coords));
-        res.ibo.put(merge<2>(hull<2>(g, all_sg_gens, exclude)));
+        auto pts = points(g, coords);
+        res.vbo.put(pts.begin(), pts.end());
+        auto inds = merge<2>(hull<2>(g, all_sg_gens, exclude));
+        res.ibo.put(inds.begin(), inds.end());
 
         return res;
     }

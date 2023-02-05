@@ -53,8 +53,12 @@ namespace cgl {
             glNamedBufferData(id, sizeof(T), &data, usage);
         }
 
-        void put(const std::vector<T> &data, GLenum usage = GL_STATIC_DRAW) {
-            glNamedBufferData(id, sizeof(T) * data.size(), &data[0], usage);
+        template<typename It>
+        void put(It begin, It end, GLenum usage = GL_STATIC_DRAW) {
+            glNamedBufferData(id, sizeof(T) * (end - begin), nullptr, usage);
+            void* ptr = glMapNamedBuffer(id, GL_WRITE_ONLY);
+            std::copy(begin, end, (T*) ptr);
+            glUnmapNamedBuffer(id);
         }
 
         void bound(GLenum target, const std::function<void()> &action) const {
