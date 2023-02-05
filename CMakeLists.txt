@@ -4,6 +4,7 @@ project(toddcox-faster)
 set(CMAKE_CXX_STANDARD 20)
 
 include(vendor/eigen.cmake)
+include(vendor/entt.cmake)
 include(vendor/fmt.cmake)
 include(vendor/glad.cmake)
 include(vendor/glfw.cmake)

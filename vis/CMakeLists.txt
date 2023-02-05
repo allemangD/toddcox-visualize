@@ -17,7 +17,19 @@ add_custom_command(
 add_library(vis-util INTERFACE)
 target_include_directories(vis-util INTERFACE include)
 
-add_executable(vis src/main.cpp)
+add_executable(vis
+    src/main.cpp
+    src/comps.hpp
+    )
 target_include_directories(vis PRIVATE include)
-target_link_libraries(vis PRIVATE tc glad eigen glfw yaml-cpp shaders fmt)
+target_link_libraries(vis PRIVATE
+    tc
+    glad
+    eigen
+    glfw
+    yaml-cpp
+    shaders
+    fmt::fmt
+    EnTT::EnTT
+    )
 add_dependencies(vis presets)
