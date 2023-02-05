@@ -7,18 +7,14 @@
 
 #include "util.hpp"
 #include "mirror.hpp"
-#include "solver.hpp"
 
-#include <cgl/debug.hpp>
-#include <cgl/vertexarray.hpp>
-#include <cgl/shaderprogram.hpp>
-#include <cgl/pipeline.hpp>
-#include <random>
-
-#include <chrono>
-#include <yaml-cpp/yaml.h>
+#include "comps.hpp"
 
 #include <shaders.hpp>
+
+#ifndef NDEBUG
+#include <cgl/debug.hpp>
+#endif
 
 #ifdef _WIN32
 extern "C" {
@@ -93,10 +89,7 @@ std::vector<vec4> points(const tc::Group<> &group, const C &coords) {
 
     Eigen::Array<float, 5, Eigen::Dynamic> higher(5, path.order());
     path.walk(start, Reflect(), higher.matrix().colwise().begin());
-//    std::vector<vec5> higher(path.order());
-//    path.walk(start, Reflect(), higher.begin());
 
-//    Eigen::Array4Xf lower = higher.topRows<4>().rowwise() / (1 - higher.bottomRows<1>());
     Eigen::Array4Xf lower = Stereo()(higher);
 
     std::vector<vec4> vec(lower.cols());
@@ -104,96 +97,6 @@ std::vector<vec4> points(const tc::Group<> &group, const C &coords) {
 
     return vec;
 }
-
-template<unsigned N>
-struct Prop {
-    cgl::VertexArray vao;
-    cgl::Buffer<vec4> vbo;
-    cgl::Buffer<Primitive<N>> ibo;
-
-    vec3 color;
-
-    Prop() : vao(), vbo(), ibo() {}
-};
-
-template<unsigned N>
-struct Renderer {
-    std::vector<Prop<N>> props;
-
-    virtual void bound(const std::function<void()> &action) const = 0;
-
-    virtual void _draw(const Prop<N> &) const = 0;
-
-    void render() const {
-        bound([&]() {
-            for (const auto &prop: props) {
-                _draw(prop);
-            }
-        });
-    }
-};
-
-template<unsigned N>
-struct SliceProp : public Prop<N> {
-    SliceProp(vec3 color) : Prop<N>() {
-        this->color = color;
-    }
-
-    SliceProp(SliceProp &) = delete;
-
-    SliceProp(SliceProp &&) noexcept = default;
-
-    template<class T, class C>
-    static SliceProp<N> build(
-        const tc::Group<> &g,
-        const C &coords,
-        vec3 color,
-        T all_sg_gens,
-        const std::vector<std::vector<size_t>> &exclude
-    ) {
-        SliceProp<N> res(color);
-
-        auto pts = points(g, coords);
-        res.vbo.put(pts.begin(), pts.end());
-        auto inds = merge<N>(hull<N>(g, all_sg_gens, exclude));
-        res.ibo.put(inds.begin(), inds.end());
-        res.vao.ipointer(0, res.ibo, 4, GL_UNSIGNED_INT);
-
-        return res;
-    }
-};
-
-template<unsigned N>
-struct SliceRenderer : public Renderer<N> {
-    cgl::pgm::vert defer = cgl::pgm::vert(shaders::deferred_vs_glsl);
-    cgl::pgm::geom slice = cgl::pgm::geom(shaders::slice_gm_glsl);
-    cgl::pgm::frag solid = cgl::pgm::frag(shaders::solid_fs_glsl);
-
-    cgl::pipeline pipe;
-
-    SliceRenderer() {
-        pipe.stage(defer);
-        pipe.stage(slice);
-        pipe.stage(solid);
-    }
-
-    SliceRenderer(SliceRenderer &) = delete;
-
-    SliceRenderer(SliceRenderer &&) noexcept = default;
-
-    void bound(const std::function<void()> &action) const override {
-        pipe.bound(action);
-    }
-
-    void _draw(const Prop<N> &prop) const override {
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, prop.vbo);
-        glProgramUniform3fv(solid, 2, 1, prop.color.data());
-//        glProgramUniform3f(solid, 2, 1.f, 1.f, 1.f);
-        prop.vao.bound([&]() {
-            glDrawArrays(GL_POINTS, 0, prop.ibo.count() * N);
-        });
-    }
-};
 
 
 void run(const std::string &config_file, GLFWwindow* window) {
@@ -207,33 +110,28 @@ void run(const std::string &config_file, GLFWwindow* window) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    SliceRenderer<4> sRen{};
+    entt::registry registry;
+    vis::SliceRenderer renderer;
 
     State state{};
     glfwSetWindowUserPointer(window, &state);
 
-    std::cout << "building..." << std::endl;
-    {
-        auto group = tc::schlafli({5, 3, 3, 2});
-        auto gens = generators(group);
-        vec5 root;
-        root << 0.80, 0.09, 0.09, 0.09, 0.04;
-        vec3 color;
-        color << 0.90, 0.90, 0.90;
-
-        std::vector<std::vector<size_t>> exclude{
-            {0, 1, 2},
-        };
-
-        auto combos = combinations(gens, 3);
-
-        sRen.props.push_back(SliceProp<4>::build(
-            group, root, color, combos, exclude
-        ));
-    }
-    std::cout << "built" << std::endl;
-
     state.dimension = 4;
+
+    {
+        auto entity = registry.create();
+
+        registry.emplace<vis::Group>(
+            entity,
+            tc::schlafli({5, 3, 3, 2}),
+            vec5{0.80, 0.09, 0.09, 0.09, 0.04},
+            vec3{0.90, 0.90, 0.90},
+            std::vector<std::vector<size_t>>{{0, 1, 2}}
+        );
+        registry.emplace<vis::VBOs>(entity);
+    }
+
+    vis::upload_groups(registry);
 
     auto ubo = cgl::Buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
@@ -254,7 +152,7 @@ void run(const std::string &config_file, GLFWwindow* window) {
 
         glLineWidth(1.5);
 
-        sRen.render();
+        renderer(registry);
 
         glfwSwapInterval(2);
         glfwSwapBuffers(window);

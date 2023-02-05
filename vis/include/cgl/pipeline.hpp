@@ -83,11 +83,5 @@ namespace cgl {
             glUseProgramStages(id, GL_COMPUTE_SHADER_BIT, pgm);
             return *this;
         }
-
-        void bound(const std::function<void()> &action) const {
-            glBindProgramPipeline(id);
-            action();
-            glBindProgramPipeline(0);
-        }
     };
 }

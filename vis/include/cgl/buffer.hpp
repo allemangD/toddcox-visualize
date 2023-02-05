@@ -10,18 +10,10 @@ namespace cgl {
         GLuint id{};
 
     public:
+        using Element = T;
+
         Buffer() {
             glCreateBuffers(1, &id);
-        }
-
-        Buffer(const T &data, GLenum usage = GL_STATIC_DRAW)
-            : Buffer() {
-            put(data, usage);
-        }
-
-        Buffer(const std::vector<T> &data, GLenum usage = GL_STATIC_DRAW)
-            : Buffer() {
-            put(data, usage);
         }
 
         Buffer(Buffer &) = delete;
@@ -60,12 +52,5 @@ namespace cgl {
             std::copy(begin, end, (T*) ptr);
             glUnmapNamedBuffer(id);
         }
-
-        void bound(GLenum target, const std::function<void()> &action) const {
-            glBindBuffer(target, id);
-            action();
-            glBindBuffer(target, 0);
-        }
     };
-
 }

@@ -33,43 +33,34 @@ namespace cgl {
             return id;
         }
 
-        void bound(const std::function<void()> &action) const {
-            glBindVertexArray(id);
-            action();
-            glBindVertexArray(0);
-        }
-
-        template<class T>
-        void pointer(
+        void format(
             GLuint index,
-            const Buffer<T> &buf,
             unsigned size,
             GLenum type,
             bool normalized = false,
             unsigned stride = 0
-        ) const {
-            bound([&]() {
-                glEnableVertexAttribArray(index);
-                buf.bound(GL_ARRAY_BUFFER, [&]() {
-                    glVertexAttribPointer(index, size, type, normalized, stride, nullptr);
-                });
-            });
+        ) {
+            glEnableVertexArrayAttrib(id, index);
+            glVertexArrayAttribFormat(id, index, size, type, normalized, stride);
         }
 
-        template<class T>
-        void ipointer(
+        void iformat(
             GLuint index,
-            const Buffer<T> &buf,
             unsigned size,
             GLenum type,
             unsigned stride = 0
-        ) const {
-            bound([&]() {
-                glEnableVertexAttribArray(index);
-                buf.bound(GL_ARRAY_BUFFER, [&]() {
-                    glVertexAttribIPointer(index, size, type, stride, nullptr);
-                });
-            });
+        ) {
+            glEnableVertexArrayAttrib(id, index);
+            glVertexArrayAttribIFormat(id, index, size, type, stride);
+        }
+
+        template<class Buf>
+        void vertexBuffer(
+            GLuint index,
+            Buf &buf,
+            unsigned offset = 0
+        ) {
+            glVertexArrayVertexBuffer(id, index, buf, offset, sizeof(typename Buf::Element));
         }
     };
 }
