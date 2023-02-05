@@ -52,7 +52,7 @@ function(_embed_file OUTPUT_OBJECT FILE)
     COMMENT "Embedding ${FILE} in ${OBJECT}"
     OUTPUT "${FILE}.o" DEPENDS "${FILE}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    COMMAND ${EMBED_LD} -r -o "${OBJECT}" -z noexecstack --format=binary "${FILE}"
+    COMMAND ${EMBED_LD} -r -o "${OBJECT}" --format=binary "${FILE}"
     COMMAND ${EMBED_OBJCOPY} --rename-section .data=.rodata,alloc,load,readonly,data,contents "${OBJECT}"
     VERBATIM
   )

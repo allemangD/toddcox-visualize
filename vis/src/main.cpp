@@ -22,6 +22,10 @@ __attribute__((unused)) __declspec(dllexport) int NvOptimusEnablement = 0x000000
 }
 #endif
 
+#ifndef M_PI_2f32
+#define M_PI_2f32 3.14159265358979323846f
+#endif
+
 struct Matrices {
     Eigen::Matrix4f proj;
     Eigen::Matrix4f view;

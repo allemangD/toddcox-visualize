@@ -8,7 +8,7 @@
 #include <limits>
 
 namespace tc {
-    using Mult = u_int16_t;
+    using Mult = std::uint16_t;
     constexpr Mult FREE = 0;
 
     /**
