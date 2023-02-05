@@ -3,18 +3,12 @@ project(toddcox-faster)
 
 set(CMAKE_CXX_STANDARD 20)
 
-include(vendor/eigen.cmake)
-include(vendor/entt.cmake)
-include(vendor/fmt.cmake)
-include(vendor/glad.cmake)
-include(vendor/glfw.cmake)
-include(vendor/gtest.cmake)
-include(vendor/peglib.cmake)
-include(vendor/yaml-cpp.cmake)
+file(GLOB externals ext/*.cmake)
+foreach (external ${externals})
+    include(${external})
+endforeach ()
 
-include(vendor/embed.cmake)
+include(cmake/embed.cmake)
 
 add_subdirectory(tc)
 add_subdirectory(vis)
-
-add_subdirectory(examples)

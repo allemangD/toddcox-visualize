@@ -8,7 +8,7 @@ add_library(tc
     src/lang.cpp
     src/solve.cpp
     )
-target_link_libraries(tc peglib::peglib fmt::fmt)
+target_link_libraries(tc peglib fmt)
 target_include_directories(tc PUBLIC include)
 
 add_library(tc::tc ALIAS tc)
