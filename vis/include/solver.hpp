@@ -21,24 +21,17 @@ std::vector<size_t> generators(const tc::Group &context) {
 
 /**
  * Determine which of g_gens are the correct names for sg_gens within the current context
+ *
+ * For example if g_gens contains {a, b, c, d} and sg_gens contains {b, d, a} then the result is {1, 3, 0}
  */
-std::vector<size_t> recontext_gens(const tc::Group &context, std::vector<size_t> g_gens, std::vector<size_t> sg_gens) {
-
-    std::sort(g_gens.begin(), g_gens.end());
-
-    int inv_gen_map[context.rank()];
-    for (size_t i = 0; i < g_gens.size(); i++) {
-        inv_gen_map[g_gens[i]] = i;
+std::vector<size_t> recontext_gens(std::vector<size_t> g_gens, std::vector<size_t> sg_gens) {
+    for (size_t &gen: sg_gens) {
+        gen = std::distance(
+            g_gens.begin(),
+            std::find(g_gens.begin(), g_gens.end(), gen)
+        );
     }
-
-    std::vector<size_t> s_sg_gens;
-    s_sg_gens.reserve(sg_gens.size());
-    for (const auto gen: sg_gens) {
-        s_sg_gens.push_back(inv_gen_map[gen]);
-    }
-    std::sort(s_sg_gens.begin(), s_sg_gens.end());
-
-    return s_sg_gens;
+    return sg_gens;
 }
 
 /**
@@ -48,7 +41,7 @@ template<unsigned N>
 [[nodiscard]]
 Indices<N> recontext(Indices<N> prims, const tc::Group &context, const std::vector<size_t> &g_gens,
                      const std::vector<size_t> &sg_gens) {
-    const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
+    const auto proper_sg_gens = recontext_gens(g_gens, sg_gens);
     const auto table = context.sub(g_gens).solve({});
     const auto cosets = context.sub(sg_gens).solve({});
 
@@ -94,7 +87,7 @@ template<unsigned N>
 std::vector<Indices<N>> tile(Indices<N> prims, const tc::Group &context, const std::vector<size_t> &g_gens,
                              const std::vector<size_t> &sg_gens) {
     Indices<N> base = recontext<N>(prims, context, g_gens, sg_gens);
-    const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
+    const auto proper_sg_gens = recontext_gens(g_gens, sg_gens);
 
     const auto &table = context.sub(g_gens).solve({});
     const auto &cosets = context.sub(g_gens).solve(proper_sg_gens);
