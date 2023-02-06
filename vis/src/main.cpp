@@ -9,6 +9,7 @@
 #include "mirror.hpp"
 
 #include "comps.hpp"
+#include "fmt/core.h"
 
 #include <shaders.hpp>
 
@@ -42,6 +43,8 @@ struct State {
     float st;
 
     int dimension;
+
+    entt::registry registry;
 };
 
 Matrices build(GLFWwindow* window, State &state) {
@@ -57,51 +60,39 @@ Matrices build(GLFWwindow* window, State &state) {
         state.st += state.time_delta / 8;
     }
 
-    Eigen::Matrix4f view;
-    view.setIdentity();
+    static bool init = false;
+    static Eigen::Vector2d last;
+    Eigen::Vector2d pos;
+
+    glfwGetCursorPos(window, &pos.x(), &pos.y());
+    if (!init) {
+        last = pos;
+        init = true;
+    }
+    Eigen::Vector2d dpos = pos - last;
+    last = pos;
+
+    static Eigen::Matrix4f view = Eigen::Matrix4f::Identity();
 
     if (state.dimension < 4) {
         view *= rot<4>(2, 3, M_PI_2f32 + 0.01f);
     }
 
-    if (state.dimension > 1) {
-        view *= rot<4>(0, 1, state.st * .40f);
-    }
-    if (state.dimension > 2) {
-        view *= rot<4>(0, 2, state.st * .20f);
-        view *= rot<4>(1, 2, state.st * .50f);
-    }
-    if (state.dimension > 3) {
-        view *= rot<4>(0, 3, state.st * 1.30f);
-        view *= rot<4>(1, 3, state.st * .25f);
-        view *= rot<4>(2, 3, state.st * 1.42f);
+    if (glfwGetMouseButton(window, 0)) {
+        float scale = 0.005;
+        auto rotate = rotor(
+            Eigen::Vector4f{0, 0, 1, 0},
+            Eigen::Vector4f{
+                dpos.x() * scale,
+                -dpos.y() * scale,
+                1, 0
+            }.normalized()
+        );
+        view = rotate * view;
     }
 
     return Matrices(proj, view);
 }
-
-template<class C>
-std::vector<vec4> points(const tc::Group<> &group, const C &coords) {
-    auto cosets = group.solve();
-    auto mirrors = mirror<5>(group);
-    auto corners = plane_intersections(mirrors);
-
-    vec5 coord = coords;
-    auto start = corners * coord;
-
-    tc::Path<vec5> path(cosets, mirrors.colwise());
-
-    Eigen::Array<float, 5, Eigen::Dynamic> higher(5, path.order());
-    path.walk(start, Reflect(), higher.matrix().colwise().begin());
-
-    Eigen::Array4Xf lower = Stereo()(higher);
-
-    std::vector<vec4> vec(lower.cols());
-    std::copy(lower.colwise().begin(), lower.colwise().end(), vec.begin());
-
-    return vec;
-}
-
 
 void run(const std::string &config_file, GLFWwindow* window) {
 #ifndef NDEBUG
@@ -109,32 +100,36 @@ void run(const std::string &config_file, GLFWwindow* window) {
     glDebugMessageCallback(log_gl_debug_callback, nullptr);
 #endif
 
+    if (glfwRawMouseMotionSupported()) {
+        glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    }
+
     glEnable(GL_DEPTH_TEST);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    entt::registry registry;
     vis::SliceRenderer renderer;
 
     State state{};
     glfwSetWindowUserPointer(window, &state);
 
+    auto &registry = state.registry;
     state.dimension = 4;
 
-    {
-        auto entity = registry.create();
+    auto entity = registry.create();
 
-        registry.emplace<vis::Group>(
-            entity,
-            tc::schlafli({5, 3, 3, 2}),
-            vec5{0.80, 0.09, 0.09, 0.09, 0.04},
-            vec3{0.90, 0.90, 0.90},
-            std::vector<std::vector<size_t>>{{0, 1, 2},
-                                             {0, 3, 4}, {1, 3, 4}, {2, 3, 4}}
-        );
-        registry.emplace<vis::VBOs>(entity);
-    }
+    registry.emplace<vis::Group>(
+        entity,
+        tc::schlafli({5, 3, 3, 2}),
+        vec5{0.80, 0.09, 0.09, 0.09, 0.09},
+        vec3{0.90, 0.90, 0.90},
+        std::vector<std::vector<size_t>>{{0, 1, 2},
+                                         {0, 3, 4},
+                                         {1, 3, 4},
+                                         {2, 3, 4}}
+    );
+    registry.emplace<vis::VBOs>(entity);
 
     vis::upload_groups(registry);
 
@@ -152,10 +147,30 @@ void run(const std::string &config_file, GLFWwindow* window) {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        Matrices mats = build(window, state);
-        ubo.put(mats);
+        ubo.put(build(window, state));
 
-        glLineWidth(1.5);
+        {
+            auto &tform = registry.get<vis::VBOs>(entity).tform;
+
+            tform.linear().setIdentity();
+
+            if (state.dimension > 1) {
+                tform.linear() *= rot<4>(0, 1, state.st * .40f);
+            }
+            if (state.dimension > 2) {
+                tform.linear() *= rot<4>(0, 2, state.st * .20f);
+                tform.linear() *= rot<4>(1, 2, state.st * .50f);
+            }
+            if (state.dimension > 3) {
+                tform.linear() *= rot<4>(0, 3, state.st * 1.30f);
+                tform.linear() *= rot<4>(1, 3, state.st * .25f);
+                tform.linear() *= rot<4>(2, 3, state.st * 1.42f);
+            }
+
+            tform.translation().w() = std::sin(time * 0.3f) * 1.0f;
+        }
+
+        vis::upload_ubo(registry);
 
         renderer(registry);
 

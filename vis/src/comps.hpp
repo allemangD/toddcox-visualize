@@ -28,8 +28,18 @@ namespace vis {
     };
 
     struct VBOs {
+        struct ModelMatrix {
+            Eigen::Matrix4f linear;
+            Eigen::Vector4f translation;
+        };
+
         cgl::Buffer<vec4> verts;
         cgl::Buffer<Primitive<4>> ibo;
+        cgl::Buffer<ModelMatrix> ubo;
+
+        using Affine4f = Eigen::Transform<float, 4, Eigen::Affine>;
+
+        Affine4f tform = Affine4f::Identity();
     };
 
     void upload_groups(entt::registry &reg) {
@@ -60,6 +70,15 @@ namespace vis {
         }
     }
 
+    void upload_ubo(entt::registry &reg) {
+        auto view = reg.view<VBOs>();
+
+        for (auto [entity, vbos]: view.each()) {
+            vbos.ubo.put({vbos.tform.linear(),
+                          vbos.tform.translation()});
+        }
+    }
+
     struct SliceRenderer {
         cgl::pgm::vert defer = cgl::pgm::vert(shaders::deferred_vs_glsl);
         cgl::pgm::geom slice = cgl::pgm::geom(shaders::slice_gm_glsl);
@@ -86,6 +105,7 @@ namespace vis {
                 glBindProgramPipeline(pipe);
 
                 glProgramUniform3fv(solid, 2, 1, group.color.data());
+                glBindBufferBase(GL_UNIFORM_BUFFER, 2, vbos.ubo);
 
                 glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbos.verts);
 
