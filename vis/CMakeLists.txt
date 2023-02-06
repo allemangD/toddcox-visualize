@@ -14,6 +14,6 @@ add_executable(vis
 target_include_directories(vis PRIVATE include)
 target_link_libraries(vis PRIVATE
     tc shaders
-    glad eigen glfw yaml-cpp fmt EnTT
+    glad eigen glfw yaml-cpp fmt EnTT imgui
     )
 add_dependencies(vis presets)
