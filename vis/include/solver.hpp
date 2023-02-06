@@ -5,41 +5,13 @@
 #include <optional>
 #include <numeric>
 #include <iostream>
+
+#include <geometry.hpp>
+
 #include "combo_iterator.hpp"
 
-#include "fmt/core.h"
-#include "fmt/ranges.h"
-
 /**
- * An primitive stage N indices.
- * @tparam N
- */
-template<unsigned N>
-struct Primitive {
-    static_assert(N > 0, "Primitives must contain at least one point. Primitive<0> or lower is impossible.");
-
-    std::array<unsigned, N> indices;
-
-    Primitive() = default;
-
-    Primitive(const Primitive<N> &) = default;
-
-    Primitive(const Primitive<N - 1> &sub, unsigned root) {
-        std::copy(sub.indices.begin(), sub.indices.end(), indices.begin());
-        indices[N - 1] = root;
-    }
-
-    ~Primitive() = default;
-
-    void apply(const tc::Cosets &table, int gen) {
-        for (auto &ind: indices) {
-            ind = table.get(ind, gen);
-        }
-    }
-};
-
-/**
- * Produce a list of all generators for the group context. The range [0..group.ngens).
+ * Produce a list of all generators for the group context. The range [0..group.rank()).
  */
 std::vector<size_t> generators(const tc::Group &context) {
     std::vector<size_t> g_gens(context.rank());
@@ -49,30 +21,24 @@ std::vector<size_t> generators(const tc::Group &context) {
 
 /**
  * Determine which of g_gens are the correct names for sg_gens within the current context
- *
- * Produces the indexes of sg_gens within g_gens; sorted.
  */
-std::vector<size_t> recontext_gens(
-    const std::vector<size_t> &g_gens,
-    const std::vector<size_t> &sg_gens) {
+std::vector<size_t> recontext_gens(const tc::Group &context, std::vector<size_t> g_gens, std::vector<size_t> sg_gens) {
+
+    std::sort(g_gens.begin(), g_gens.end());
+
+    int inv_gen_map[context.rank()];
+    for (size_t i = 0; i < g_gens.size(); i++) {
+        inv_gen_map[g_gens[i]] = i;
+    }
 
     std::vector<size_t> s_sg_gens;
-    for (const auto &gen: sg_gens) {
-        s_sg_gens.push_back(std::find(g_gens.begin(), g_gens.end(), gen) - g_gens.begin());
+    s_sg_gens.reserve(sg_gens.size());
+    for (const auto gen: sg_gens) {
+        s_sg_gens.push_back(inv_gen_map[gen]);
     }
+    std::sort(s_sg_gens.begin(), s_sg_gens.end());
 
     return s_sg_gens;
-}
-
-/**
- * Apply some context transformation to all primitives of this mesh.
- */
-template<unsigned N>
-std::vector<Primitive<N>> apply(std::vector<Primitive<N>> prims, const tc::Cosets &table, int gen) {
-    for (auto &prim: prims) {
-        prim.apply(table, gen);
-    }
-    return prims;
 }
 
 /**
@@ -80,13 +46,9 @@ std::vector<Primitive<N>> apply(std::vector<Primitive<N>> prims, const tc::Coset
  */
 template<unsigned N>
 [[nodiscard]]
-std::vector<Primitive<N>> recontext(
-    std::vector<Primitive<N>> prims,
-    const tc::Group &context,
-    const std::vector<size_t> &g_gens,
-    const std::vector<size_t> &sg_gens
-) {
-    const auto proper_sg_gens = recontext_gens(g_gens, sg_gens);
+Indices<N> recontext(Indices<N> prims, const tc::Group &context, const std::vector<size_t> &g_gens,
+                     const std::vector<size_t> &sg_gens) {
+    const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
     const auto table = context.sub(g_gens).solve({});
     const auto cosets = context.sub(sg_gens).solve({});
 
@@ -97,11 +59,10 @@ std::vector<Primitive<N>> recontext(
         return table.get(coset, gen);
     }, map.begin());
 
-    std::vector<Primitive<N>> res(prims);
-    for (Primitive<N> &prim: res) {
-        for (auto &ind: prim.indices) {
-            ind = map[ind];
-        }
+    Indices<N> res(prims);
+    auto data = res.data();
+    for (int i = 0; i < prims.size(); ++i) {
+        data[i] = map[data[i]];
     }
 
     return res;
@@ -111,16 +72,18 @@ std::vector<Primitive<N>> recontext(
  * Union several meshes of the same dimension
  */
 template<unsigned N>
-std::vector<Primitive<N>> merge(const std::vector<std::vector<Primitive<N>>> &meshes) {
-    size_t size = 0;
+Indices<N> merge(const std::vector<Indices<N>> &meshes) {
+    size_t cols = 0;
     for (const auto &mesh: meshes) {
-        size += mesh.size();
+        cols += mesh.cols();
     }
 
-    std::vector<Primitive<N>> res;
-    res.reserve(size);
-    for (const auto &mesh: meshes) {
-        res.insert(res.end(), mesh.begin(), mesh.end());
+    Indices<N> res(N, cols);
+
+    size_t offset = 0;
+    for (const Indices<N> &mesh: meshes) {
+        res.middleCols(offset, mesh.cols()) = mesh;
+        offset += mesh.cols();
     }
 
     return res;
@@ -128,39 +91,26 @@ std::vector<Primitive<N>> merge(const std::vector<std::vector<Primitive<N>>> &me
 
 template<unsigned N>
 [[nodiscard]]
-std::vector<std::vector<Primitive<N>>> each_tile(
-    std::vector<Primitive<N>> prims,
-    const tc::Group &context,
-    const std::vector<size_t> &g_gens,
-    const std::vector<size_t> &sg_gens
-) {
-    std::vector<Primitive<N>> base = recontext(prims, context, g_gens, sg_gens);
-    const auto proper_sg_gens = recontext_gens(g_gens, sg_gens);
+std::vector<Indices<N>> tile(Indices<N> prims, const tc::Group &context, const std::vector<size_t> &g_gens,
+                             const std::vector<size_t> &sg_gens) {
+    Indices<N> base = recontext<N>(prims, context, g_gens, sg_gens);
+    const auto proper_sg_gens = recontext_gens(context, g_gens, sg_gens);
 
     const auto &table = context.sub(g_gens).solve({});
     const auto &cosets = context.sub(g_gens).solve(proper_sg_gens);
 
     tc::Path<> path(cosets);
 
-    std::vector<std::vector<Primitive<N>>> res(path.order());
-    path.walk(base, [&](auto from, auto to) {
-        return apply(from, table, to);
+    std::vector<Indices<N>> res(path.order());
+
+    path.walk(base, [&](Indices<N> from, auto gen) {
+        for (int i = 0; i < from.size(); ++i) {
+            from(i) = table.get(from(i), gen);
+        }
+        return from;
     }, res.begin());
 
     return res;
-}
-
-template<unsigned N>
-[[nodiscard]]
-std::vector<Primitive<N>> tile(
-    std::vector<Primitive<N>> prims,
-    const tc::Group &context,
-    const std::vector<size_t> &g_gens,
-    const std::vector<size_t> &sg_gens
-) {
-    auto res = each_tile<N>(prims, context, g_gens, sg_gens);
-
-    return merge(res);
 }
 
 /**
@@ -168,15 +118,12 @@ std::vector<Primitive<N>> tile(
  */
 template<unsigned N>
 [[nodiscard]]
-std::vector<Primitive<N + 1>> fan(std::vector<Primitive<N>> prims, size_t root) {
-    std::vector<Primitive<N + 1>> res(prims.size());
-    std::transform(
-        prims.begin(), prims.end(),
-        res.begin(),
-        [root](const Primitive<N> &prim) {
-            return Primitive<N + 1>(prim, root);
-        }
-    );
+Indices<N + 1> fan(Indices<N> prims, int root) {
+    Indices<N + 1> res(N + 1, prims.cols());
+
+    res.topRows(1) = Indices<1>::Constant(1, prims.cols(), root);
+    res.bottomRows(N) = prims;
+
     return res;
 }
 
@@ -184,50 +131,42 @@ std::vector<Primitive<N + 1>> fan(std::vector<Primitive<N>> prims, size_t root) 
  * Produce a mesh of primitives that fill out the volume of the subgroup generated by generators g_gens within the group context
  */
 template<unsigned N>
-std::vector<Primitive<N>> triangulate(
-    const tc::Group &context,
-    const std::vector<size_t> &g_gens
-) {
-    if (g_gens.size() + 1 != N) {
+Indices<N> triangulate(const tc::Group &context, const std::vector<size_t> &g_gens) {
+    if (g_gens.size() + 1 != N) // todo make static assert
         throw std::logic_error("g_gens size must be one less than N");
-    }
 
     const auto &combos = combinations(g_gens, g_gens.size() - 1);
 
-    std::vector<std::vector<Primitive<N>>> meshes;
+    std::vector<Indices<N>> meshes;
 
     for (const auto &sg_gens: combos) {
         auto base = triangulate<N - 1>(context, sg_gens);
-        auto raised = tile(base, context, g_gens, sg_gens);
-        raised.erase(raised.begin(), raised.begin() + base.size());
-        meshes.push_back(fan(raised, 0));
+        auto parts = tile<N - 1>(base, context, g_gens, sg_gens);
+        parts.erase(parts.begin(), parts.begin() + 1);
+        auto raised = merge<N - 1>(parts);
+        auto fanned = fan<N - 1>(raised, 0);
+        meshes.push_back(fanned);
     }
 
-    return merge(meshes);
+    return merge<N>(meshes);
 }
 
-// Single-index primitives should not be further triangulated.
+/**
+ * Single-index primitives should not be further triangulated.
+ */
 template<>
-std::vector<Primitive<1>> triangulate(
-    const tc::Group &,
-    const std::vector<size_t> &g_gens
-) {
-    if (not g_gens.empty()) {
+Indices<1> triangulate<1>(const tc::Group &context, const std::vector<size_t> &g_gens) {
+    if (not g_gens.empty()) // todo make static assert
         throw std::logic_error("g_gens must be empty for a trivial Mesh");
-    }
 
-    std::vector<Primitive<1>> res;
-    res.emplace_back();
-    return res;
+    return Indices<1>::Zero(1, 1);
 }
 
 template<unsigned N, class T>
 auto hull(const tc::Group &group, T all_sg_gens, const std::vector<std::vector<size_t>> &exclude) {
-    std::vector<std::vector<Primitive<N>>> parts;
-
+    std::vector<Indices<N>> parts;
     auto g_gens = generators(group);
-
-    for (std::vector<size_t> sg_gens: all_sg_gens) {
+    for (const std::vector<size_t> &sg_gens: all_sg_gens) {
         bool excluded = false;
         for (const auto &test: exclude) {
             if (sg_gens == test) {
@@ -238,7 +177,7 @@ auto hull(const tc::Group &group, T all_sg_gens, const std::vector<std::vector<s
         if (excluded) continue;
 
         const auto &base = triangulate<N>(group, sg_gens);
-        const auto &tiles = each_tile(base, group, g_gens, sg_gens);
+        const auto &tiles = tile<N>(base, group, g_gens, sg_gens);
         for (const auto &tile: tiles) {
             parts.push_back(tile);
         }

@@ -11,7 +11,7 @@
 #include "combo_iterator.hpp"
 
 template<unsigned N>
-using Prims = Eigen::Matrix<unsigned, N, Eigen::Dynamic>;
+using Indices = Eigen::Array<unsigned, N, Eigen::Dynamic>;
 
 template<int N>
 using vec = Eigen::Matrix<float, N, 1>;

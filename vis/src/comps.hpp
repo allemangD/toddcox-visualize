@@ -34,7 +34,7 @@ namespace vis {
         };
 
         cgl::Buffer<vec4> verts;
-        cgl::Buffer<Primitive<4>> ibo;
+        cgl::Buffer<Eigen::Array<unsigned int, 4, 1>> ibo;
         cgl::Buffer<ModelMatrix> ubo;
 
         using Affine4f = Eigen::Transform<float, 4, Eigen::Affine>;
@@ -66,7 +66,7 @@ namespace vis {
 
             auto inds = merge<N>(hull<N>(group.group, group.include, group.exclude));
 
-            vbos.ibo.put(inds.begin(), inds.end());
+            vbos.ibo.put(inds.colwise().begin(), inds.colwise().end());
         }
     }
 
