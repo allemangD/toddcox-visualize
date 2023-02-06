@@ -7,6 +7,9 @@
 #include <iostream>
 #include "combo_iterator.hpp"
 
+#include "fmt/core.h"
+#include "fmt/ranges.h"
+
 /**
  * An primitive stage N indices.
  * @tparam N
@@ -28,7 +31,7 @@ struct Primitive {
 
     ~Primitive() = default;
 
-    void apply(const tc::Cosets<> &table, int gen) {
+    void apply(const tc::Cosets &table, int gen) {
         for (auto &ind: indices) {
             ind = table.get(ind, gen);
         }
@@ -38,7 +41,7 @@ struct Primitive {
 /**
  * Produce a list of all generators for the group context. The range [0..group.ngens).
  */
-std::vector<size_t> generators(const tc::Group<> &context) {
+std::vector<size_t> generators(const tc::Group &context) {
     std::vector<size_t> g_gens(context.rank());
     std::iota(g_gens.begin(), g_gens.end(), 0);
     return g_gens;
@@ -65,7 +68,7 @@ std::vector<size_t> recontext_gens(
  * Apply some context transformation to all primitives of this mesh.
  */
 template<unsigned N>
-std::vector<Primitive<N>> apply(std::vector<Primitive<N>> prims, const tc::Cosets<> &table, int gen) {
+std::vector<Primitive<N>> apply(std::vector<Primitive<N>> prims, const tc::Cosets &table, int gen) {
     for (auto &prim: prims) {
         prim.apply(table, gen);
     }
@@ -79,7 +82,7 @@ template<unsigned N>
 [[nodiscard]]
 std::vector<Primitive<N>> recontext(
     std::vector<Primitive<N>> prims,
-    const tc::Group<> &context,
+    const tc::Group &context,
     const std::vector<size_t> &g_gens,
     const std::vector<size_t> &sg_gens
 ) {
@@ -110,13 +113,13 @@ std::vector<Primitive<N>> recontext(
 template<unsigned N>
 std::vector<Primitive<N>> merge(const std::vector<std::vector<Primitive<N>>> &meshes) {
     size_t size = 0;
-    for (const auto &mesh : meshes) {
+    for (const auto &mesh: meshes) {
         size += mesh.size();
     }
 
     std::vector<Primitive<N>> res;
     res.reserve(size);
-    for (const auto &mesh : meshes) {
+    for (const auto &mesh: meshes) {
         res.insert(res.end(), mesh.begin(), mesh.end());
     }
 
@@ -127,18 +130,17 @@ template<unsigned N>
 [[nodiscard]]
 std::vector<std::vector<Primitive<N>>> each_tile(
     std::vector<Primitive<N>> prims,
-    const tc::Group<> &context,
+    const tc::Group &context,
     const std::vector<size_t> &g_gens,
     const std::vector<size_t> &sg_gens
 ) {
     std::vector<Primitive<N>> base = recontext(prims, context, g_gens, sg_gens);
     const auto proper_sg_gens = recontext_gens(g_gens, sg_gens);
 
-    const auto table = context.sub(g_gens).solve({});
+    const auto &table = context.sub(g_gens).solve({});
+    const auto &cosets = context.sub(g_gens).solve(proper_sg_gens);
 
-    const tc::Cosets<> &cosets = context.sub(g_gens).solve(proper_sg_gens);
-
-    tc::Path path(cosets);
+    tc::Path<> path(cosets);
 
     std::vector<std::vector<Primitive<N>>> res(path.order());
     path.walk(base, [&](auto from, auto to) {
@@ -152,7 +154,7 @@ template<unsigned N>
 [[nodiscard]]
 std::vector<Primitive<N>> tile(
     std::vector<Primitive<N>> prims,
-    const tc::Group<> &context,
+    const tc::Group &context,
     const std::vector<size_t> &g_gens,
     const std::vector<size_t> &sg_gens
 ) {
@@ -183,7 +185,7 @@ std::vector<Primitive<N + 1>> fan(std::vector<Primitive<N>> prims, size_t root) 
  */
 template<unsigned N>
 std::vector<Primitive<N>> triangulate(
-    const tc::Group<> &context,
+    const tc::Group &context,
     const std::vector<size_t> &g_gens
 ) {
     if (g_gens.size() + 1 != N) {
@@ -207,7 +209,7 @@ std::vector<Primitive<N>> triangulate(
 // Single-index primitives should not be further triangulated.
 template<>
 std::vector<Primitive<1>> triangulate(
-    const tc::Group<> &,
+    const tc::Group &,
     const std::vector<size_t> &g_gens
 ) {
     if (not g_gens.empty()) {
@@ -220,7 +222,7 @@ std::vector<Primitive<1>> triangulate(
 }
 
 template<unsigned N, class T>
-auto hull(const tc::Group<> &group, T all_sg_gens, const std::vector<std::vector<size_t>> &exclude) {
+auto hull(const tc::Group &group, T all_sg_gens, const std::vector<std::vector<size_t>> &exclude) {
     std::vector<std::vector<Primitive<N>>> parts;
 
     auto g_gens = generators(group);
@@ -237,7 +239,7 @@ auto hull(const tc::Group<> &group, T all_sg_gens, const std::vector<std::vector
 
         const auto &base = triangulate<N>(group, sg_gens);
         const auto &tiles = each_tile(base, group, g_gens, sg_gens);
-        for (const auto &tile : tiles) {
+        for (const auto &tile: tiles) {
             parts.push_back(tile);
         }
     }

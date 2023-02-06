@@ -14,7 +14,7 @@
 
 struct Graph {
     size_t rank{};
-    std::vector<tc::Group<>::Rel> edges{};
+    std::vector<tc::Group::Rel> edges{};
 };
 
 struct Op {
@@ -287,10 +287,10 @@ Graph eval(const std::vector<Op> &ops) {
 }
 
 namespace tc {
-    Group<> coxeter(const std::string &symbol) {
+    Group coxeter(const std::string &symbol) {
         auto ops = compile(symbol);
         auto diagram = eval(ops);
-        Group<> res(diagram.rank);
+        Group res(diagram.rank);
         for (const auto &[i, j, m]: diagram.edges) {
             res.set(i, j, m);
         }

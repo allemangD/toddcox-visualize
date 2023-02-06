@@ -20,10 +20,10 @@ namespace tc {
     };
 
     struct Tables {
-        std::vector<Group<>::Rel> rels;
+        std::vector<Group::Rel> rels;
         std::vector<std::vector<Row>> rows;
 
-        explicit Tables(std::vector<Group<>::Rel> rels)
+        explicit Tables(std::vector<Group::Rel> rels)
             : rels(std::move(rels)), rows() {
         }
 
@@ -36,9 +36,9 @@ namespace tc {
         }
     };
 
-    [[nodiscard]] Cosets<> Group<>::solve(std::vector<size_t> const &idxs, size_t bound) const {
+    [[nodiscard]] Cosets Group::solve(std::vector<size_t> const &idxs, size_t bound) const {
         // region Initialize Cosets Table
-        Cosets<> cosets(rank());
+        Cosets cosets(rank());
         cosets.add_row();
 
         if (rank() == 0) {
@@ -53,7 +53,7 @@ namespace tc {
         // endregion
 
         // region Initialize Relation Tables
-        std::vector<Group<>::Rel> rels;
+        std::vector<Group::Rel> rels;
         for (int i = 0; i < rank(); ++i) {
             for (int j = i + 1; j < rank(); ++j) {
                 // The algorithm only works for Coxeter groups; multiplicities m_ii=1 are assumed. Relation tables

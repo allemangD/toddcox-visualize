@@ -12,17 +12,8 @@ namespace tc {
     constexpr Mult FREE = 0;
 
     /**
-     * @brief Mapping from "global" generator names or objects to indexes used for value lookup. 
-     * @tparam Gen_ 
-     */
-    template<typename Gen_=void>
-    struct Index;
-
-    /**
      * @brief Complete representation of a quotient group. Describes the action of each generator on each coset.
-     * @tparam Gen_ 
      */
-    template<typename Gen_=void>
     struct Cosets;
 
     /** 
@@ -42,7 +33,6 @@ namespace tc {
      * @see
      * <a href="https://en.wikipedia.org/wiki/Coxeter_group#Definition">Coxeter Group (Wikipedia)</a>
      */
-    template<typename Gen_=void>
     struct Group;
 
     /**
@@ -52,33 +42,7 @@ namespace tc {
     template<typename Gen_=void>
     struct Path;
 
-    template<>
-    struct Index<> {
-        size_t operator()(size_t const &idx) const {
-            return idx;
-        }
-    };
-
-    template<typename Gen_>
-    struct Index {
-        using Gen = Gen_;
-
-        std::vector<Gen> _gens{};
-
-        explicit Index(std::vector<Gen> gens) : _gens(gens) {}
-
-        template<typename It>
-        Index(It begin, It end) : _gens(begin, end) {}
-
-        size_t operator()(Gen const &gen) const {
-            auto it = std::find(_gens.begin(), _gens.end(), gen);
-            assert(it != _gens.end());
-            return it - _gens.begin();
-        }
-    };
-
-    template<>
-    struct Cosets<> {
+    struct Cosets {
         static constexpr size_t UNSET = std::numeric_limits<size_t>::max();
 
     private:
@@ -108,7 +72,7 @@ namespace tc {
 
         [[nodiscard]] size_t size() const;
 
-        friend Group<>;  // only constructible via Group<>::solve
+        friend Group;  // only constructible via Group<>::solve
 
     private:
         explicit Cosets(size_t rank);
@@ -122,8 +86,7 @@ namespace tc {
         [[nodiscard]] bool isset(size_t idx) const;
     };
 
-    template<>
-    struct Group<> {
+    struct Group {
         using Rel = std::tuple<size_t, size_t, Mult>;
 
     private:
@@ -147,7 +110,7 @@ namespace tc {
 
         [[nodiscard]] Group sub(std::vector<size_t> const &idxs) const;
 
-        [[nodiscard]] Cosets<> solve(std::vector<size_t> const &idxs = {}, size_t bound = SIZE_MAX) const;
+        [[nodiscard]] Cosets solve(std::vector<size_t> const &idxs = {}, size_t bound = SIZE_MAX) const;
     };
 
     template<>
@@ -160,7 +123,7 @@ namespace tc {
     public:
         // todo be smarter about move semantics
 
-        explicit Path(Cosets<> const &cosets) : _data() {
+        explicit Path(Cosets const &cosets) : _data() {
             _data.resize(cosets.order());
 
             std::vector<bool> complete(cosets.order(), false);
@@ -207,100 +170,20 @@ namespace tc {
     };
 
     template<typename Gen_>
-    struct Cosets : public Cosets<> {
-        using Gen = Gen_;
-
-    private:
-        Index<Gen> _index;
-
-        friend Path<Gen>;
-
-    public:
-        Cosets(Cosets<> g, std::vector<Gen> gens) : Cosets<>(g), _index(gens) {}
-
-        void set(size_t coset, Gen const &gen, size_t target) {
-            Cosets<>::set(coset, _index(gen), target);
-        }
-
-        [[nodiscard]] size_t get(size_t coset, Gen const &gen) const {
-            return Cosets<>::get(coset, _index(gen));
-        }
-
-        [[nodiscard]] bool isset(size_t coset, Gen const &gen) const {
-            return Cosets<>::isset(coset, _index(gen));
-        }
-
-        [[nodiscard]] std::vector<Gen> gens() const {
-            return _index._gens;
-        }
-
-    private:
-        Cosets(size_t rank, std::vector<Gen> gens) : Cosets<>(rank), _index(gens) {}
-    };
-
-    template<typename Gen_>
-    struct Group : public Group<> {
-        using Gen = Gen_;
-        using Rel = std::tuple<Gen, Gen, Mult>;
-
-    private:
-        Index<Gen> _index;
-
-    public:
-        Group(Group const &) = default;
-
-        Group(Group &&) noexcept = default;
-
-        Group(Group<> g, std::vector<Gen> gens) : Group<>(g), _index(gens) {}
-
-        Group(size_t rank, std::vector<Gen> gens) : Group<>(rank), _index(gens) {}
-
-        ~Group() = default;
-
-        void set(Gen const &u, Gen const &v, Mult m) {
-            Group<>::set(_index(u), _index(v), m);
-        }
-
-        [[nodiscard]] Mult get(Gen const &u, Gen const &v) const {
-            return Group<>::get(_index(u), _index(v));
-        }
-
-        [[nodiscard]] std::vector<Gen> gens() const {
-            return _index._gens;
-        }
-
-        [[nodiscard]] Group sub(std::vector<Gen> const &gens) const {
-            std::vector<size_t> idxs(gens.size());
-            std::transform(gens.begin(), gens.end(), idxs.begin(), _index);
-            return Group(Group<>::sub(idxs), gens);
-        }
-
-        [[nodiscard]] Cosets<Gen> solve(std::vector<Gen> const &gens = {}, size_t bound = SIZE_MAX) const {
-            std::vector<size_t> idxs(gens.size());
-            std::transform(gens.begin(), gens.end(), idxs.begin(), _index);
-
-            return Cosets<Gen>(Group<>::solve(idxs, bound), _index._gens);
-        }
-    };
-
-    template<typename Gen_>
     struct Path : public Path<> {
         using Gen = Gen_;
 
     private:
-        Index<Gen> _index;
+        std::vector<Gen> _index;
 
     public:
-        // todo be smarter about move semantics
-        explicit Path(Cosets<Gen> const &cosets) : Path<>(cosets), _index(cosets._index) {}
-
         template<typename T>
-        Path(Cosets<> const &cosets, T const &gens)
-            : Path<>(cosets), _index(gens.begin(), gens.end()) {}
+        Path(Cosets const &cosets, T &&gens)
+            : Path<>(cosets), _index(std::forward<T>(gens).begin(), std::forward<T>(gens).end()) {}
 
         template<typename Elem, typename BinaryOp, std::random_access_iterator It>
         void walk(Elem const &start, BinaryOp op, It out) {
-            Path<>::walk(start, op, out, _index._gens.begin());
+            Path<>::walk(start, op, out, _index.begin());
         }
     };
 }

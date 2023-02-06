@@ -9,7 +9,7 @@
 #include <geometry.hpp>
 
 template<unsigned int N>
-Eigen::Matrix<float, N, N> mirror(const tc::Group<> &group) {
+Eigen::Matrix<float, N, N> mirror(const tc::Group &group) {
     Eigen::Matrix<float, N, N> res;
     res.setZero();
 

@@ -19,7 +19,7 @@
 
 namespace vis {
     struct Group {
-        tc::Group<> group;
+        tc::Group group;
         vec5 root;
         vec3 color;
 
