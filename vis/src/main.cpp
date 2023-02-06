@@ -228,8 +228,12 @@ int main(int argc, char* argv[]) {
 
     glfwWindowHint(GLFW_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_VERSION_MAJOR, 5);
-    glfwWindowHint(GLFW_SAMPLES, 8);
 //    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    glfwWindowHint(GLFW_SAMPLES, 8);
+
+//    glfwWindowHint(GLFW_DECORATED, false);
+//    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, true);
 
     auto window = glfwCreateWindow(
         1920, 1080,
