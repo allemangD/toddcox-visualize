@@ -9,6 +9,11 @@ layout(std140, binding=1) uniform Matrices {
     mat4 view;
 };
 
+layout(std140, binding=2) uniform ModelMatrices {
+    mat4 linear;
+    vec4 translation;
+};
+
 layout(location=0) in ivec4 inds;
 layout(location=1) in vec4 col;
 
@@ -24,7 +29,7 @@ void main() {
     vInds = inds;
     vCol = col;
 
-    vec4 pos = view * verts[vInds.x];
+    vec4 pos = linear * verts[vInds.x] + translation;
     gl_Position = proj * vec4(pos.xyz, 1);
     gl_PointSize = 5;
 }

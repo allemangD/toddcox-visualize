@@ -12,6 +12,11 @@ layout(std140, binding=1) uniform Matrices {
     mat4 view;
 };
 
+layout(std140, binding=2) uniform ModelMatrices {
+    mat4 linear;
+    vec4 translation;
+};
+
 in ivec4 vInds[];
 in vec4 vCol[];
 
@@ -36,7 +41,8 @@ void emit(vec4 v) {
 
 void main() {
     vec4 pos4[4];
-    for (int i = 0; i < 4; ++i) pos4[i] = view * verts[vInds[0][i]];
+    for (int i = 0; i < 4; ++i)
+        pos4[i] = view * (linear * verts[vInds[0][i]] + translation);
 
     int lo[4], L = 0;
     int hi[4], H = 0;

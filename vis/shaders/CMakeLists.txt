@@ -1,9 +1,4 @@
 add_embed_library(shaders
-    curve-ortho.gm.glsl
-    curve-stereo.gm.glsl
-    diffuse.fs.glsl
-    direct-ortho.vs.glsl
-    direct-stereo.vs.glsl
     solid.fs.glsl
     deferred.vs.glsl
     slice.gm.glsl
