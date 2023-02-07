@@ -24,7 +24,7 @@ namespace vis {
         vec3 color;
 
         std::vector<std::vector<size_t>> exclude {{0, 1, 2}};
-        std::vector<std::vector<size_t>> include = combinations(generators(group), 3);
+        std::vector<std::vector<size_t>> include = combinations(_generators(group), 3);
     };
 
     struct VBOs {
