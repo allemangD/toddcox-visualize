@@ -92,6 +92,7 @@ namespace tc {
     private:
         size_t _rank;
         std::vector<size_t> _mults;
+        std::vector<size_t> _gens;
 
     public:
         Group(Group const &) = default;
@@ -108,7 +109,11 @@ namespace tc {
 
         [[nodiscard]] size_t rank() const;
 
-        [[nodiscard]] Group sub(std::vector<size_t> const &idxs) const;
+        [[nodiscard]] std::vector<size_t> gens() const;
+
+        [[nodiscard]] Group sub(std::vector<size_t> const &gens) const;
+
+        [[nodiscard]] std::vector<Group> subs(size_t rank) const;
 
         [[nodiscard]] Cosets solve(std::vector<size_t> const &idxs = {}, size_t bound = SIZE_MAX) const;
     };

@@ -22,9 +22,6 @@ namespace vis {
         tc::Group group;
         vec5 root;
         vec3 color;
-
-        std::vector<std::vector<size_t>> exclude {{0, 1, 2}};
-        std::vector<std::vector<size_t>> include = combinations(_generators(group), 3);
     };
 
     struct VBOs {
@@ -62,9 +59,13 @@ namespace vis {
             vbos.verts.put(lower.colwise().begin(), lower.colwise().end());
 
             // todo generate all, then mask using glMultiDraw.
-            const size_t N = 4;
+            const Eigen::Index N = 4;
 
-            auto inds = merge<N>(hull<N>(group.group, group.include, group.exclude));
+            auto tiles = hull<N>(group.group);
+
+            tiles.erase(tiles.begin());  // remove {0, 1, 2} cells
+
+            auto inds = merge<N>(tiles);
 
             vbos.ibo.put(inds.colwise().begin(), inds.colwise().end());
         }

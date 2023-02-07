@@ -8,8 +8,6 @@
 
 #include <Eigen/Eigen>
 
-#include "combo_iterator.hpp"
-
 template<unsigned N>
 using Indices = Eigen::Array<unsigned, N, Eigen::Dynamic>;
 
