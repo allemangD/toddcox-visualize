@@ -116,7 +116,7 @@ void set_style() {
     style.DisplaySafeAreaPadding.y = 10;
 }
 
-void run(GLFWwindow* window, ImGuiContext* ctx) {
+int run(GLFWwindow* window, ImGuiContext* ctx) {
     if (glfwRawMouseMotionSupported()) {
         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
@@ -218,6 +218,8 @@ void run(GLFWwindow* window, ImGuiContext* ctx) {
         glfwSwapInterval(2);
         glfwSwapBuffers(window);
     }
+
+    return EXIT_SUCCESS;
 }
 
 int main(int argc, char* argv[]) {
@@ -265,7 +267,7 @@ int main(int argc, char* argv[]) {
     int exit_code = EXIT_SUCCESS;
 
     try {
-        run(window, context);
+        exit_code = run(window, context);
     } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
         exit_code = EXIT_FAILURE;
