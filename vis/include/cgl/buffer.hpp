@@ -8,6 +8,7 @@ namespace cgl {
     template<class T>
     class Buffer {
         GLuint id{};
+        size_t _count = 0;
 
     public:
         using Element = T;
@@ -32,25 +33,26 @@ namespace cgl {
         }
 
         [[nodiscard]] size_t size() const {
-            GLint res;
-            glGetNamedBufferParameteriv(id, GL_BUFFER_SIZE, &res);
-            return (size_t) res;
+            return _count * sizeof(T);
         }
 
         [[nodiscard]] size_t count() const {
-            return size() / sizeof(T);
-        }
-
-        void put(const T &data, GLenum usage = GL_STATIC_DRAW) {
-            glNamedBufferData(id, sizeof(T), &data, usage);
+            return _count;
         }
 
         template<typename It>
         void put(It begin, It end, GLenum usage = GL_STATIC_DRAW) {
-            glNamedBufferData(id, sizeof(T) * (end - begin), nullptr, usage);
+            _count = end - begin;
+
+            glNamedBufferData(id, sizeof(T) * _count, nullptr, usage);
             void* ptr = glMapNamedBuffer(id, GL_WRITE_ONLY);
             std::copy(begin, end, (T*) ptr);
             glUnmapNamedBuffer(id);
+        }
+
+        void put(const T &data, GLenum usage = GL_STATIC_DRAW) {
+            T const* ptr = &data;
+            put(ptr, ptr + 1, usage);
         }
     };
 }

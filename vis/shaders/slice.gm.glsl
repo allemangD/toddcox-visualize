@@ -18,10 +18,10 @@ layout(std140, binding=2) uniform ModelMatrices {
 };
 
 in ivec4 vInds[];
-in vec4 vCol[];
+in vec3 vCol[];
 
 layout(location=0) out vec4 pos;
-layout(location=1) out vec4 col;
+layout(location=1) out vec3 col;
 layout(location=2) out vec3 normal;
 
 out gl_PerVertex {

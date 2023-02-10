@@ -112,7 +112,7 @@ Indices<N> cell(
 
     std::vector<Indices<N - 1>> facets;
 
-    for (auto H : G.subs(N - 2)) {
+    for (auto H: G.subs(N - 2)) {
         auto sub_base = cell<N - 1>(H);
         auto base = recontext(sub_base, G, H);
         auto tiles = tile(base, G, H);
@@ -140,17 +140,53 @@ Indices<1> cell<1>(
 }
 
 template<int N>
-auto hull(
-    const tc::Group &G
-) {
-    std::vector<Indices<N>> parts;
+struct Hull {
+    struct Tiling {
+        Eigen::Index first;
+        Eigen::Index count;
+    };
 
-    for (auto H: G.subs(N - 1)) {
-        auto sub_base = cell<N>(H);
-        auto base = recontext(sub_base, G, H);
-        auto tiles = tile(base, G, H);
-        parts.push_back(merge(tiles));
+    std::vector<Tiling> tilings{};
+    std::vector<std::vector<size_t>> subgroups{};
+
+    Indices<N> inds{};
+
+    explicit Hull(tc::Group const &G) {
+        std::vector<Indices<N>> parts;
+
+        Eigen::Index first = 0;
+        for (const auto &H: G.subs(N - 1)) {
+            auto sub_base = cell<N>(H);
+            auto base = recontext(sub_base, G, H);
+            auto tiles = tile(base, G, H);
+            auto tiling = merge(tiles);
+
+            subgroups.push_back(H.gens());
+            tilings.push_back({first, tiling.cols()});
+
+            parts.push_back(tiling);
+            first += tiling.cols();
+        }
+
+        inds = merge(parts);
     }
+};
 
-    return parts;
-}
+struct Points {
+    Eigen::Array<float, 4, Eigen::Dynamic> verts;
+
+    explicit Points(tc::Group const &G, Eigen::Vector<float, 5> root) {
+        auto mirrors = mirror<5>(G);
+        auto corners = plane_intersections(mirrors);
+
+        auto start = corners * root;
+
+        tc::Cosets table = G.solve();
+        tc::Path<vec5> path(table, mirrors.colwise());
+
+        Eigen::Array<float, 5, Eigen::Dynamic> higher(5, path.order());
+        path.walk(start, Reflect(), higher.matrix().colwise().begin());
+
+        verts = Stereo()(higher);
+    }
+};

@@ -15,11 +15,13 @@
 
 #include "comps.hpp"
 #include "fmt/core.h"
+#include "fmt/ranges.h"
 
 #include <shaders.hpp>
 
 #ifndef NDEBUG
 #include <cgl/debug.hpp>
+#include <utility>
 #endif
 
 #ifdef _WIN32
@@ -36,8 +38,8 @@ struct Matrices {
     Eigen::Matrix4f proj;
     Eigen::Matrix4f view;
 
-    Matrices(const Eigen::Matrix4f &proj, const Eigen::Matrix4f &view)
-        : proj(proj), view(view) {
+    Matrices(Eigen::Matrix4f proj, Eigen::Matrix4f view)
+        : proj(std::move(proj)), view(std::move(view)) {
     }
 };
 
@@ -106,6 +108,23 @@ void show_overlay(State &state) {
     ImGui::End();
 }
 
+void show_options(entt::registry &registry) {
+    auto view = registry.view<vis::Structure<4>>();
+
+    for (auto [entity, structure]: view.each()) {
+        ImGui::Begin("Structure View Options");
+
+        for (int i = 0; i < structure.hull.tilings.size(); ++i) {
+            std::string label = fmt::format("{}", structure.hull.subgroups[i]);
+
+            ImGui::Checkbox(label.c_str(), (bool*) (&(structure.enabled[i])));
+            ImGui::ColorEdit3(label.c_str(), structure.colors[i].data(), ImGuiColorEditFlags_NoLabel);
+        }
+
+        ImGui::End();
+    }
+}
+
 void set_style() {
     ImGui::StyleColorsDark();
 
@@ -135,16 +154,21 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
     state.dimension = 4;
 
     auto entity = registry.create();
+    {
+        // todo move symbol and root to structure
+        //  cache and recompute cells/points on frame (only if changed) in a system.
 
-    registry.emplace<vis::Group>(
-        entity,
-        tc::schlafli({5, 3, 3, 2}),
-        vec5{0.80, 0.09, 0.09, 0.09, 0.09},
-        vec3{0.90, 0.90, 0.90}
-    );
-    registry.emplace<vis::VBOs>(entity);
+        tc::Group group = tc::schlafli({5, 3, 3, 2});
+        Points points(group, vec5{0.80, 0.3, 0.15, 0.15, 0.03});
+        Hull<4> hull(group);
 
-    vis::upload_groups(registry);
+        auto& structure = registry.emplace<vis::Structure<4>>(entity, std::move(points), std::move(hull));
+        registry.emplace<vis::VBOs>(entity);
+
+        structure.enabled[0] = false;  // disable {0,1,2} cells
+    }
+
+    vis::upload_structure(registry);
 
     auto ubo = cgl::Buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
@@ -163,6 +187,7 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
 
         ImGui::NewFrame();
         show_overlay(state);
+        show_options(registry);
         ImGui::Render();
 
         int width, height;
@@ -171,10 +196,10 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        ubo.put(build(window, state, ctx));
+        ubo.put(build(window, state, ctx), GL_STREAM_DRAW);
 
         {
-            auto &tform = registry.get<vis::VBOs>(entity).tform;
+            auto &tform = registry.get<vis::Structure<4>>(entity).transform;
 
             if (!io.KeysDown[GLFW_KEY_SPACE]) {
                 float speed = 1.0 / 8.0;
@@ -202,7 +227,8 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
             tform.translation().w() = std::sin(state.time * 1.4) * 1.0;
         }
 
-        vis::upload_ubo(registry);
+        vis::upload_commands(registry);
+        vis::upload_uniforms(registry);
 
         renderer(registry);
 

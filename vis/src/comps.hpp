@@ -18,65 +18,93 @@
 #include <shaders.hpp>
 
 namespace vis {
-    struct Group {
-        tc::Group group;
-        vec5 root;
-        vec3 color;
+    template<int N>
+    struct Structure {
+        using Affine4f = Eigen::Transform<float, 4, Eigen::Affine>;
+
+        using Vertex = Eigen::Vector<float, 4>;
+        using Color = Eigen::Vector<float, 3>;
+        using Cell = Eigen::Array<unsigned int, 4, 1>;
+
+        Points points;
+        Hull<N> hull;
+
+        std::vector<char> enabled;
+        std::vector<Eigen::Vector3f> colors;
+
+        Affine4f transform = Affine4f::Identity();
+
+        template<typename P, typename H>
+        explicit Structure(P &&points_, H &&hull_, Color color_ = Color::Ones()):
+            points(std::forward<P>(points_)),
+            hull(std::forward<H>(hull_)),
+            enabled(hull.tilings.size(), true),
+            colors(hull.tilings.size(), color_),
+            transform(Affine4f::Identity()) {
+
+        }
     };
 
     struct VBOs {
-        struct ModelMatrix {
+        struct Uniform {
             Eigen::Matrix4f linear;
             Eigen::Vector4f translation;
         };
 
-        cgl::Buffer<vec4> verts;
-        cgl::Buffer<Eigen::Array<unsigned int, 4, 1>> ibo;
-        cgl::Buffer<ModelMatrix> ubo;
+        struct Command {
+            unsigned int count, instanceCount, first, baseInstance;
+        };
 
-        using Affine4f = Eigen::Transform<float, 4, Eigen::Affine>;
-
-        Affine4f tform = Affine4f::Identity();
+        cgl::Buffer<Structure<4>::Vertex> vertices;
+        cgl::Buffer<Structure<4>::Color> colors;
+        cgl::Buffer<Structure<4>::Cell> indices;
+        cgl::Buffer<Uniform> uniform;
+        cgl::Buffer<Command> commands;
     };
 
-    void upload_groups(entt::registry &reg) {
-        auto view = reg.view<const Group, VBOs>();
+    void upload_structure(entt::registry &registry) {
+        auto view = registry.view<Structure<4>, VBOs>();
 
-        for (auto [entity, group, vbos]: view.each()) {
-            auto cosets = group.group.solve();
-            auto mirrors = mirror<5>(group.group);
-            auto corners = plane_intersections(mirrors);
+        for (auto [entity, structure, vbos]: view.each()) {
+            auto vertices = structure.points.verts.colwise();
+            auto indices = structure.hull.inds.colwise();
 
-            vec5 start = corners * group.root;
-
-            tc::Path<vec5> path(cosets, mirrors.colwise());
-
-            Eigen::Array<float, 5, Eigen::Dynamic> higher(5, path.order());
-            path.walk(start, Reflect(), higher.matrix().colwise().begin());
-
-            Eigen::Array<float, 4, Eigen::Dynamic> lower = Stereo()(higher);
-
-            vbos.verts.put(lower.colwise().begin(), lower.colwise().end());
-
-            // todo generate all, then mask using glMultiDraw.
-            const Eigen::Index N = 4;
-
-            auto tiles = hull<N>(group.group);
-
-            tiles.erase(tiles.begin());  // remove {0, 1, 2} cells
-
-            auto inds = merge<N>(tiles);
-
-            vbos.ibo.put(inds.colwise().begin(), inds.colwise().end());
+            vbos.vertices.put(vertices.begin(), vertices.end());
+            vbos.indices.put(indices.begin(), indices.end());
         }
     }
 
-    void upload_ubo(entt::registry &reg) {
-        auto view = reg.view<VBOs>();
+    void upload_uniforms(entt::registry &registry) {
+        auto view = registry.view<Structure<4>, VBOs>();
 
-        for (auto [entity, vbos]: view.each()) {
-            vbos.ubo.put({vbos.tform.linear(),
-                          vbos.tform.translation()});
+        for (auto [entity, structure, vbos]: view.each()) {
+            auto colors = structure.colors;
+            VBOs::Uniform uniform{
+                structure.transform.linear(),
+                structure.transform.translation(),
+            };
+
+            vbos.colors.put(colors.begin(), colors.end());
+            vbos.uniform.put(uniform, GL_STREAM_DRAW);
+        }
+    }
+
+    void upload_commands(entt::registry &registry) {
+        auto view = registry.view<Structure<4>, VBOs>();
+
+        for (auto [entity, structure, vbos]: view.each()) {
+            const auto &tilings = structure.hull.tilings;
+
+            std::vector<VBOs::Command> commands;
+
+            for (unsigned int i = 0; i < tilings.size(); ++i) {
+                if (structure.enabled[i]) {
+                    auto [first, count] = tilings[i];
+                    commands.push_back({(unsigned int) count, 1, (unsigned int) first, i});
+                }
+            }
+
+            vbos.commands.put(commands.begin(), commands.end(), GL_STREAM_DRAW);
         }
     }
 
@@ -95,25 +123,29 @@ namespace vis {
             pipe.stage(solid);
 
             vao.iformat(0, 4, GL_UNSIGNED_INT);
+            vao.format(1, 3, GL_FLOAT);
+
+            glVertexArrayBindingDivisor(vao, 1, 1);
         }
 
         void operator()(entt::registry &reg) {
-            auto view = reg.view<const Group, VBOs>();
+            auto view = reg.view<VBOs>();
 
-            for (auto [entity, group, vbos]: view.each()) {
+            for (auto [entity, vbos]: view.each()) {
                 const size_t N = 4;
 
                 glBindProgramPipeline(pipe);
 
-                glProgramUniform3fv(solid, 2, 1, group.color.data());
-                glBindBufferBase(GL_UNIFORM_BUFFER, 2, vbos.ubo);
+                glBindBufferBase(GL_UNIFORM_BUFFER, 2, vbos.uniform);
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbos.vertices);
 
-                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbos.verts);
+                vao.vertexBuffer(0, vbos.indices);
+                vao.vertexBuffer(1, vbos.colors);
 
-                vao.vertexBuffer(0, vbos.ibo);
+                glBindBuffer(GL_DRAW_INDIRECT_BUFFER, vbos.commands);
 
                 glBindVertexArray(vao);
-                glDrawArrays(GL_POINTS, 0, vbos.ibo.count());
+                glMultiDrawArraysIndirect(GL_POINTS, nullptr, vbos.commands.count(), 0);
                 glBindVertexArray(0);
 
                 glBindProgramPipeline(0);

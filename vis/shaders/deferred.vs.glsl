@@ -15,10 +15,10 @@ layout(std140, binding=2) uniform ModelMatrices {
 };
 
 layout(location=0) in ivec4 inds;
-layout(location=1) in vec4 col;
+layout(location=1) in vec3 col;
 
 out ivec4 vInds;
-out vec4 vCol;
+out vec3 vCol;
 
 out gl_PerVertex {
     vec4 gl_Position;
