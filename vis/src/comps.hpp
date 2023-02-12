@@ -18,21 +18,25 @@
 #include <shaders.hpp>
 
 namespace vis {
-    template<int N>
+    template<int R_, int D_, int G_>
     struct Structure {
-        using Affine4f = Eigen::Transform<float, 4, Eigen::Affine>;
+        static constexpr auto Rank = R_;
+        static constexpr auto Dim = D_;
+        static constexpr auto Grade = G_;
 
-        using Vertex = Eigen::Vector<float, 4>;
+        using Affine = Eigen::Transform<float, Dim, Eigen::Affine>;
+
+        using Vertex = Eigen::Vector<float, Dim>;
         using Color = Eigen::Vector<float, 3>;
-        using Cell = Eigen::Array<unsigned int, 4, 1>;
+        using Cell = Eigen::Array<unsigned int, Grade, 1>;
 
         Points points;
-        Hull<N> hull;
+        Hull <Grade> hull;
 
         std::vector<char> enabled;
         std::vector<Eigen::Vector3f> colors;
 
-        Affine4f transform = Affine4f::Identity();
+        Affine transform = Affine::Identity();
 
         template<typename P, typename H>
         explicit Structure(P &&points_, H &&hull_, Color color_ = Color::Ones()):
@@ -40,8 +44,7 @@ namespace vis {
             hull(std::forward<H>(hull_)),
             enabled(hull.tilings.size(), true),
             colors(hull.tilings.size(), color_),
-            transform(Affine4f::Identity()) {
-
+            transform(Affine::Identity()) {
         }
     };
 
@@ -55,15 +58,15 @@ namespace vis {
             unsigned int count, instanceCount, first, baseInstance;
         };
 
-        cgl::Buffer<Structure<4>::Vertex> vertices;
-        cgl::Buffer<Structure<4>::Color> colors;
-        cgl::Buffer<Structure<4>::Cell> indices;
+        cgl::Buffer<Structure<5, 4, 4>::Vertex> vertices;
+        cgl::Buffer<Structure<5, 4, 4>::Color> colors;
+        cgl::Buffer<Structure<5, 4, 4>::Cell> indices;
         cgl::Buffer<Uniform> uniform;
         cgl::Buffer<Command> commands;
     };
 
     void upload_structure(entt::registry &registry) {
-        auto view = registry.view<Structure<4>, VBOs>();
+        auto view = registry.view<Structure<5, 4, 4>, VBOs>();
 
         for (auto [entity, structure, vbos]: view.each()) {
             auto vertices = structure.points.verts.colwise();
@@ -75,7 +78,7 @@ namespace vis {
     }
 
     void upload_uniforms(entt::registry &registry) {
-        auto view = registry.view<Structure<4>, VBOs>();
+        auto view = registry.view<Structure<5, 4, 4>, VBOs>();
 
         for (auto [entity, structure, vbos]: view.each()) {
             auto colors = structure.colors;
@@ -90,7 +93,7 @@ namespace vis {
     }
 
     void upload_commands(entt::registry &registry) {
-        auto view = registry.view<Structure<4>, VBOs>();
+        auto view = registry.view<Structure<5, 4, 4>, VBOs>();
 
         for (auto [entity, structure, vbos]: view.each()) {
             const auto &tilings = structure.hull.tilings;

@@ -109,7 +109,7 @@ void show_overlay(State &state) {
 }
 
 void show_options(entt::registry &registry) {
-    auto view = registry.view<vis::Structure<4>>();
+    auto view = registry.view<vis::Structure<5, 4, 4>>();
 
     for (auto [entity, structure]: view.each()) {
         ImGui::Begin("Structure View Options");
@@ -153,16 +153,18 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
     auto &registry = state.registry;
     state.dimension = 4;
 
+    using Slice = vis::Structure<5, 4, 4>;
+
     auto entity = registry.create();
     {
         // todo move symbol and root to structure
         //  cache and recompute cells/points on frame (only if changed) in a system.
 
         tc::Group group = tc::schlafli({5, 3, 3, 2});
-        Points points(group, vec5{0.80, 0.3, 0.15, 0.15, 0.03});
+        Points points(group, vec5{0.80, 0.09, 0.09, 0.09, 0.09});
         Hull<4> hull(group);
 
-        auto& structure = registry.emplace<vis::Structure<4>>(entity, std::move(points), std::move(hull));
+        auto &structure = registry.emplace<Slice>(entity, std::move(points), std::move(hull));
         registry.emplace<vis::VBOs>(entity);
 
         structure.enabled[0] = false;  // disable {0,1,2} cells
@@ -199,7 +201,7 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
         ubo.put(build(window, state, ctx), GL_STREAM_DRAW);
 
         {
-            auto &tform = registry.get<vis::Structure<4>>(entity).transform;
+            auto &tform = registry.get<Slice>(entity).transform;
 
             if (!io.KeysDown[GLFW_KEY_SPACE]) {
                 float speed = 1.0 / 8.0;
