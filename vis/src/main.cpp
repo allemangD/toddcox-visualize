@@ -145,15 +145,14 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    vis::SliceRenderer renderer;
+    using Slice = vis::Structure<5, 4, 4>;
+    vis::SliceRenderer<Slice> renderer;
 
     State state{};
     glfwSetWindowUserPointer(window, &state);
 
     auto &registry = state.registry;
     state.dimension = 4;
-
-    using Slice = vis::Structure<5, 4, 4>;
 
     auto entity = registry.create();
     {
@@ -165,12 +164,12 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
         Hull<4> hull(group);
 
         auto &structure = registry.emplace<Slice>(entity, std::move(points), std::move(hull));
-        registry.emplace<vis::VBOs>(entity);
+        registry.emplace<vis::VBOs<Slice>>(entity);
 
         structure.enabled[0] = false;  // disable {0,1,2} cells
     }
 
-    vis::upload_structure(registry);
+    vis::upload_structure<Slice>(registry);
 
     auto ubo = cgl::Buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
@@ -229,8 +228,8 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
             tform.translation().w() = std::sin(state.time * 1.4) * 1.0;
         }
 
-        vis::upload_commands(registry);
-        vis::upload_uniforms(registry);
+        vis::upload_commands<Slice>(registry);
+        vis::upload_uniforms<Slice>(registry);
 
         renderer(registry);
 

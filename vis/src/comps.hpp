@@ -31,7 +31,7 @@ namespace vis {
         using Cell = Eigen::Array<unsigned int, Grade, 1>;
 
         Points points;
-        Hull <Grade> hull;
+        Hull<Grade> hull;
 
         std::vector<char> enabled;
         std::vector<Eigen::Vector3f> colors;
@@ -48,7 +48,10 @@ namespace vis {
         }
     };
 
+    template<typename Str_>
     struct VBOs {
+        using Str = Str_;
+
         struct Uniform {
             Eigen::Matrix4f linear;
             Eigen::Vector4f translation;
@@ -58,15 +61,16 @@ namespace vis {
             unsigned int count, instanceCount, first, baseInstance;
         };
 
-        cgl::Buffer<Structure<5, 4, 4>::Vertex> vertices;
-        cgl::Buffer<Structure<5, 4, 4>::Color> colors;
-        cgl::Buffer<Structure<5, 4, 4>::Cell> indices;
+        cgl::Buffer<typename Str::Vertex> vertices;
+        cgl::Buffer<typename Str::Color> colors;
+        cgl::Buffer<typename Str::Cell> indices;
         cgl::Buffer<Uniform> uniform;
         cgl::Buffer<Command> commands;
     };
 
+    template<typename Str>
     void upload_structure(entt::registry &registry) {
-        auto view = registry.view<Structure<5, 4, 4>, VBOs>();
+        auto view = registry.view<Str, VBOs<Str>>();
 
         for (auto [entity, structure, vbos]: view.each()) {
             auto vertices = structure.points.verts.colwise();
@@ -77,12 +81,13 @@ namespace vis {
         }
     }
 
+    template<typename Str>
     void upload_uniforms(entt::registry &registry) {
-        auto view = registry.view<Structure<5, 4, 4>, VBOs>();
+        auto view = registry.view<Str, VBOs<Str>>();
 
         for (auto [entity, structure, vbos]: view.each()) {
             auto colors = structure.colors;
-            VBOs::Uniform uniform{
+            typename VBOs<Str>::Uniform uniform{
                 structure.transform.linear(),
                 structure.transform.translation(),
             };
@@ -92,13 +97,14 @@ namespace vis {
         }
     }
 
+    template<typename Str>
     void upload_commands(entt::registry &registry) {
-        auto view = registry.view<Structure<5, 4, 4>, VBOs>();
+        auto view = registry.view<Str, VBOs<Str>>();
 
         for (auto [entity, structure, vbos]: view.each()) {
             const auto &tilings = structure.hull.tilings;
 
-            std::vector<VBOs::Command> commands;
+            std::vector<typename VBOs<Str>::Command> commands;
 
             for (unsigned int i = 0; i < tilings.size(); ++i) {
                 if (structure.enabled[i]) {
@@ -111,7 +117,10 @@ namespace vis {
         }
     }
 
+    template<typename Str_>
     struct SliceRenderer {
+        using Str = Str_;
+
         cgl::pgm::vert defer = cgl::pgm::vert(shaders::deferred_vs_glsl);
         cgl::pgm::geom slice = cgl::pgm::geom(shaders::slice_gm_glsl);
         cgl::pgm::frag solid = cgl::pgm::frag(shaders::solid_fs_glsl);
@@ -132,11 +141,9 @@ namespace vis {
         }
 
         void operator()(entt::registry &reg) {
-            auto view = reg.view<VBOs>();
+            auto view = reg.view<VBOs<Str>>();
 
             for (auto [entity, vbos]: view.each()) {
-                const size_t N = 4;
-
                 glBindProgramPipeline(pipe);
 
                 glBindBufferBase(GL_UNIFORM_BUFFER, 2, vbos.uniform);
