@@ -9,7 +9,7 @@ add_custom_command(
 
 add_executable(vis
     src/main.cpp
-    src/comps.hpp
+    src/components.hpp
     )
 target_include_directories(vis PRIVATE include)
 target_link_libraries(vis PRIVATE

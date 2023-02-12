@@ -13,9 +13,10 @@
 #include "util.hpp"
 #include "mirror.hpp"
 
-#include "comps.hpp"
+#include "components.hpp"
 #include "fmt/core.h"
 #include "fmt/ranges.h"
+#include "systems.hpp"
 
 #include <shaders.hpp>
 
@@ -156,14 +157,13 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
 
     auto entity = registry.create();
     {
-        // todo move symbol and root to structure
-        //  cache and recompute cells/points on frame (only if changed) in a system.
-
         tc::Group group = tc::schlafli({5, 3, 3, 2});
-        Points points(group, vec5{0.80, 0.09, 0.09, 0.09, 0.09});
-        Hull<4> hull(group);
 
-        auto &structure = registry.emplace<Slice>(entity, std::move(points), std::move(hull));
+        auto &structure = registry.emplace<Slice>(
+            entity,
+            group,
+            vec5{0.80, 0.09, 0.09, 0.09, 0.09}
+        );
         registry.emplace<vis::VBOs<Slice>>(entity);
 
         structure.enabled[0] = false;  // disable {0,1,2} cells

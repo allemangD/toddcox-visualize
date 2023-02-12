@@ -14,60 +14,11 @@
 #include "mirror.hpp"
 #include "geometry.hpp"
 #include "solver.hpp"
+#include "components.hpp"
 
 #include <shaders.hpp>
 
 namespace vis {
-    template<int R_, int D_, int G_>
-    struct Structure {
-        static constexpr auto Rank = R_;
-        static constexpr auto Dim = D_;
-        static constexpr auto Grade = G_;
-
-        using Affine = Eigen::Transform<float, Dim, Eigen::Affine>;
-
-        using Vertex = Eigen::Vector<float, Dim>;
-        using Color = Eigen::Vector<float, 3>;
-        using Cell = Eigen::Array<unsigned int, Grade, 1>;
-
-        Points points;
-        Hull<Grade> hull;
-
-        std::vector<char> enabled;
-        std::vector<Eigen::Vector3f> colors;
-
-        Affine transform = Affine::Identity();
-
-        template<typename P, typename H>
-        explicit Structure(P &&points_, H &&hull_, Color color_ = Color::Ones()):
-            points(std::forward<P>(points_)),
-            hull(std::forward<H>(hull_)),
-            enabled(hull.tilings.size(), true),
-            colors(hull.tilings.size(), color_),
-            transform(Affine::Identity()) {
-        }
-    };
-
-    template<typename Str_>
-    struct VBOs {
-        using Str = Str_;
-
-        struct Uniform {
-            Eigen::Matrix4f linear;
-            Eigen::Vector4f translation;
-        };
-
-        struct Command {
-            unsigned int count, instanceCount, first, baseInstance;
-        };
-
-        cgl::Buffer<typename Str::Vertex> vertices;
-        cgl::Buffer<typename Str::Color> colors;
-        cgl::Buffer<typename Str::Cell> indices;
-        cgl::Buffer<Uniform> uniform;
-        cgl::Buffer<Command> commands;
-    };
-
     template<typename Str>
     void upload_structure(entt::registry &registry) {
         auto view = registry.view<Str, VBOs<Str>>();
@@ -134,9 +85,9 @@ namespace vis {
             pipe.stage(slice);
             pipe.stage(solid);
 
-            vao.iformat(0, 4, GL_UNSIGNED_INT);
-            vao.format(1, 3, GL_FLOAT);
+            vao.iformat(0, Str::Grade, GL_UNSIGNED_INT);  // inds
 
+            vao.format(1, 3, GL_FLOAT);  // color
             glVertexArrayBindingDivisor(vao, 1, 1);
         }
 
@@ -146,16 +97,32 @@ namespace vis {
             for (auto [entity, vbos]: view.each()) {
                 glBindProgramPipeline(pipe);
 
-                glBindBufferBase(GL_UNIFORM_BUFFER, 2, vbos.uniform);
-                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vbos.vertices);
+                glBindBufferBase(
+                    GL_SHADER_STORAGE_BUFFER,
+                    1,
+                    vbos.vertices
+                );
+                glBindBufferBase(
+                    GL_UNIFORM_BUFFER,
+                    2,
+                    vbos.uniform
+                );
+
+                glBindBuffer(
+                    GL_DRAW_INDIRECT_BUFFER,
+                    vbos.commands
+                );
 
                 vao.vertexBuffer(0, vbos.indices);
                 vao.vertexBuffer(1, vbos.colors);
 
-                glBindBuffer(GL_DRAW_INDIRECT_BUFFER, vbos.commands);
-
                 glBindVertexArray(vao);
-                glMultiDrawArraysIndirect(GL_POINTS, nullptr, vbos.commands.count(), 0);
+                glMultiDrawArraysIndirect(
+                    GL_POINTS,
+                    nullptr,
+                    vbos.commands.count(),
+                    0
+                );
                 glBindVertexArray(0);
 
                 glBindProgramPipeline(0);
