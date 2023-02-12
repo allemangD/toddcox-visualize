@@ -115,8 +115,8 @@ void show_options(entt::registry &registry) {
     for (auto [entity, structure]: view.each()) {
         ImGui::Begin("Structure View Options");
 
-        for (int i = 0; i < structure.hull.tilings.size(); ++i) {
-            std::string label = fmt::format("{}", structure.hull.subgroups[i]);
+        for (int i = 0; i < structure.tilings.size(); ++i) {
+            std::string label = fmt::format("{}", i);
 
             ImGui::Checkbox(label.c_str(), (bool*) (&(structure.enabled[i])));
             ImGui::ColorEdit3(label.c_str(), structure.colors[i].data(), ImGuiColorEditFlags_NoLabel);
@@ -156,20 +156,15 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
     state.dimension = 4;
 
     auto entity = registry.create();
-    {
-        tc::Group group = tc::schlafli({5, 3, 3, 2});
-
-        auto &structure = registry.emplace<Slice>(
-            entity,
-            group,
-            vec5{0.80, 0.09, 0.09, 0.09, 0.09}
-        );
-        registry.emplace<vis::VBOs<Slice>>(entity);
-
-        structure.enabled[0] = false;  // disable {0,1,2} cells
-    }
+    registry.emplace<Slice>(
+        entity,
+        tc::schlafli({5, 3, 3, 2}),
+        vec5{0.80, 0.09, 0.09, 0.09, 0.09}
+    );
+    registry.emplace<vis::VBOs<Slice>>(entity);
 
     vis::upload_structure<Slice>(registry);
+    registry.get<Slice>(entity).enabled[0] = false;  // disable {0,1,2} cells
 
     auto ubo = cgl::Buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);

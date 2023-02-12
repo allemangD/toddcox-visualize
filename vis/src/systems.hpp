@@ -24,8 +24,15 @@ namespace vis {
         auto view = registry.view<Str, VBOs<Str>>();
 
         for (auto [entity, structure, vbos]: view.each()) {
-            auto vertices = structure.points.verts.colwise();
-            auto indices = structure.hull.inds.colwise();
+            Points points(structure.group, structure.root);
+            Hull<Str::Grade> hull(structure.group);
+
+            auto vertices = points.verts.colwise();
+            auto indices = hull.inds.colwise();
+
+            structure.tilings = hull.tilings;
+            structure.enabled.resize(hull.tilings.size(), true);
+            structure.colors.resize(hull.tilings.size(), vec3::Ones());
 
             vbos.vertices.put(vertices.begin(), vertices.end());
             vbos.indices.put(indices.begin(), indices.end());
@@ -53,7 +60,7 @@ namespace vis {
         auto view = registry.view<Str, VBOs<Str>>();
 
         for (auto [entity, structure, vbos]: view.each()) {
-            const auto &tilings = structure.hull.tilings;
+            const auto &tilings = structure.tilings;
 
             std::vector<typename VBOs<Str>::Command> commands;
 

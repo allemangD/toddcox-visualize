@@ -47,25 +47,18 @@ namespace vis {
         tc::Group group;
         VectorRf root;
 
-        Points points;
-        Hull<Grade> hull;
-
-        std::vector<char> enabled;
-        std::vector<Eigen::Vector3f> colors;
+        std::vector<typename Hull<Grade>::Tiling> tilings{};
+        std::vector<char> enabled{};
+        std::vector<Eigen::Vector3f> colors{};
 
         Affine transform = Affine::Identity();
 
         explicit Structure(
             tc::Group group,
-            VectorRf root,
-            Color color_ = Color::Ones()
+            VectorRf root
         ) :
             group(group),
             root(root),
-            points(group, root),  // todo separate system
-            hull(group),  // todo separate system
-            enabled(hull.tilings.size(), true),
-            colors(hull.tilings.size(), color_),
             transform(Affine::Identity()) {
         }
     };
