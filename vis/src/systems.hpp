@@ -27,15 +27,27 @@ namespace vis {
             Points points(structure.group, structure.root);
             Hull<Str::Grade> hull(structure.group);
 
-            auto vertices = points.verts.colwise();
-            auto indices = hull.inds.colwise();
+            registry.destroy(structure.parts.begin(), structure.parts.end());
+            structure.parts.clear();
 
-            structure.tilings = hull.tilings;
-            structure.enabled.resize(hull.tilings.size(), true);
-            structure.colors.resize(hull.tilings.size(), vec3::Ones());
+            for (const auto &tiling: hull.tilings) {
+                auto part_entity = registry.create();
+                registry.emplace<typename Str::Part>(
+                    part_entity,
+                    tiling.first,
+                    tiling.count
+                );
+                structure.parts.push_back(part_entity);
+            }
 
-            vbos.vertices.put(vertices.begin(), vertices.end());
-            vbos.indices.put(indices.begin(), indices.end());
+            vbos.vertices.put(
+                points.verts.colwise().begin(),
+                points.verts.colwise().end()
+            );
+            vbos.indices.put(
+                hull.inds.colwise().begin(),
+                hull.inds.colwise().end()
+            );
         }
     }
 
@@ -44,13 +56,17 @@ namespace vis {
         auto view = registry.view<Str, VBOs<Str>>();
 
         for (auto [entity, structure, vbos]: view.each()) {
-            auto colors = structure.colors;
+            std::vector<typename Str::Color> colors;
+            for (const auto &part_entity: structure.parts) {
+                const auto &part = registry.get<typename Str::Part>(part_entity);
+                colors.push_back(part.color);
+            }
+            vbos.colors.put(colors.begin(), colors.end());
+
             typename VBOs<Str>::Uniform uniform{
                 structure.transform.linear(),
                 structure.transform.translation(),
             };
-
-            vbos.colors.put(colors.begin(), colors.end());
             vbos.uniform.put(uniform, GL_STREAM_DRAW);
         }
     }
@@ -60,14 +76,20 @@ namespace vis {
         auto view = registry.view<Str, VBOs<Str>>();
 
         for (auto [entity, structure, vbos]: view.each()) {
-            const auto &tilings = structure.tilings;
-
             std::vector<typename VBOs<Str>::Command> commands;
 
-            for (unsigned int i = 0; i < tilings.size(); ++i) {
-                if (structure.enabled[i]) {
-                    auto [first, count] = tilings[i];
-                    commands.push_back({(unsigned int) count, 1, (unsigned int) first, i});
+            for (unsigned int idx = 0; idx < structure.parts.size(); idx++) {
+                const auto &part_entity = structure.parts[idx];
+                const auto &part = registry.get<typename Str::Part>(part_entity);
+                if (part.enabled) {
+                    commands.push_back(
+                        {
+                            part.count,
+                            1,
+                            part.first,
+                            idx
+                        }
+                    );
                 }
             }
 

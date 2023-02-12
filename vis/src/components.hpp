@@ -47,11 +47,16 @@ namespace vis {
         tc::Group group;
         VectorRf root;
 
-        std::vector<typename Hull<Grade>::Tiling> tilings{};
-        std::vector<char> enabled{};
-        std::vector<Eigen::Vector3f> colors{};
-
         Affine transform = Affine::Identity();
+
+        struct Part {
+            GLuint first;
+            GLuint count;
+            Color color = Color::Ones();
+            bool enabled = true;
+        };
+
+        std::vector<entt::entity> parts{};
 
         explicit Structure(
             tc::Group group,

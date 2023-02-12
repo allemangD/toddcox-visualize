@@ -110,16 +110,20 @@ void show_overlay(State &state) {
 }
 
 void show_options(entt::registry &registry) {
-    auto view = registry.view<vis::Structure<5, 4, 4>>();
+    using Slice = vis::Structure<5, 4, 4>;
+    auto view = registry.view<Slice>();
 
     for (auto [entity, structure]: view.each()) {
         ImGui::Begin("Structure View Options");
 
-        for (int i = 0; i < structure.tilings.size(); ++i) {
-            std::string label = fmt::format("{}", i);
+        for (int idx = 0; idx < structure.parts.size(); ++idx) {
+            const auto &part_entity = structure.parts[idx];
+            auto &part = registry.get<Slice::Part>(part_entity);
 
-            ImGui::Checkbox(label.c_str(), (bool*) (&(structure.enabled[i])));
-            ImGui::ColorEdit3(label.c_str(), structure.colors[i].data(), ImGuiColorEditFlags_NoLabel);
+            std::string label = fmt::format("{}", idx);
+
+            ImGui::Checkbox(label.c_str(), (bool*) (&(part.enabled)));
+            ImGui::ColorEdit3(label.c_str(), part.color.data(), ImGuiColorEditFlags_NoLabel);
         }
 
         ImGui::End();
@@ -164,7 +168,10 @@ int run(GLFWwindow* window, ImGuiContext* ctx) {
     registry.emplace<vis::VBOs<Slice>>(entity);
 
     vis::upload_structure<Slice>(registry);
-    registry.get<Slice>(entity).enabled[0] = false;  // disable {0,1,2} cells
+    registry.get<Slice::Part>(
+        registry.get<Slice>(entity).parts[0]
+    ).enabled = false;
+//    registry.get<Slice>(entity).enabled[0] = false;  // disable {0,1,2} cells
 
     auto ubo = cgl::Buffer<Matrices>();
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, ubo);
