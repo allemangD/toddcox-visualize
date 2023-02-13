@@ -21,39 +21,42 @@
 namespace vis {
     template<typename Str>
     void upload_structure(entt::registry &registry) {
+        {
+            auto parts = registry.view<Part<Str>>();
+            registry.destroy(parts.begin(), parts.end());
+        }
+
         auto view = registry.view<Str, VBOs<Str>>();
 
         for (auto [entity, structure, vbos]: view.each()) {
             Points points(structure.group, structure.root);
             Hull<Str::Grade> hull(structure.group);
 
-            registry.destroy(structure.parts.begin(), structure.parts.end());
-            structure.parts.clear();
+            auto &&vertices = points.verts.colwise();
+            auto &&indices = hull.inds.colwise();
+
+            vbos.vertices.put(vertices.begin(), vertices.end());
+            vbos.indices.put(indices.begin(), indices.end());
 
             for (const auto &tiling: hull.tilings) {
                 auto part_entity = registry.create();
-                registry.emplace<typename Str::Part>(
+                registry.emplace<Part<Str>>(
                     part_entity,
+                    entity,
                     tiling.first,
                     tiling.count
                 );
-                structure.parts.push_back(part_entity);
             }
-
-            vbos.vertices.put(
-                points.verts.colwise().begin(),
-                points.verts.colwise().end()
-            );
-            vbos.indices.put(
-                hull.inds.colwise().begin(),
-                hull.inds.colwise().end()
-            );
         }
     }
 
     template<typename Str>
     void upload_uniforms(entt::registry &registry) {
-        auto view = registry.view<Str, VBOs<Str>>();
+        auto view = registry.view<Part<Str>>();
+
+        for (auto [entity, part]: view.each()) {
+            auto &vbos = registry.get<VBOs<Str>>(part.parent);
+        }
 
         for (auto [entity, structure, vbos]: view.each()) {
             std::vector<typename Str::Color> colors;
@@ -73,6 +76,11 @@ namespace vis {
 
     template<typename Str>
     void upload_commands(entt::registry &registry) {
+        auto view = registry.view<Part<Str>>();
+        for (auto [entity, part]: view.each()) {
+            Command comm(part.count, 1, part.first, )
+        }
+
         auto view = registry.view<Str, VBOs<Str>>();
 
         for (auto [entity, structure, vbos]: view.each()) {
